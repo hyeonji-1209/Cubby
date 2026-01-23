@@ -1,0 +1,244 @@
+@use '../../styles/variables' as *;
+
+.auth-page {
+  min-height: 100vh;
+  @include flex-center;
+  background-color: $gray-50;
+  padding: $spacing-lg;
+
+  &__container {
+    width: 100%;
+    max-width: 400px;
+  }
+
+  &__header {
+    text-align: center;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__logo {
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    color: $primary-600;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__subtitle {
+    color: $gray-500;
+    font-size: $font-size-sm;
+  }
+}
+
+.auth-form {
+  background-color: white;
+  padding: $spacing-xl;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    text-align: center;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__error {
+    background-color: rgba($error, 0.1);
+    color: $error;
+    padding: $spacing-sm $spacing-md;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    margin-bottom: $spacing-md;
+  }
+
+  &__field {
+    margin-bottom: $spacing-md;
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__input {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__submit {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    background-color: $primary-500;
+    color: white;
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    margin-top: $spacing-md;
+    transition: background-color $transition-fast;
+
+    &:hover:not(:disabled) {
+      background-color: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__divider {
+    display: flex;
+    align-items: center;
+    margin: $spacing-lg 0;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background-color: $gray-200;
+    }
+
+    span {
+      padding: 0 $spacing-md;
+      color: $gray-400;
+      font-size: $font-size-sm;
+    }
+  }
+
+  &__social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-sm;
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    margin-bottom: $spacing-sm;
+    transition: background-color $transition-fast;
+
+    svg {
+      flex-shrink: 0;
+    }
+
+    &:hover {
+      background-color: $gray-50;
+    }
+
+    &--google {
+      color: $gray-700;
+    }
+
+    &--kakao {
+      background-color: #fee500;
+      border-color: #fee500;
+      color: #000000;
+
+      &:hover {
+        background-color: #fdd800;
+      }
+    }
+  }
+
+  &__footer {
+    text-align: center;
+    margin-top: $spacing-lg;
+    font-size: $font-size-sm;
+    color: $gray-600;
+
+    a {
+      color: $primary-600;
+      font-weight: $font-weight-medium;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+// Auth Callback Page
+.auth-callback {
+  @include flex-center;
+  flex-direction: column;
+  padding: $spacing-2xl;
+  background-color: white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+  text-align: center;
+
+  &__spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid $gray-200;
+    border-top-color: $primary-500;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__icon {
+    margin-bottom: $spacing-lg;
+
+    &--error {
+      color: $error;
+    }
+
+    &--success {
+      color: $success;
+    }
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__message {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__button {
+    padding: $spacing-sm $spacing-lg;
+    background-color: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $primary-600;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,195 @@
+@import '../../styles/variables';
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: $spacing-md;
+}
+
+.modal {
+  background: $white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-lg;
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+
+  &--sm {
+    max-width: 400px;
+  }
+
+  &--md {
+    max-width: 500px;
+  }
+
+  &--lg {
+    max-width: 700px;
+  }
+
+  &__title {
+    font-size: $font-lg;
+    font-weight: 600;
+    color: $gray-900;
+    padding: $spacing-lg $spacing-lg 0;
+    margin: 0;
+  }
+
+  &__desc {
+    font-size: $font-sm;
+    color: $gray-600;
+    padding: $spacing-sm $spacing-lg;
+    margin: 0;
+  }
+
+  &__body {
+    padding: $spacing-md $spacing-lg;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+    padding: $spacing-md $spacing-lg $spacing-lg;
+    border-top: 1px solid $gray-200;
+    margin-top: $spacing-md;
+  }
+
+  // Form elements inside modal
+  &__field {
+    margin-bottom: $spacing-md;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-sm;
+    font-weight: 500;
+    color: $gray-700;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__input,
+  &__textarea,
+  &__select {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-base;
+    transition: border-color 0.2s, box-shadow 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba($primary, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  &__select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right $spacing-sm center;
+    padding-right: $spacing-xl;
+  }
+
+  // Button styles inside modal
+  &__cancel {
+    padding: $spacing-sm $spacing-lg;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    background: $white;
+    color: $gray-700;
+    font-size: $font-sm;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: $gray-50;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-lg;
+    border: none;
+    border-radius: $radius-md;
+    background: $primary;
+    color: $white;
+    font-size: $font-sm;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
+    }
+
+    &--danger {
+      background: $error;
+
+      &:hover:not(:disabled) {
+        background: darken($error, 10%);
+      }
+    }
+  }
+
+  // Member info in modal
+  &__member-info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__member-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: $primary;
+    color: $white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: $font-lg;
+  }
+
+  &__member-name {
+    font-weight: 600;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__member-email {
+    font-size: $font-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+}

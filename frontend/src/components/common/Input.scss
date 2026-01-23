@@ -1,0 +1,87 @@
+@use '../../styles/variables' as *;
+
+.input-wrapper {
+  display: flex;
+  flex-direction: column;
+
+  &--full-width {
+    width: 100%;
+  }
+
+  &--error {
+    .input-wrapper__input {
+      border-color: $error;
+
+      &:focus {
+        border-color: $error;
+        box-shadow: 0 0 0 3px rgba($error, 0.1);
+      }
+    }
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  &__input {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+
+    &--with-left-icon {
+      padding-left: 40px;
+    }
+
+    &--with-right-icon {
+      padding-right: 40px;
+    }
+  }
+
+  &__icon {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $gray-400;
+
+    &--left {
+      left: $spacing-md;
+    }
+
+    &--right {
+      right: $spacing-md;
+    }
+  }
+
+  &__helper {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin-top: $spacing-xs;
+
+    &--error {
+      color: $error;
+    }
+  }
+}

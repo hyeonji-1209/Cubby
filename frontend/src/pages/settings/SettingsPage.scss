@@ -1,0 +1,200 @@
+@use '../../styles/variables' as *;
+
+.settings {
+  max-width: 720px;
+  margin: 0 auto;
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: $gray-900;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__section {
+    margin-bottom: $spacing-xl;
+
+    &--danger {
+      .settings__section-title {
+        color: $error;
+      }
+    }
+  }
+
+  &__section-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin-bottom: $spacing-md;
+  }
+
+  &__card {
+    background-color: white;
+    border-radius: $radius-lg;
+    border: 1px solid $gray-200;
+    padding: $spacing-lg;
+  }
+
+  &__avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: $radius-full;
+    background-color: $primary-100;
+    color: $primary-600;
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-semibold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: $spacing-lg;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__input {
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: border-color $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+
+    &--disabled {
+      background-color: $gray-100;
+      color: $gray-500;
+      cursor: not-allowed;
+    }
+  }
+
+  &__hint {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  &__error {
+    padding: $spacing-sm $spacing-md;
+    background-color: rgba($error, 0.1);
+    color: $error;
+    font-size: $font-size-sm;
+    border-radius: $radius-md;
+  }
+
+  &__btn {
+    padding: $spacing-sm $spacing-lg;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: all $transition-fast;
+    cursor: pointer;
+
+    &--primary {
+      background-color: $primary-500;
+      color: white;
+      align-self: flex-start;
+
+      &:hover:not(:disabled) {
+        background-color: $primary-600;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    &--outline {
+      background-color: transparent;
+      color: $gray-700;
+      border: 1px solid $gray-300;
+
+      &:hover {
+        background-color: $gray-50;
+      }
+    }
+
+    &--danger {
+      background-color: $error;
+      color: white;
+
+      &:hover {
+        background-color: darken($error, 10%);
+      }
+    }
+  }
+
+  &__info-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid $gray-100;
+
+    &:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+  }
+
+  &__info-label {
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+
+  &__info-value {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+
+    &.verified {
+      color: $success;
+    }
+
+    &.unverified {
+      color: $warning;
+    }
+  }
+
+  &__danger-actions {
+    display: flex;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__warning {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+}

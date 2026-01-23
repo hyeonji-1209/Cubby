@@ -1,0 +1,142 @@
+@use '../../styles/variables' as *;
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  font-weight: $font-weight-medium;
+  border-radius: $radius-md;
+  transition: all $transition-fast;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  // Sizes
+  &--sm {
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-sm;
+  }
+
+  &--md {
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-base;
+  }
+
+  &--lg {
+    padding: $spacing-md $spacing-lg;
+    font-size: $font-size-lg;
+  }
+
+  // Variants
+  &--primary {
+    background-color: $primary-500;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: $primary-600;
+    }
+
+    &:active:not(:disabled) {
+      background-color: $primary-700;
+    }
+  }
+
+  &--secondary {
+    background-color: $gray-100;
+    color: $gray-700;
+
+    &:hover:not(:disabled) {
+      background-color: $gray-200;
+    }
+
+    &:active:not(:disabled) {
+      background-color: $gray-300;
+    }
+  }
+
+  &--outline {
+    background-color: transparent;
+    color: $primary-600;
+    border: 1px solid $primary-500;
+
+    &:hover:not(:disabled) {
+      background-color: $primary-50;
+    }
+
+    &:active:not(:disabled) {
+      background-color: $primary-100;
+    }
+  }
+
+  &--ghost {
+    background-color: transparent;
+    color: $gray-700;
+
+    &:hover:not(:disabled) {
+      background-color: $gray-100;
+    }
+
+    &:active:not(:disabled) {
+      background-color: $gray-200;
+    }
+  }
+
+  &--danger {
+    background-color: $error;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: darken($error, 10%);
+    }
+
+    &:active:not(:disabled) {
+      background-color: darken($error, 15%);
+    }
+  }
+
+  // Full width
+  &--full-width {
+    width: 100%;
+  }
+
+  // Loading
+  &--loading {
+    position: relative;
+    color: transparent;
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &--left {
+      margin-right: -$spacing-xs;
+    }
+
+    &--right {
+      margin-left: -$spacing-xs;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

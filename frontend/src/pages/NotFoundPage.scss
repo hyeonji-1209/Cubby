@@ -1,0 +1,35 @@
+@use '../styles/variables' as *;
+
+.not-found {
+  @include flex-center;
+  flex-direction: column;
+  min-height: 100vh;
+  text-align: center;
+  padding: $spacing-lg;
+
+  &__title {
+    font-size: 6rem;
+    font-weight: $font-weight-bold;
+    color: $gray-300;
+    margin-bottom: $spacing-md;
+  }
+
+  &__message {
+    font-size: $font-size-xl;
+    color: $gray-600;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__link {
+    padding: $spacing-sm $spacing-lg;
+    background-color: $primary-500;
+    color: white;
+    border-radius: $radius-md;
+    font-weight: $font-weight-medium;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $primary-600;
+    }
+  }
+}

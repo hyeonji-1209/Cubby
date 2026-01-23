@@ -1,0 +1,1818 @@
+@use '../../styles/variables' as *;
+
+// Group List Page
+.group-list {
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: $gray-900;
+  }
+
+  &__create-btn {
+    padding: $spacing-sm $spacing-md;
+    background-color: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $primary-600;
+    }
+  }
+
+  &__empty {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-2xl;
+    background-color: white;
+    border-radius: $radius-lg;
+    border: 1px dashed $gray-300;
+  }
+
+  &__empty-text {
+    font-size: $font-size-lg;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__empty-subtext {
+    color: $gray-500;
+    font-size: $font-size-sm;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: $spacing-lg;
+  }
+}
+
+// Group Create Page
+.group-create {
+  max-width: 600px;
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: $gray-900;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__form {
+    background-color: white;
+    padding: $spacing-xl;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-sm;
+  }
+
+  &__section {
+    margin-bottom: $spacing-xl;
+
+    &:last-of-type {
+      margin-bottom: 0;
+    }
+  }
+
+  &__section-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin-bottom: $spacing-md;
+  }
+
+  &__types {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-md;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__type {
+    position: relative;
+    padding: $spacing-md;
+    border: 2px solid $gray-200;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    input {
+      position: absolute;
+      opacity: 0;
+    }
+
+    &:hover {
+      border-color: $primary-300;
+    }
+
+    &--selected {
+      border-color: $primary-500;
+      background-color: $primary-50;
+    }
+  }
+
+  &__type-label {
+    display: block;
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__type-desc {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  &__field {
+    margin-bottom: $spacing-md;
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__input,
+  &__textarea {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-md;
+    margin-top: $spacing-xl;
+    padding-top: $spacing-lg;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__cancel {
+    padding: $spacing-sm $spacing-lg;
+    color: $gray-700;
+    font-weight: $font-weight-medium;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $gray-50;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-lg;
+    background-color: $primary-500;
+    color: white;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover:not(:disabled) {
+      background-color: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Group Detail Page
+.group-detail {
+  &__loading,
+  &__error {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-2xl;
+    color: $gray-500;
+
+    a {
+      margin-top: $spacing-md;
+      color: $primary-500;
+      text-decoration: underline;
+    }
+  }
+
+  &__loading-text {
+    color: $gray-500;
+    text-align: center;
+    padding: $spacing-xl;
+  }
+
+  // 헤더
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: $spacing-lg;
+    padding: $spacing-xl;
+    background: linear-gradient(135deg, $primary-500 0%, $primary-600 100%);
+    border-radius: $radius-lg;
+    color: white;
+    margin-bottom: $spacing-lg;
+
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__logo {
+    width: 64px;
+    height: 64px;
+    border-radius: $radius-lg;
+    object-fit: cover;
+    background: white;
+
+    &--default {
+      @include flex-center;
+      font-size: $font-size-2xl;
+      font-weight: $font-weight-bold;
+      color: $primary-500;
+    }
+  }
+
+  &__text {
+    flex: 1;
+  }
+
+  &__name {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__type {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__desc {
+    font-size: $font-size-sm;
+    opacity: 0.9;
+    margin-top: $spacing-xs;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__invite-btn {
+    padding: $spacing-sm $spacing-md;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  // 탭 네비게이션
+  &__tabs {
+    display: flex;
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+    background: white;
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-lg;
+    box-shadow: $shadow-sm;
+    overflow-x: auto;
+
+    @include mobile {
+      gap: 0;
+    }
+  }
+
+  &__tab {
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+    border-radius: $radius-md;
+    transition: all $transition-fast;
+    white-space: nowrap;
+
+    &:hover {
+      background: $gray-100;
+      color: $gray-900;
+    }
+
+    &.active {
+      background: $primary-500;
+      color: white;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      margin-left: 4px;
+      background: $error;
+      color: white;
+      font-size: 11px;
+      font-weight: $font-weight-semibold;
+      border-radius: $radius-full;
+    }
+  }
+
+  // 컨텐츠
+  &__content {
+    background: white;
+    border-radius: $radius-lg;
+    padding: $spacing-xl;
+    box-shadow: $shadow-sm;
+  }
+
+  // 홈 탭
+  &__home {
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-md;
+    }
+  }
+
+  &__stats {
+    display: flex;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__stat {
+    flex: 1;
+    padding: $spacing-lg;
+    background: $gray-50;
+    border-radius: $radius-md;
+    text-align: center;
+  }
+
+  &__stat-value {
+    display: block;
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    color: $primary-500;
+  }
+
+  &__stat-label {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  &__invite-box {
+    padding: $spacing-lg;
+    background: $primary-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-xl;
+    border: 2px solid transparent;
+    transition: all $transition-fast;
+
+    h3 {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $primary-700;
+      margin: 0;
+    }
+
+    p {
+      font-size: $font-size-sm;
+      color: $gray-500;
+      margin-top: $spacing-sm;
+    }
+
+    &--expired {
+      background: #fef2f2;
+      border-color: $error;
+
+      h3 {
+        color: $error;
+      }
+
+      p {
+        color: $error;
+      }
+    }
+  }
+
+  &__invite-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__invite-expiry {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+    background: $primary-100;
+    color: $primary-700;
+
+    &.expired {
+      background: #fee2e2;
+      color: $error;
+    }
+  }
+
+  &__invite-code {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+
+    code {
+      flex: 1;
+      min-width: 150px;
+      padding: $spacing-sm $spacing-md;
+      background: white;
+      border-radius: $radius-md;
+      font-family: monospace;
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $primary-600;
+      letter-spacing: 2px;
+
+      &.expired {
+        color: $gray-400;
+        text-decoration: line-through;
+      }
+    }
+
+    button {
+      padding: $spacing-sm $spacing-md;
+      background: $primary-500;
+      color: white;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      border-radius: $radius-md;
+      transition: all $transition-fast;
+
+      &:hover:not(:disabled) {
+        background: $primary-600;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.regenerate {
+        background: $gray-600;
+
+        &:hover:not(:disabled) {
+          background: $gray-700;
+        }
+      }
+    }
+  }
+
+  &__section {
+    margin-top: $spacing-xl;
+  }
+
+  &__member-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  // 멤버 탭
+  &__member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: $spacing-md;
+  }
+
+  // 소모임 탭
+  &__subgroups-header {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+  }
+
+  &__add-btn {
+    padding: $spacing-sm $spacing-md;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  &__empty {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-2xl;
+    color: $gray-500;
+
+    p {
+      margin-bottom: $spacing-md;
+    }
+
+    button {
+      padding: $spacing-sm $spacing-md;
+      background: $primary-500;
+      color: white;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      border-radius: $radius-md;
+
+      &:hover {
+        background: $primary-600;
+      }
+    }
+  }
+
+  &__subgroup-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: $spacing-md;
+  }
+
+  // 승인 요청 탭
+  &__requests {
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  &__request-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  // 설정 탭
+  &__settings {
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  &__setting-section {
+    padding: $spacing-lg;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+
+    h3 {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $gray-700;
+      margin-bottom: $spacing-md;
+    }
+
+    &--danger {
+      background: #fef2f2;
+
+      h3 {
+        color: $error;
+      }
+    }
+  }
+
+  &__setting-item {
+    display: flex;
+    justify-content: space-between;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $gray-200;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: $gray-500;
+      font-size: $font-size-sm;
+    }
+
+    .value {
+      color: $gray-900;
+      font-weight: $font-weight-medium;
+
+      &.code {
+        font-family: monospace;
+        letter-spacing: 1px;
+      }
+    }
+  }
+
+  &__danger-btn {
+    padding: $spacing-sm $spacing-md;
+    background: $error;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: darken($error, 10%);
+    }
+  }
+
+  &__warning {
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+}
+
+// 멤버 아이템 (홈 탭 목록)
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-sm;
+  border-radius: $radius-md;
+
+  &:hover {
+    background: $gray-50;
+  }
+
+  &__avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: $radius-full;
+    background: $primary-100;
+    color: $primary-600;
+    @include flex-center;
+    font-weight: $font-weight-semibold;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+  }
+
+  &__role {
+    font-size: $font-size-xs;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+    background: $gray-100;
+    color: $gray-600;
+
+    &--owner {
+      background: $primary-100;
+      color: $primary-700;
+    }
+
+    &--admin {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--leader {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+  }
+}
+
+// 멤버 카드 (멤버 탭 그리드)
+.member-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: $gray-50;
+  border-radius: $radius-md;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: $gray-100;
+  }
+
+  &__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-full;
+    background: $primary-100;
+    color: $primary-600;
+    @include flex-center;
+    font-weight: $font-weight-semibold;
+    font-size: $font-size-lg;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__role {
+    display: inline-block;
+    font-size: $font-size-xs;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+    background: $gray-200;
+    color: $gray-600;
+    width: fit-content;
+
+    &--owner {
+      background: $primary-100;
+      color: $primary-700;
+    }
+
+    &--admin {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--leader {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+  }
+
+  &__email {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  &__badge {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-sm;
+    font-size: 10px;
+    padding: 2px 6px;
+    background: $primary-500;
+    color: white;
+    border-radius: $radius-sm;
+  }
+}
+
+// 소모임 카드
+.subgroup-card {
+  padding: $spacing-md;
+  background: $gray-50;
+  border-radius: $radius-md;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: $gray-100;
+    box-shadow: $shadow-sm;
+  }
+
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__status {
+    font-size: $font-size-xs;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+
+    &--active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    &--pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--inactive {
+      background: $gray-200;
+      color: $gray-600;
+    }
+  }
+
+  &__desc {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__leader {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  &__depth {
+    font-size: $font-size-xs;
+    color: $gray-400;
+    margin-top: $spacing-xs;
+  }
+
+  &--clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: $primary-50;
+      border-color: $primary-200;
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+  }
+}
+
+// 소모임 상세 페이지
+.subgroup-detail {
+  &__loading,
+  &__error {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-2xl;
+    color: $gray-500;
+
+    a {
+      margin-top: $spacing-md;
+      color: $primary-500;
+      text-decoration: underline;
+    }
+  }
+
+  &__loading-text {
+    color: $gray-500;
+    text-align: center;
+    padding: $spacing-xl;
+  }
+
+  // 브레드크럼
+  &__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-lg;
+    font-size: $font-size-sm;
+
+    a {
+      color: $primary-500;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    .separator {
+      color: $gray-400;
+    }
+
+    .current {
+      color: $gray-600;
+      font-weight: $font-weight-medium;
+    }
+  }
+
+  // 헤더
+  &__header {
+    padding: $spacing-xl;
+    background: linear-gradient(135deg, $primary-400 0%, $primary-500 100%);
+    border-radius: $radius-lg;
+    color: white;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__cover {
+    width: 56px;
+    height: 56px;
+    border-radius: $radius-lg;
+    object-fit: cover;
+    background: white;
+
+    &--default {
+      @include flex-center;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $primary-500;
+    }
+  }
+
+  &__text {
+    flex: 1;
+  }
+
+  &__name {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    margin-right: $spacing-sm;
+
+    &--active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    &--pending {
+      background: rgba(251, 191, 36, 0.3);
+    }
+
+    &--inactive {
+      background: rgba(156, 163, 175, 0.3);
+    }
+  }
+
+  &__desc {
+    font-size: $font-size-sm;
+    opacity: 0.9;
+    margin-top: $spacing-xs;
+  }
+
+  &__leader {
+    font-size: $font-size-sm;
+    opacity: 0.8;
+    margin-top: $spacing-xs;
+  }
+
+  // 탭
+  &__tabs {
+    display: flex;
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+    background: white;
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-lg;
+    box-shadow: $shadow-sm;
+    overflow-x: auto;
+  }
+
+  &__tab {
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+    border-radius: $radius-md;
+    transition: all $transition-fast;
+    white-space: nowrap;
+
+    &:hover {
+      background: $gray-100;
+      color: $gray-900;
+    }
+
+    &.active {
+      background: $primary-500;
+      color: white;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      margin-left: 4px;
+      background: $error;
+      color: white;
+      font-size: 11px;
+      font-weight: $font-weight-semibold;
+      border-radius: $radius-full;
+    }
+  }
+
+  // 컨텐츠
+  &__content {
+    background: white;
+    border-radius: $radius-lg;
+    padding: $spacing-xl;
+    box-shadow: $shadow-sm;
+  }
+
+  // 홈 탭
+  &__home {
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-md;
+    }
+
+    p {
+      color: $gray-600;
+      line-height: 1.6;
+    }
+  }
+
+  &__stats {
+    display: flex;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__stat {
+    flex: 1;
+    padding: $spacing-lg;
+    background: $gray-50;
+    border-radius: $radius-md;
+    text-align: center;
+  }
+
+  &__stat-value {
+    display: block;
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: $primary-500;
+  }
+
+  &__stat-label {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  &__section {
+    margin-top: $spacing-xl;
+  }
+
+  &__children-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: $spacing-md;
+  }
+
+  &__view-all {
+    grid-column: 1 / -1;
+    padding: $spacing-sm;
+    background: $gray-100;
+    color: $primary-500;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    text-align: center;
+
+    &:hover {
+      background: $gray-200;
+    }
+  }
+
+  // 하위 소모임 탭
+  &__subgroups-header {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+  }
+
+  &__add-btn {
+    padding: $spacing-sm $spacing-md;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  &__empty {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-2xl;
+    color: $gray-500;
+
+    p {
+      margin-bottom: $spacing-md;
+    }
+
+    button {
+      padding: $spacing-sm $spacing-md;
+      background: $primary-500;
+      color: white;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      border-radius: $radius-md;
+
+      &:hover {
+        background: $primary-600;
+      }
+    }
+  }
+
+  &__subgroup-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: $spacing-md;
+  }
+
+  // 승인 요청 탭
+  &__requests {
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  &__request-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  // 설정 탭
+  &__settings {
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  &__setting-section {
+    padding: $spacing-lg;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+
+    h3 {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $gray-700;
+      margin-bottom: $spacing-md;
+    }
+  }
+
+  &__setting-item {
+    display: flex;
+    justify-content: space-between;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $gray-200;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: $gray-500;
+      font-size: $font-size-sm;
+    }
+
+    .value {
+      color: $gray-900;
+      font-weight: $font-weight-medium;
+    }
+  }
+
+  &__link {
+    display: inline-block;
+    padding: $spacing-sm $spacing-md;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    text-decoration: none;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+}
+
+// 승인 요청 카드
+.request-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md;
+  background: $gray-50;
+  border-radius: $radius-md;
+  gap: $spacing-md;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__name {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0 0 $spacing-xs 0;
+  }
+
+  &__desc {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__requester {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__date {
+    font-size: $font-size-xs;
+    color: $gray-400;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+
+    @include mobile {
+      width: 100%;
+    }
+  }
+
+  &__approve {
+    padding: $spacing-sm $spacing-md;
+    background: $success;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: darken($success, 10%);
+    }
+  }
+
+  &__reject {
+    padding: $spacing-sm $spacing-md;
+    background: $gray-200;
+    color: $gray-700;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: $gray-300;
+    }
+  }
+}
+
+// 모달 추가 스타일
+.modal {
+  &__field {
+    margin-bottom: $spacing-md;
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__input,
+  &__textarea,
+  &__select {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  &__select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+  }
+
+  &__member-info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__member-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-full;
+    background: $primary-100;
+    color: $primary-600;
+    @include flex-center;
+    font-weight: $font-weight-semibold;
+    font-size: $font-size-lg;
+  }
+
+  &__member-name {
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__member-email {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    color: $gray-700;
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: $primary-500;
+      cursor: pointer;
+    }
+
+    span {
+      user-select: none;
+    }
+  }
+}
+
+// 공지사항 탭
+.group-detail__announcements {
+  &-header {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+  }
+}
+
+.group-detail__announcement-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+// 공지사항 카드
+.announcement-card {
+  padding: $spacing-lg;
+  background: $gray-50;
+  border-radius: $radius-md;
+  border: 1px solid $gray-200;
+  transition: all $transition-fast;
+
+  &:hover {
+    border-color: $gray-300;
+  }
+
+  &--pinned {
+    background: $primary-50;
+    border-color: $primary-200;
+
+    .announcement-card__pin-badge {
+      display: inline-flex;
+    }
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__meta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__pin-badge {
+    display: none;
+    align-items: center;
+    padding: 2px 8px;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+  }
+
+  &__title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+  }
+
+  &__action {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-base;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: background $transition-fast;
+    line-height: 1;
+
+    &:hover {
+      background: rgba($gray-500, 0.1);
+    }
+
+    &--delete:hover {
+      background: rgba($error, 0.1);
+    }
+  }
+
+  &__content {
+    font-size: $font-size-sm;
+    color: $gray-700;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: $spacing-md;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__author {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+  }
+
+  &__date {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+}
+
+// 일정 탭
+.group-detail__schedules {
+  &-header {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+  }
+
+  &-title-row {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin: 0;
+    }
+  }
+}
+
+// View Toggle (리스트/캘린더 전환)
+.view-toggle {
+  display: flex;
+  gap: $spacing-xs;
+  padding: 4px;
+  background: $gray-100;
+  border-radius: $radius-md;
+
+  &__btn {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-sm;
+    background: transparent;
+    color: $gray-600;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border: none;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      color: $gray-800;
+      background: $gray-200;
+    }
+
+    &.active {
+      background: white;
+      color: $primary-600;
+      box-shadow: $shadow-sm;
+    }
+  }
+
+  &__icon {
+    font-size: $font-size-base;
+    line-height: 1;
+  }
+
+  &__label {
+    @include mobile {
+      display: none;
+    }
+  }
+}
+
+.group-detail__schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+// 일정 카드
+.schedule-card {
+  padding: $spacing-lg;
+  background: $gray-50;
+  border-radius: $radius-md;
+  border-left: 4px solid #3b82f6;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: $gray-100;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: $spacing-md;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__meta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__all-day {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: $primary-100;
+    color: $primary-700;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+  }
+
+  &__action {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-base;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: background $transition-fast;
+    line-height: 1;
+
+    &:hover {
+      background: rgba($gray-500, 0.1);
+    }
+
+    &--delete:hover {
+      background: rgba($error, 0.1);
+    }
+  }
+
+  &__time {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__separator {
+    color: $gray-400;
+  }
+
+  &__location {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__desc {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    line-height: 1.5;
+    margin-bottom: $spacing-sm;
+    white-space: pre-wrap;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding-top: $spacing-sm;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__author {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+}
+
+// 모달 추가 스타일 (일정용)
+.modal {
+  &__row {
+    display: flex;
+    gap: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+
+  &__field--half {
+    flex: 1;
+  }
+
+  &__color-picker {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-full;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &.active {
+      border-color: $gray-900;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px $gray-900;
+    }
+  }
+}
