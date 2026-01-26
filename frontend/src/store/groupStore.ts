@@ -25,9 +25,10 @@ interface GroupState {
   // Actions
   fetchMyGroups: () => Promise<void>;
   fetchGroup: (groupId: string) => Promise<void>;
-  createGroup: (data: { name: string; description?: string; type: GroupType }) => Promise<Group>;
+  createGroup: (data: { name: string; description?: string; type: GroupType; icon?: string; color?: string; logoImage?: string }) => Promise<Group>;
   joinGroup: (inviteCode: string) => Promise<void>;
   leaveGroup: (groupId: string) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
 
   // 소모임
   fetchSubGroups: (groupId: string, parentSubGroupId?: string) => Promise<void>;
@@ -92,6 +93,14 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   leaveGroup: async (groupId: string) => {
     await groupApi.leave(groupId);
+    set((state) => ({
+      myGroups: state.myGroups.filter((g) => g.id !== groupId),
+      currentGroup: state.currentGroup?.id === groupId ? null : state.currentGroup,
+    }));
+  },
+
+  deleteGroup: async (groupId: string) => {
+    await groupApi.delete(groupId);
     set((state) => ({
       myGroups: state.myGroups.filter((g) => g.id !== groupId),
       currentGroup: state.currentGroup?.id === groupId ? null : state.currentGroup,

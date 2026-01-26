@@ -1,4 +1,4 @@
-@import '../../styles/variables';
+@use '../../styles/variables' as *;
 
 .calendar {
   background: $white;
@@ -78,11 +78,11 @@
     color: $gray-600;
 
     &.sunday {
-      color: #dc2626;
+      color: $error;
     }
 
     &.saturday {
-      color: #2563eb;
+      color: $primary-500;
     }
   }
 
@@ -124,11 +124,11 @@
     }
 
     &.sunday .calendar__date {
-      color: #dc2626;
+      color: $error;
     }
 
     &.saturday .calendar__date {
-      color: #2563eb;
+      color: $primary-500;
     }
   }
 

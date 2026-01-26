@@ -12,6 +12,7 @@ export const GROUP_TYPE_LABELS: Record<GroupType, string> = {
   religious: '종교',
   community: '동호회/커뮤니티',
   company: '회사/팀',
+  couple: '연인/커플',
 };
 
 /**
@@ -22,6 +23,7 @@ export const GROUP_TYPE_ICONS: Record<GroupType, string> = {
   religious: '⛪',
   community: '🎯',
   company: '💼',
+  couple: '💕',
 };
 
 /**
@@ -45,6 +47,15 @@ export const MEMBER_ROLE_COLORS: Record<MemberRole, string> = {
   member: '#6b7280',  // gray
   guardian: '#f59e0b', // amber
 };
+
+/**
+ * 멤버 역할 옵션 (선택용)
+ */
+export const ROLE_OPTIONS = [
+  { value: 'admin', label: '관리자' },
+  { value: 'leader', label: '리더' },
+  { value: 'member', label: '멤버' },
+];
 
 /**
  * 알림 타입 레이블

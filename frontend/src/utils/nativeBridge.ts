@@ -42,17 +42,25 @@ export const getFcmToken = (): string | null => {
   return null;
 };
 
+// 공유 결과 타입
+export type ShareResult = {
+  method: 'native' | 'webShare' | 'clipboard';
+  success: boolean;
+};
+
 // 공유하기
-export const share = async (title: string, text: string, url: string): Promise<void> => {
+export const share = async (title: string, text: string, url: string): Promise<ShareResult> => {
   if (isNativeApp()) {
     window.CubbyNative!.share(title, text, url);
+    return { method: 'native', success: true };
   } else if (navigator.share) {
     // Web Share API (지원하는 브라우저에서)
     await navigator.share({ title, text, url });
+    return { method: 'webShare', success: true };
   } else {
     // 대체: 클립보드에 복사
     await navigator.clipboard.writeText(url || text);
-    alert('링크가 클립보드에 복사되었습니다.');
+    return { method: 'clipboard', success: true };
   }
 };
 

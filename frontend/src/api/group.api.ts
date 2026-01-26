@@ -7,6 +7,8 @@ export const groupApi = {
     name: string;
     description?: string;
     type: GroupType;
+    icon?: string;
+    color?: string;
     logoImage?: string;
     coverImage?: string;
   }): Promise<ApiResponse<Group>> => {
@@ -29,7 +31,7 @@ export const groupApi = {
   // 모임 수정
   update: async (
     groupId: string,
-    data: Partial<Pick<Group, 'name' | 'description' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures'>>
+    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures'>>
   ): Promise<ApiResponse<Group>> => {
     const response = await apiClient.patch(`/groups/${groupId}`, data);
     return response.data;

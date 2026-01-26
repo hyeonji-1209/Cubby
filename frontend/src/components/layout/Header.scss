@@ -1,15 +1,14 @@
-@import '@/styles/variables';
+@use '@/styles/variables' as *;
 
 .header {
   height: 64px;
+  min-height: 64px;
   background-color: white;
   border-bottom: 1px solid $gray-200;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 $spacing-lg;
-  position: sticky;
-  top: 0;
   z-index: $z-sticky;
 
   &__left {

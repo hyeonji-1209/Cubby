@@ -13,14 +13,12 @@ export class GroupController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, description, type, logoImage, coverImage, settings, enabledFeatures } = req.body;
+      const { name, description, type, icon, color, logoImage, coverImage, settings, enabledFeatures } = req.body;
 
-      // 유효한 타입인지 확인
       if (!Object.values(GroupType).includes(type)) {
         throw new AppError('Invalid group type', 400);
       }
 
-      // 초대 코드 생성 (중복 체크)
       let inviteCode = generateInviteCode();
       let existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
       while (existingCode) {
@@ -28,11 +26,12 @@ export class GroupController {
         existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
       }
 
-      // 모임 생성 (초대코드 유효기간 7일)
       const group = this.groupRepository.create({
         name,
         description,
         type,
+        icon,
+        color,
         logoImage,
         coverImage,
         inviteCode,
@@ -142,12 +141,18 @@ export class GroupController {
         where: { parentGroupId: groupId },
       });
 
+      // 현재 사용자의 역할 조회
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
       res.json({
         success: true,
         data: {
           ...group,
           memberCount,
           subGroupCount,
+          myRole: currentMembership?.role,
           owner: {
             id: group.owner.id,
             name: group.owner.name,
@@ -163,7 +168,7 @@ export class GroupController {
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId } = req.params;
-      const { name, description, logoImage, coverImage, settings, enabledFeatures } = req.body;
+      const { name, description, icon, color, logoImage, coverImage, settings, enabledFeatures } = req.body;
 
       const group = await this.groupRepository.findOne({ where: { id: groupId } });
 
@@ -173,6 +178,8 @@ export class GroupController {
 
       if (name) group.name = name;
       if (description !== undefined) group.description = description;
+      if (icon !== undefined) group.icon = icon;
+      if (color !== undefined) group.color = color;
       if (logoImage !== undefined) group.logoImage = logoImage;
       if (coverImage !== undefined) group.coverImage = coverImage;
       if (settings !== undefined) group.settings = settings;

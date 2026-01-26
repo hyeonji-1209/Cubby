@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store';
 import { subGroupApi, groupApi } from '@/api';
+import { Modal, useToast } from '@/components';
 import type { SubGroup, SubGroupRequest, GroupMember } from '@/types';
 import './GroupPages.scss';
 
@@ -10,6 +11,7 @@ type TabType = 'home' | 'subgroups' | 'requests' | 'settings';
 const SubGroupDetailPage = () => {
   const { groupId, subGroupId } = useParams<{ groupId: string; subGroupId: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const { user } = useAuthStore();
 
   const [subGroup, setSubGroup] = useState<SubGroup | null>(null);
@@ -109,9 +111,9 @@ const SubGroupDetailPage = () => {
       });
 
       if ('status' in result.data && result.data.status === 'pending') {
-        alert('소모임 생성 요청이 전송되었습니다. 관리자 승인을 기다려주세요.');
+        toast.info('소모임 생성 요청이 전송되었습니다. 관리자 승인을 기다려주세요.');
       } else {
-        alert('소모임이 생성되었습니다!');
+        toast.success('소모임이 생성되었습니다!');
         await fetchChildSubGroups();
       }
 
@@ -119,7 +121,7 @@ const SubGroupDetailPage = () => {
       setNewSubGroupName('');
       setNewSubGroupDesc('');
     } catch {
-      alert('소모임 생성에 실패했습니다.');
+      toast.error('소모임 생성에 실패했습니다.');
     } finally {
       setCreateLoading(false);
     }
@@ -131,11 +133,11 @@ const SubGroupDetailPage = () => {
 
     try {
       await subGroupApi.approveRequest(groupId, request.id);
-      alert(`"${request.name}" 소모임이 승인되었습니다.`);
+      toast.success(`"${request.name}" 소모임이 승인되었습니다.`);
       await fetchChildSubGroups();
       await fetchSubGroupRequests();
     } catch {
-      alert('승인에 실패했습니다.');
+      toast.error('승인에 실패했습니다.');
     }
   };
 
@@ -145,10 +147,10 @@ const SubGroupDetailPage = () => {
     const reason = prompt('거절 사유를 입력하세요 (선택사항):');
     try {
       await subGroupApi.rejectRequest(groupId, request.id, reason || undefined);
-      alert('요청이 거절되었습니다.');
+      toast.success('요청이 거절되었습니다.');
       await fetchSubGroupRequests();
     } catch {
-      alert('거절에 실패했습니다.');
+      toast.error('거절에 실패했습니다.');
     }
   };
 
@@ -446,57 +448,49 @@ const SubGroupDetailPage = () => {
       </div>
 
       {/* 소모임 생성 모달 */}
-      {showSubGroupModal && (
-        <div className="modal-overlay" onClick={() => setShowSubGroupModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal__title">하위 소모임 만들기</h2>
-            <p className="modal__desc">
-              {isAdmin
-                ? '새 소모임이 바로 생성됩니다.'
-                : '관리자의 승인 후 소모임이 생성됩니다.'}
-            </p>
-
-            <div className="modal__field">
-              <label className="modal__label">소모임 이름 *</label>
-              <input
-                type="text"
-                className="modal__input"
-                placeholder="예: 찬양팀, 수학반, 개발팀"
-                value={newSubGroupName}
-                onChange={(e) => setNewSubGroupName(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-
-            <div className="modal__field">
-              <label className="modal__label">설명 (선택)</label>
-              <textarea
-                className="modal__textarea"
-                placeholder="소모임에 대한 간단한 설명"
-                value={newSubGroupDesc}
-                onChange={(e) => setNewSubGroupDesc(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <div className="modal__actions">
-              <button
-                className="modal__cancel"
-                onClick={() => setShowSubGroupModal(false)}
-              >
-                취소
-              </button>
-              <button
-                className="modal__submit"
-                onClick={handleCreateSubGroup}
-                disabled={!newSubGroupName.trim() || createLoading}
-              >
-                {createLoading ? '처리 중...' : isAdmin ? '생성하기' : '요청 보내기'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        isOpen={showSubGroupModal}
+        onClose={() => setShowSubGroupModal(false)}
+        title="하위 소모임 만들기"
+        description={isAdmin ? '새 소모임이 바로 생성됩니다.' : '관리자의 승인 후 소모임이 생성됩니다.'}
+        actions={
+          <>
+            <button className="modal__cancel" onClick={() => setShowSubGroupModal(false)}>
+              취소
+            </button>
+            <button
+              className="modal__submit"
+              onClick={handleCreateSubGroup}
+              disabled={!newSubGroupName.trim() || createLoading}
+            >
+              {createLoading ? '처리 중...' : isAdmin ? '생성하기' : '요청 보내기'}
+            </button>
+          </>
+        }
+      >
+        <div className="modal__field">
+          <label className="modal__label">소모임 이름 *</label>
+          <input
+            type="text"
+            className="modal__input"
+            placeholder="예: 찬양팀, 수학반, 개발팀"
+            value={newSubGroupName}
+            onChange={(e) => setNewSubGroupName(e.target.value)}
+            maxLength={100}
+          />
         </div>
-      )}
+
+        <div className="modal__field">
+          <label className="modal__label">설명 (선택)</label>
+          <textarea
+            className="modal__textarea"
+            placeholder="소모임에 대한 간단한 설명"
+            value={newSubGroupDesc}
+            onChange={(e) => setNewSubGroupDesc(e.target.value)}
+            rows={3}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -1,62 +1,87 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuthStore } from '@/store';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import { useGroupStore } from '@/store/groupStore';
-import { scheduleApi, notificationApi, announcementApi } from '@/api';
-import { useToast } from '@/components/common';
-import { formatRelativeTime, formatScheduleDateTime, isToday, isSameDay } from '@/utils/dateFormat';
+import { scheduleApi, notificationApi } from '@/api';
 import { GROUP_TYPE_LABELS, MEMBER_ROLE_LABELS } from '@/constants/labels';
-import type { Schedule, Notification, Announcement } from '@/types';
+import { usersIcon, calendarIcon, bellIcon, trashIcon } from '@/assets';
+import { useToast, Modal } from '@/components/common';
+import type { Schedule, Notification } from '@/types';
 import './DashboardPage.scss';
 
+type ValuePiece = Date | null;
+type Value = ValuePiece | [ValuePiece, ValuePiece];
+type TabType = 'schedule' | 'group' | 'notification';
+
+const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+// 모임별 색상 팔레트
+const GROUP_COLORS = [
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f59e0b', // amber
+  '#ef4444', // red
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+  '#06b6d4', // cyan
+  '#84cc16', // lime
+  '#f97316', // orange
+  '#6366f1', // indigo
+];
+
 const DashboardPage = () => {
-  const { user } = useAuthStore();
-  const { myGroups, myGroupsLoading, fetchMyGroups, joinGroup } = useGroupStore();
+  const navigate = useNavigate();
   const toast = useToast();
+  const { myGroups, myGroupsLoading, fetchMyGroups, leaveGroup, deleteGroup } = useGroupStore();
 
-  const [inviteCode, setInviteCode] = useState('');
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [joinLoading, setJoinLoading] = useState(false);
-  const [joinError, setJoinError] = useState('');
+  // 탭
+  const [activeTab, setActiveTab] = useState<TabType>('schedule');
 
-  const [upcomingSchedules, setUpcomingSchedules] = useState<Schedule[]>([]);
+  // 캘린더
+  const [currentDate, setCurrentDate] = useState<Value>(new Date());
+  const [activeStartDate, setActiveStartDate] = useState(new Date());
+  const [allSchedules, setAllSchedules] = useState<Schedule[]>([]);
   const [schedulesLoading, setSchedulesLoading] = useState(false);
 
-  const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
+  // 알림
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const [recentAnnouncements, setRecentAnnouncements] = useState<Announcement[]>([]);
-  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  // 모달
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; groupId: string; groupName: string; isOwner: boolean }>({
+    isOpen: false,
+    groupId: '',
+    groupName: '',
+    isOwner: false,
+  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const year = activeStartDate.getFullYear();
+  const month = activeStartDate.getMonth();
 
   useEffect(() => {
     fetchMyGroups();
-    fetchUpcomingSchedules();
-    fetchRecentNotifications();
+    fetchNotifications();
   }, [fetchMyGroups]);
 
   useEffect(() => {
-    if (myGroups.length > 0) {
-      fetchRecentAnnouncements();
-    }
-  }, [myGroups]);
+    fetchMonthSchedules();
+  }, [year, month]);
 
-  const fetchUpcomingSchedules = async () => {
+  const fetchMonthSchedules = async () => {
     setSchedulesLoading(true);
     try {
-      const today = new Date();
-      const nextMonth = new Date();
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
       const response = await scheduleApi.getMySchedules({
-        startDate: today.toISOString(),
-        endDate: nextMonth.toISOString(),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
       });
 
-      const sorted = response.data
-        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
-        .slice(0, 5);
-
-      setUpcomingSchedules(sorted);
+      setAllSchedules(response.data);
     } catch (error) {
       console.error('Failed to fetch schedules:', error);
     } finally {
@@ -64,11 +89,12 @@ const DashboardPage = () => {
     }
   };
 
-  const fetchRecentNotifications = async () => {
+  const fetchNotifications = async () => {
     setNotificationsLoading(true);
     try {
-      const response = await notificationApi.getList({ limit: 5 });
-      setRecentNotifications(response.data.notifications);
+      const response = await notificationApi.getList({ limit: 50 });
+      setNotifications(response.data.notifications);
+      setUnreadCount(response.data.unreadCount);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -76,363 +102,469 @@ const DashboardPage = () => {
     }
   };
 
-  const fetchRecentAnnouncements = async () => {
-    if (myGroups.length === 0) return;
-
-    setAnnouncementsLoading(true);
+  // 알림 읽음 처리
+  const handleMarkAsRead = async (notificationId: string) => {
     try {
-      const response = await announcementApi.getByGroup(myGroups[0].id, { limit: 3 });
-      setRecentAnnouncements(response.data);
+      await notificationApi.markAsRead(notificationId);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Failed to fetch announcements:', error);
-    } finally {
-      setAnnouncementsLoading(false);
+      console.error('Failed to mark notification as read:', error);
     }
   };
 
-  const handleJoinGroup = async () => {
-    if (!inviteCode.trim()) {
-      setJoinError('초대 코드를 입력해주세요');
-      return;
-    }
+  // 모임 탈퇴/삭제
+  const handleGroupAction = async () => {
+    if (!deleteModal.groupId) return;
 
-    setJoinLoading(true);
-    setJoinError('');
-
+    setDeleteLoading(true);
     try {
-      await joinGroup(inviteCode.trim());
-      setShowInviteModal(false);
-      setInviteCode('');
-      toast.success('모임에 가입되었습니다!');
-      fetchUpcomingSchedules();
+      if (deleteModal.isOwner) {
+        await deleteGroup(deleteModal.groupId);
+        toast.success('모임이 삭제되었습니다');
+      } else {
+        await leaveGroup(deleteModal.groupId);
+        toast.success('모임에서 탈퇴했습니다');
+      }
+      setDeleteModal({ isOpen: false, groupId: '', groupName: '', isOwner: false });
     } catch {
-      setJoinError('유효하지 않은 초대 코드입니다');
+      toast.error(deleteModal.isOwner ? '모임 삭제에 실패했습니다' : '모임 탈퇴에 실패했습니다');
     } finally {
-      setJoinLoading(false);
+      setDeleteLoading(false);
     }
   };
 
-  const getScheduleDateLabel = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+  // 모임별 색상 매핑
+  const groupColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    myGroups.forEach((group, index) => {
+      map.set(group.id, GROUP_COLORS[index % GROUP_COLORS.length]);
+    });
+    return map;
+  }, [myGroups]);
 
-    if (isToday(dateStr)) return '오늘';
-    if (isSameDay(date, tomorrow)) return '내일';
-    return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', weekday: 'short' });
+  // 일정 색상 가져오기 (일정 자체 색상 > 모임 색상 > 기본 색상)
+  const getScheduleColor = (schedule: Schedule) => {
+    if (schedule.color) return schedule.color;
+    if (schedule.groupId && groupColorMap.has(schedule.groupId)) {
+      return groupColorMap.get(schedule.groupId)!;
+    }
+    return '#3b82f6';
+  };
+
+  // 날짜별 일정 매핑
+  const schedulesByDate = useMemo(() => {
+    const map = new Map<string, Schedule[]>();
+
+    allSchedules.forEach((schedule) => {
+      const startDate = new Date(schedule.startAt);
+      const endDate = new Date(schedule.endAt);
+
+      const currentDate = new Date(startDate);
+      currentDate.setHours(0, 0, 0, 0);
+
+      while (currentDate <= endDate) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+
+        if (!map.has(dateKey)) {
+          map.set(dateKey, []);
+        }
+        map.get(dateKey)!.push(schedule);
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    });
+
+    return map;
+  }, [allSchedules]);
+
+  // 선택된 날짜의 일정
+  const selectedDateSchedules = useMemo(() => {
+    if (!currentDate || Array.isArray(currentDate)) return [];
+    const dateKey = currentDate.toISOString().split('T')[0];
+    return schedulesByDate.get(dateKey) || [];
+  }, [currentDate, schedulesByDate]);
+
+  const selectedDate = currentDate instanceof Date ? currentDate : null;
+
+  const formatTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleTimeString('ko-KR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return '방금 전';
+    if (minutes < 60) return `${minutes}분 전`;
+    if (hours < 24) return `${hours}시간 전`;
+    if (days < 7) return `${days}일 전`;
+    return date.toLocaleDateString('ko-KR');
+  };
+
+  // 캘린더 타일에 일정 표시
+  const tileContent = ({ date, view }: { date: Date; view: string }) => {
+    if (view !== 'month') return null;
+
+    const dateKey = date.toISOString().split('T')[0];
+    const daySchedules = schedulesByDate.get(dateKey) || [];
+
+    if (daySchedules.length === 0) return null;
+
+    // 중복 색상 제거 (같은 모임의 여러 일정은 하나의 점으로)
+    const uniqueColors = [...new Set(daySchedules.map((s) => getScheduleColor(s)))];
+
+    return (
+      <div className="calendar-dots">
+        {uniqueColors.slice(0, 4).map((color, index) => (
+          <span
+            key={index}
+            className="calendar-dot"
+            style={{ backgroundColor: color }}
+          />
+        ))}
+        {uniqueColors.length > 4 && (
+          <span className="calendar-dot-more">+{uniqueColors.length - 4}</span>
+        )}
+      </div>
+    );
   };
 
   return (
     <div className="dashboard">
-      {/* 헤더 */}
-      <header className="dashboard__header">
-        <div className="dashboard__greeting">
-          <h1 className="dashboard__title">
-            안녕하세요, <span className="dashboard__name">{user?.name}</span>님!
-          </h1>
-          <p className="dashboard__subtitle">오늘도 좋은 하루 되세요 ✨</p>
-        </div>
-      </header>
-
-      {/* 통계 카드 */}
-      <section className="dashboard__stats">
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--primary">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </div>
-          <div className="stat-card__content">
-            <span className="stat-card__value">{myGroupsLoading ? '-' : myGroups.length}</span>
-            <span className="stat-card__label">내 모임</span>
-          </div>
-          <Link to="/groups" className="stat-card__link">
-            보기
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </Link>
+      {/* 좌측: 캘린더 */}
+      <div className="dashboard__left">
+        <div className="calendar-wrapper">
+          <Calendar
+            onChange={setCurrentDate}
+            value={currentDate}
+            onActiveStartDateChange={({ activeStartDate }) =>
+              activeStartDate && setActiveStartDate(activeStartDate)
+            }
+            tileContent={tileContent}
+            locale="ko-KR"
+            formatDay={(_locale, date) => date.getDate().toString()}
+            calendarType="gregory"
+            showNeighboringMonth={false}
+            next2Label={null}
+            prev2Label={null}
+          />
         </div>
 
-        <div className="stat-card">
-          <div className="stat-card__icon stat-card__icon--success">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-          </div>
-          <div className="stat-card__content">
-            <span className="stat-card__value">{schedulesLoading ? '-' : upcomingSchedules.length}</span>
-            <span className="stat-card__label">예정 일정</span>
-          </div>
+        {/* 선택된 날짜의 일정 */}
+        <div className="calendar-detail">
+          {selectedDate ? (
+            <>
+              <h3 className="calendar-detail__title">
+                {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 ({DAYS[selectedDate.getDay()]})
+              </h3>
+              {selectedDateSchedules.length === 0 ? (
+                <p className="calendar-detail__empty">일정이 없습니다</p>
+              ) : (
+                <ul className="calendar-detail__list">
+                  {selectedDateSchedules.map((schedule) => (
+                    <li
+                      key={schedule.id}
+                      className="calendar-detail__item"
+                      onClick={() => navigate(`/groups/${schedule.groupId}`)}
+                    >
+                      <span
+                        className="calendar-detail__color"
+                        style={{ backgroundColor: getScheduleColor(schedule) }}
+                      />
+                      <div className="calendar-detail__content">
+                        <span className="calendar-detail__name">{schedule.title}</span>
+                        <span className="calendar-detail__group">{schedule.group?.name}</span>
+                      </div>
+                      <span className="calendar-detail__time">
+                        {schedule.isAllDay ? '종일' : formatTime(schedule.startAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <p className="calendar-detail__empty">날짜를 선택하세요</p>
+          )}
         </div>
+      </div>
 
-        <div className="stat-card stat-card--action">
-          <div className="stat-card__icon stat-card__icon--warning">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-          </div>
-          <div className="stat-card__content">
-            <span className="stat-card__label">초대 코드로 가입</span>
-          </div>
-          <button className="stat-card__btn" onClick={() => setShowInviteModal(true)}>
-            입력하기
+      {/* 우측: 탭 패널 */}
+      <div className="dashboard__right">
+        {/* 탭 헤더 */}
+        <div className="dashboard__tabs">
+          <button
+            className={`dashboard__tab ${activeTab === 'schedule' ? 'dashboard__tab--active' : ''}`}
+            onClick={() => setActiveTab('schedule')}
+          >
+            <img src={calendarIcon} alt="" width="18" height="18" />
+            <span>이번 달 일정</span>
+            <span className="dashboard__tab-count">{schedulesLoading ? '-' : allSchedules.length}</span>
+          </button>
+          <button
+            className={`dashboard__tab ${activeTab === 'group' ? 'dashboard__tab--active' : ''}`}
+            onClick={() => setActiveTab('group')}
+          >
+            <img src={usersIcon} alt="" width="18" height="18" />
+            <span>내 모임</span>
+            <span className="dashboard__tab-count">{myGroupsLoading ? '-' : myGroups.length}</span>
+          </button>
+          <button
+            className={`dashboard__tab ${activeTab === 'notification' ? 'dashboard__tab--active' : ''}`}
+            onClick={() => setActiveTab('notification')}
+          >
+            <img src={bellIcon} alt="" width="18" height="18" />
+            <span>알림</span>
+            {unreadCount > 0 && <span className="dashboard__tab-badge">{unreadCount}</span>}
           </button>
         </div>
 
-        <Link to="/groups/create" className="stat-card stat-card--create">
-          <div className="stat-card__icon stat-card__icon--accent">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </div>
-          <div className="stat-card__content">
-            <span className="stat-card__label">새 모임 만들기</span>
-          </div>
-        </Link>
-      </section>
+        {/* 탭 콘텐츠 */}
+        <div className="dashboard__panel">
+          {/* 이번 달 일정 탭 */}
+          {activeTab === 'schedule' && (
+            <div className="panel-content">
+              {schedulesLoading ? (
+                <div className="panel-loading">
+                  <div className="spinner" />
+                </div>
+              ) : allSchedules.length === 0 ? (
+                <div className="panel-empty">
+                  <p>이번 달 일정이 없습니다</p>
+                </div>
+              ) : (
+                <table className="schedule-table">
+                  <thead>
+                    <tr>
+                      <th>날짜</th>
+                      <th>일정</th>
+                      <th>모임</th>
+                      <th>시간</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allSchedules
+                      .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+                      .map((schedule) => (
+                        <tr
+                          key={schedule.id}
+                          onClick={() => navigate(`/groups/${schedule.groupId}`)}
+                        >
+                          <td>
+                            <span className="schedule-table__date">{formatDate(schedule.startAt)}</span>
+                          </td>
+                          <td>
+                            <div className="schedule-table__title">
+                              <span
+                                className="schedule-table__color"
+                                style={{ backgroundColor: getScheduleColor(schedule) }}
+                              />
+                              {schedule.title}
+                            </div>
+                          </td>
+                          <td>
+                            <span className="schedule-table__group">{schedule.group?.name}</span>
+                          </td>
+                          <td>
+                            <span className="schedule-table__time">
+                              {schedule.isAllDay ? '종일' : formatTime(schedule.startAt)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
 
-      {/* 메인 그리드 */}
-      <div className="dashboard__grid">
-        {/* 다가오는 일정 */}
-        <section className="dashboard__card">
-          <div className="dashboard__card-header">
-            <h2 className="dashboard__card-title">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-              다가오는 일정
-            </h2>
-          </div>
-          <div className="dashboard__card-body">
-            {schedulesLoading ? (
-              <div className="dashboard__loading">
-                <div className="spinner" />
-              </div>
-            ) : upcomingSchedules.length === 0 ? (
-              <div className="dashboard__empty">
-                <p>예정된 일정이 없습니다</p>
-              </div>
-            ) : (
-              <ul className="schedule-list">
-                {upcomingSchedules.map((schedule) => (
-                  <li key={schedule.id}>
-                    <Link to={`/groups/${schedule.groupId}`} className="schedule-item">
-                      <div
-                        className="schedule-item__indicator"
-                        style={{ backgroundColor: schedule.color || '#6366f1' }}
-                      />
-                      <div className="schedule-item__content">
-                        <span className="schedule-item__title">{schedule.title}</span>
-                        <span className="schedule-item__group">{schedule.group?.name}</span>
-                      </div>
-                      <div className="schedule-item__date">
-                        <span className="schedule-item__day">{getScheduleDateLabel(schedule.startAt)}</span>
-                        {!schedule.isAllDay && (
-                          <span className="schedule-item__time">
-                            {new Date(schedule.startAt).toLocaleTimeString('ko-KR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+          {/* 내 모임 탭 */}
+          {activeTab === 'group' && (
+            <div className="panel-content">
+              {myGroupsLoading ? (
+                <div className="panel-loading">
+                  <div className="spinner" />
+                </div>
+              ) : myGroups.length === 0 ? (
+                <div className="panel-empty">
+                  <p>가입한 모임이 없습니다</p>
+                  <Link to="/groups/create" className="panel-empty__btn">
+                    새 모임 만들기
+                  </Link>
+                </div>
+              ) : (
+                <table className="group-table">
+                  <thead>
+                    <tr>
+                      <th>모임</th>
+                      <th>유형</th>
+                      <th>역할</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myGroups.map((group) => (
+                      <tr key={group.id}>
+                        <td>
+                          <Link to={`/groups/${group.id}`} className="group-table__info">
+                            <div
+                              className="group-table__avatar"
+                              style={group.color && group.color !== 'transparent' ? { backgroundColor: group.color } : undefined}
+                            >
+                              {group.logoImage ? (
+                                <img src={group.logoImage} alt={group.name} />
+                              ) : group.icon ? (
+                                <span className="group-table__emoji">{group.icon}</span>
+                              ) : (
+                                <span>{group.name.charAt(0)}</span>
+                              )}
+                            </div>
+                            <span className="group-table__name">{group.name}</span>
+                          </Link>
+                        </td>
+                        <td>
+                          <span className="group-table__type">{GROUP_TYPE_LABELS[group.type]}</span>
+                        </td>
+                        <td>
+                          <span className={`group-table__role group-table__role--${group.myRole}`}>
+                            {MEMBER_ROLE_LABELS[group.myRole || 'member']}
                           </span>
-                        )}
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
+                        </td>
+                        <td>
+                          <button
+                            className="group-table__delete"
+                            onClick={() =>
+                              setDeleteModal({
+                                isOpen: true,
+                                groupId: group.id,
+                                groupName: group.name,
+                                isOwner: group.myRole === 'owner',
+                              })
+                            }
+                            title={group.myRole === 'owner' ? '모임 삭제' : '모임 탈퇴'}
+                          >
+                            <img src={trashIcon} alt={group.myRole === 'owner' ? '삭제' : '탈퇴'} width="16" height="16" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
 
-        {/* 최근 알림 */}
-        <section className="dashboard__card">
-          <div className="dashboard__card-header">
-            <h2 className="dashboard__card-title">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              최근 알림
-            </h2>
-          </div>
-          <div className="dashboard__card-body">
-            {notificationsLoading ? (
-              <div className="dashboard__loading">
-                <div className="spinner" />
-              </div>
-            ) : recentNotifications.length === 0 ? (
-              <div className="dashboard__empty">
-                <p>새로운 알림이 없습니다</p>
-              </div>
-            ) : (
-              <ul className="notification-list">
-                {recentNotifications.map((notification) => (
-                  <li key={notification.id} className={!notification.isRead ? 'unread' : ''}>
-                    <div className="notification-item">
-                      {!notification.isRead && <span className="notification-item__dot" />}
-                      <div className="notification-item__content">
-                        <p className="notification-item__title">{notification.title}</p>
-                        {notification.message && (
-                          <p className="notification-item__message">{notification.message}</p>
-                        )}
-                      </div>
-                      <span className="notification-item__time">
-                        {formatRelativeTime(notification.createdAt)}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
+          {/* 알림 탭 */}
+          {activeTab === 'notification' && (
+            <div className="panel-content">
+              {notificationsLoading ? (
+                <div className="panel-loading">
+                  <div className="spinner" />
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="panel-empty">
+                  <p>알림이 없습니다</p>
+                </div>
+              ) : (
+                <table className="notification-table">
+                  <thead>
+                    <tr>
+                      <th>상태</th>
+                      <th>알림</th>
+                      <th>시간</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notifications.map((notification) => (
+                      <tr
+                        key={notification.id}
+                        className={notification.isRead ? '' : 'notification-table__row--unread'}
+                      >
+                        <td>
+                          <span
+                            className={`notification-table__status ${
+                              notification.isRead ? 'notification-table__status--read' : ''
+                            }`}
+                          />
+                        </td>
+                        <td>
+                          <div className="notification-table__content">
+                            <span className="notification-table__title">{notification.title}</span>
+                            {notification.message && (
+                              <span className="notification-table__message">{notification.message}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="notification-table__time">
+                            {formatDateTime(notification.createdAt)}
+                          </span>
+                        </td>
+                        <td>
+                          {!notification.isRead && (
+                            <button
+                              className="notification-table__read-btn"
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              title="읽음 처리"
+                            >
+                              확인
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 내 모임 */}
-      {myGroups.length > 0 && (
-        <section className="dashboard__section">
-          <div className="dashboard__section-header">
-            <h2 className="dashboard__section-title">내 모임</h2>
-            <Link to="/groups" className="dashboard__section-link">
-              전체 보기
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
-          <div className="group-grid">
-            {myGroups.slice(0, 4).map((group) => (
-              <Link key={group.id} to={`/groups/${group.id}`} className="group-card">
-                <div className="group-card__avatar">
-                  {group.logoImage ? (
-                    <img src={group.logoImage} alt={group.name} />
-                  ) : (
-                    <span>{group.name.charAt(0)}</span>
-                  )}
-                </div>
-                <div className="group-card__info">
-                  <h3 className="group-card__name">{group.name}</h3>
-                  <span className="group-card__type">{GROUP_TYPE_LABELS[group.type]}</span>
-                </div>
-                <span className="group-card__role">
-                  {MEMBER_ROLE_LABELS[group.myRole || 'member']}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 최근 공지사항 */}
-      {recentAnnouncements.length > 0 && (
-        <section className="dashboard__section">
-          <div className="dashboard__section-header">
-            <h2 className="dashboard__section-title">최근 공지사항</h2>
-            {myGroups.length > 0 && (
-              <Link to={`/groups/${myGroups[0].id}`} className="dashboard__section-link">
-                전체 보기
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </Link>
-            )}
-          </div>
-          <div className="announcement-list">
-            {announcementsLoading ? (
-              <div className="dashboard__loading">
-                <div className="spinner" />
-              </div>
-            ) : (
-              recentAnnouncements.map((announcement) => (
-                <article key={announcement.id} className="announcement-card">
-                  <div className="announcement-card__header">
-                    {announcement.isPinned && (
-                      <span className="announcement-card__pin">📌</span>
-                    )}
-                    <h3 className="announcement-card__title">{announcement.title}</h3>
-                  </div>
-                  <p className="announcement-card__content">
-                    {announcement.content.length > 120
-                      ? `${announcement.content.slice(0, 120)}...`
-                      : announcement.content}
-                  </p>
-                  <span className="announcement-card__date">
-                    {formatRelativeTime(announcement.createdAt)}
-                  </span>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* 초대 코드 모달 */}
-      {showInviteModal && (
-        <div className="modal-overlay" onClick={() => setShowInviteModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal__header">
-              <h2 className="modal__title">초대 코드로 가입</h2>
-              <button
-                className="modal__close"
-                onClick={() => setShowInviteModal(false)}
-                aria-label="닫기"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <p className="modal__desc">모임 초대 코드를 입력해주세요</p>
-
-            {joinError && <div className="modal__error">{joinError}</div>}
-
-            <div className="modal__field">
-              <input
-                type="text"
-                className="modal__input"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                placeholder="초대 코드 입력 (예: ABC123)"
-                maxLength={10}
-                autoFocus
-              />
-            </div>
-
-            <div className="modal__actions">
-              <button
-                type="button"
-                className="modal__btn modal__btn--secondary"
-                onClick={() => setShowInviteModal(false)}
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                className="modal__btn modal__btn--primary"
-                onClick={handleJoinGroup}
-                disabled={joinLoading || !inviteCode.trim()}
-              >
-                {joinLoading ? '가입 중...' : '가입하기'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 탈퇴/삭제 확인 모달 */}
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, groupId: '', groupName: '', isOwner: false })}
+        title={deleteModal.isOwner ? '모임 삭제' : '모임 탈퇴'}
+        description={`${deleteModal.groupName} 모임을 ${deleteModal.isOwner ? '삭제' : '탈퇴'}하시겠습니까?\n${deleteModal.isOwner ? '삭제 후에는 모든 멤버가 모임에 접근할 수 없으며 복구할 수 없습니다.' : '탈퇴 후에는 모임의 일정과 공지사항을 확인할 수 없습니다.'}`}
+        showCloseButton
+        size="sm"
+        actions={
+          <>
+            <button
+              className="modal__cancel"
+              onClick={() => setDeleteModal({ isOpen: false, groupId: '', groupName: '', isOwner: false })}
+            >
+              취소
+            </button>
+            <button
+              className="modal__submit modal__submit--danger"
+              onClick={handleGroupAction}
+              disabled={deleteLoading}
+            >
+              {deleteLoading
+                ? (deleteModal.isOwner ? '삭제 중...' : '탈퇴 중...')
+                : (deleteModal.isOwner ? '삭제' : '탈퇴')}
+            </button>
+          </>
+        }
+      />
     </div>
   );
 };

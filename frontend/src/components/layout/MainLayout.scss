@@ -1,20 +1,21 @@
-@import '@/styles/variables';
+@use '@/styles/variables' as *;
 
 .main-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 
   &__container {
     display: flex;
     flex: 1;
+    overflow: hidden;
   }
 
   &__content {
     flex: 1;
     padding: $spacing-lg;
     background-color: $gray-50;
-    min-height: calc(100vh - 64px);
     overflow-y: auto;
 
     @include mobile {

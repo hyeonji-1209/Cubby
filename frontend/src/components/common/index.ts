@@ -4,4 +4,7 @@ export { default as Card } from './Card';
 export { default as Modal } from './Modal';
 export { default as EmptyState } from './EmptyState';
 export { default as Calendar } from './Calendar';
+export { default as IconPicker } from './IconPicker';
+export { default as Dropdown } from './Dropdown';
+export type { DropdownOption } from './Dropdown';
 export { ToastProvider, useToast } from './Toast';

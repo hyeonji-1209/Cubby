@@ -56,84 +56,173 @@
 
 // Group Create Page
 .group-create {
-  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-md;
+    }
+  }
+
+  &__header-left {
+    flex: 1;
+  }
 
   &__title {
-    font-size: $font-size-2xl;
+    font-size: $font-size-xl;
     font-weight: $font-weight-bold;
     color: $gray-900;
-    margin-bottom: $spacing-xl;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__subtitle {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
   }
 
   &__form {
+    flex: 1;
     background-color: white;
     padding: $spacing-xl;
     border-radius: $radius-lg;
     box-shadow: $shadow-sm;
   }
 
-  &__section {
-    margin-bottom: $spacing-xl;
+  &__body {
+    display: flex;
+    gap: $spacing-xl;
+    height: 100%;
 
-    &:last-of-type {
-      margin-bottom: 0;
+    @include mobile {
+      flex-direction: column;
     }
   }
 
-  &__section-title {
-    font-size: $font-size-lg;
-    font-weight: $font-weight-semibold;
-    color: $gray-900;
-    margin-bottom: $spacing-md;
+  &__left {
+    width: 240px;
+    flex-shrink: 0;
+
+    @include mobile {
+      width: 100%;
+    }
+  }
+
+  &__right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
 
   &__types {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: $spacing-md;
-
-    @include mobile {
-      grid-template-columns: 1fr;
-    }
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
   }
 
   &__type {
     position: relative;
-    padding: $spacing-md;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
     border: 2px solid $gray-200;
     border-radius: $radius-md;
     cursor: pointer;
     transition: all $transition-fast;
+    background: white;
 
     input {
       position: absolute;
       opacity: 0;
+      pointer-events: none;
     }
 
     &:hover {
-      border-color: $primary-300;
+      border-color: var(--type-color, $primary-300);
+      background: $gray-50;
     }
 
     &--selected {
-      border-color: $primary-500;
-      background-color: $primary-50;
+      border-color: var(--type-color, $primary-500);
+      background: $gray-50;
+
+      .group-create__type-icon {
+        background: var(--type-color, $primary-500);
+
+        img {
+          filter: brightness(0) invert(1);
+        }
+      }
+
+      .group-create__type-label {
+        color: $gray-900;
+        font-weight: $font-weight-semibold;
+      }
+    }
+  }
+
+  &__type-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    background: $gray-100;
+    @include flex-center;
+    flex-shrink: 0;
+    transition: all $transition-fast;
+
+    img {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
     }
   }
 
   &__type-label {
-    display: block;
+    font-size: $font-size-sm;
+    color: $gray-700;
     font-weight: $font-weight-medium;
-    color: $gray-900;
-    margin-bottom: $spacing-xs;
+    transition: all $transition-fast;
   }
 
-  &__type-desc {
-    font-size: $font-size-sm;
-    color: $gray-500;
+  &__row {
+    display: flex;
+    gap: $spacing-md;
+    align-items: flex-end;
+    margin-bottom: $spacing-lg;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__icon-field {
+    flex-shrink: 0;
   }
 
   &__field {
-    margin-bottom: $spacing-md;
+    position: relative;
+
+    &--grow {
+      flex: 1;
+      min-width: 0;
+    }
   }
 
   &__label {
@@ -142,6 +231,11 @@
     font-weight: $font-weight-medium;
     color: $gray-700;
     margin-bottom: $spacing-xs;
+  }
+
+  &__optional {
+    font-weight: $font-weight-normal;
+    color: $gray-400;
   }
 
   &__input,
@@ -165,17 +259,252 @@
   }
 
   &__textarea {
-    resize: vertical;
     min-height: 80px;
   }
 
-  &__actions {
+  &__role-info {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $primary-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__role-label {
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+
+  &__role-badge {
+    padding: $spacing-xs $spacing-sm;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    border-radius: $radius-sm;
+    text-transform: uppercase;
+  }
+
+  &__role-desc {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    margin-left: auto;
+  }
+
+  &__couple-fields {
+    padding: $spacing-md;
+    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__couple-role {
+    display: flex;
+    align-items: center;
     gap: $spacing-md;
-    margin-top: $spacing-xl;
-    padding-top: $spacing-lg;
-    border-top: 1px solid $gray-200;
+    margin-bottom: $spacing-md;
+  }
+
+  &__couple-role-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: #9d174d;
+    white-space: nowrap;
+  }
+
+  &__couple-toggle {
+    display: flex;
+    background: white;
+    border-radius: $radius-full;
+    padding: 3px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+    flex: 1;
+  }
+
+  &__couple-btn {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    border: none;
+    background: transparent;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-500;
+    border-radius: $radius-full;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      color: #ec4899;
+    }
+
+    &--active {
+      background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+      color: white;
+      box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);
+    }
+  }
+
+  &__couple-dates {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__couple-date {
+    flex: 1;
+    background: white;
+    border-radius: $radius-md;
+    padding: $spacing-sm;
+  }
+
+  &__couple-date-label {
+    display: block;
+    font-size: $font-size-xs;
+    color: #9d174d;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__couple-date-input {
+    width: 100%;
+    padding: $spacing-xs;
+    border: none;
+    background: transparent;
+    font-size: $font-size-sm;
+    color: $gray-700;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  &__field--half {
+    flex: 1;
+  }
+
+  &__features {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+
+    &--all {
+      padding: $spacing-lg;
+      background: $gray-50;
+      height: 100%;
+    }
+  }
+
+  &__features-guide {
+    text-align: center;
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0 0 $spacing-md 0;
+  }
+
+  &__features-all {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__features-group {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border-radius: $radius-md;
+  }
+
+  &__features-group-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  &__features-group-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: $radius-sm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 14px;
+      height: 14px;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  &__features-group-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__features-group-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+  }
+
+  &__features-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+  }
+
+  &__features-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 18px;
+      height: 18px;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  &__features-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__features-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $gray-800;
+  }
+
+  &__features-note {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+
+  &__features-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+  }
+
+  &__feature-tag {
+    padding: $spacing-xs $spacing-sm;
+    background: white;
+    border: 1px solid $gray-200;
+    color: $gray-600;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-full;
   }
 
   &__cancel {
@@ -204,7 +533,7 @@
     }
 
     &:disabled {
-      opacity: 0.6;
+      opacity: 0.5;
       cursor: not-allowed;
     }
   }
@@ -527,6 +856,166 @@
     gap: $spacing-sm;
   }
 
+  // 홈 그리드 (공지사항 & 일정)
+  &__home-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-lg;
+    margin-bottom: $spacing-xl;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__home-section {
+    background: $gray-50;
+    border-radius: $radius-lg;
+    padding: $spacing-md;
+    min-height: 200px;
+  }
+
+  &__home-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-200;
+
+    h3 {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $gray-800;
+      margin: 0;
+    }
+  }
+
+  &__home-more {
+    font-size: $font-size-xs;
+    color: $primary-500;
+    font-weight: $font-weight-medium;
+
+    &:hover {
+      color: $primary-600;
+      text-decoration: underline;
+    }
+  }
+
+  &__home-section-content {
+    min-height: 120px;
+  }
+
+  &__home-empty {
+    font-size: $font-size-sm;
+    color: $gray-400;
+    text-align: center;
+    padding: $spacing-xl 0;
+  }
+
+  &__home-announcements {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__home-announcement {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border-radius: $radius-md;
+    border: 1px solid $gray-100;
+
+    &.pinned {
+      border-color: $primary-200;
+      background: $primary-50;
+    }
+
+    .pin-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: $primary-500;
+      color: white;
+      border-radius: $radius-full;
+      flex-shrink: 0;
+    }
+
+    .title {
+      flex: 1;
+      font-size: $font-size-sm;
+      color: $gray-800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .date {
+      font-size: $font-size-xs;
+      color: $gray-400;
+      flex-shrink: 0;
+    }
+  }
+
+  &__home-schedules {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__home-schedule {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border-radius: $radius-md;
+    border-left: 3px solid;
+
+    .schedule-date {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 40px;
+
+      .month {
+        font-size: 10px;
+        color: $gray-500;
+        text-transform: uppercase;
+      }
+
+      .day {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-bold;
+        color: $gray-800;
+        line-height: 1;
+      }
+    }
+
+    .schedule-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+
+      .title {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        color: $gray-800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .time {
+        font-size: $font-size-xs;
+        color: $gray-500;
+      }
+    }
+  }
+
   // 멤버 탭
   &__member-grid {
     display: grid;
@@ -673,6 +1162,19 @@
 
     &:hover {
       background: darken($error, 10%);
+    }
+  }
+
+  &__leave-btn {
+    padding: $spacing-sm $spacing-md;
+    background: $gray-100;
+    color: $gray-700;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover {
+      background: $gray-200;
     }
   }
 
@@ -1391,7 +1893,6 @@
   }
 
   &__textarea {
-    resize: vertical;
     min-height: 80px;
   }
 
@@ -1455,6 +1956,50 @@
     span {
       user-select: none;
     }
+  }
+
+  // 일정용 스타일
+  &__row {
+    display: flex;
+    gap: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+
+  &__field--half {
+    flex: 1;
+  }
+
+  &__color-picker {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-full;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &.active {
+      border-color: $gray-900;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px $gray-900;
+    }
+  }
+
+  &__loading {
+    text-align: center;
+    padding: $spacing-lg;
+    color: $gray-500;
   }
 }
 
@@ -1777,42 +2322,194 @@
   }
 }
 
-// 모달 추가 스타일 (일정용)
-.modal {
-  &__row {
+// 직책 관리 탭
+.group-detail__positions {
+  &-header {
     display: flex;
-    gap: $spacing-md;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
 
-    @include mobile {
-      flex-direction: column;
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin: 0;
+    }
+  }
+}
+
+// 직책 그리드
+.positions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: $spacing-md;
+}
+
+// 직책 카드
+.position-card {
+  background: white;
+  border: 1px solid $gray-200;
+  border-left: 4px solid $primary-500;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  transition: box-shadow $transition-fast;
+
+  &:hover {
+    box-shadow: $shadow-md;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    h3 {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin: 0;
     }
   }
 
-  &__field--half {
-    flex: 1;
+  &__color {
+    width: 12px;
+    height: 12px;
+    border-radius: $radius-full;
+    flex-shrink: 0;
   }
 
-  &__color-picker {
+  &__actions {
     display: flex;
-    gap: $spacing-sm;
-    flex-wrap: wrap;
+    gap: $spacing-xs;
   }
 
-  &__color-option {
+  &__action {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: background $transition-fast;
+    line-height: 1;
+
+    &:hover {
+      background: rgba($gray-500, 0.1);
+    }
+
+    &--delete:hover {
+      background: rgba($error, 0.1);
+    }
+  }
+
+  &__desc {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin: 0;
+    line-height: 1.5;
+  }
+}
+
+// 직책 멤버 관리 모달
+.position-members {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+
+  &__section {
+    h4 {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $gray-700;
+      margin: 0 0 $spacing-sm 0;
+    }
+  }
+
+  &__empty {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    padding: $spacing-sm 0;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+}
+
+.position-member-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
+  background: $gray-50;
+  border-radius: $radius-md;
+
+  &__avatar {
     width: 32px;
     height: 32px;
     border-radius: $radius-full;
-    border: 2px solid transparent;
+    background: $primary-100;
+    color: $primary-600;
+    @include flex-center;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    flex-shrink: 0;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__name {
+    flex: 1;
+    font-size: $font-size-sm;
+    color: $gray-800;
+  }
+
+  &__remove,
+  &__add {
+    width: 24px;
+    height: 24px;
+    border-radius: $radius-sm;
+    border: none;
     cursor: pointer;
+    @include flex-center;
+    font-size: $font-size-sm;
     transition: all $transition-fast;
+  }
+
+  &__remove {
+    background: transparent;
+    color: $gray-400;
 
     &:hover {
-      transform: scale(1.1);
+      background: rgba($error, 0.1);
+      color: $error;
     }
+  }
 
-    &.active {
-      border-color: $gray-900;
-      box-shadow: 0 0 0 2px white, 0 0 0 4px $gray-900;
+  &__add {
+    background: $primary-50;
+    color: $primary-600;
+
+    &:hover {
+      background: $primary-100;
     }
   }
 }

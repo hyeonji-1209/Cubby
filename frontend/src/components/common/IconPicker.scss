@@ -1,0 +1,234 @@
+@use '../../styles/variables' as *;
+
+.icon-picker {
+  position: relative;
+
+  &__preview {
+    width: 64px;
+    height: 64px;
+    border-radius: $radius-lg;
+    border: 2px dashed $gray-300;
+    cursor: pointer;
+    transition: all $transition-fast;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    &:hover {
+      border-color: $primary-400;
+      transform: scale(1.05);
+    }
+  }
+
+  &__icon {
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  &__svg {
+    width: 32px;
+    height: 32px;
+    filter: brightness(0) invert(1);
+  }
+
+  &__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &__dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    background: white;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-lg;
+    border: 1px solid $gray-200;
+    z-index: 100;
+    width: 300px;
+    overflow: hidden;
+  }
+
+  &__tabs {
+    display: flex;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__tab {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    border: none;
+    background: none;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-500;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      color: $gray-700;
+      background: $gray-50;
+    }
+
+    &--active {
+      color: $primary-600;
+      background: $primary-50;
+    }
+  }
+
+  &__content {
+    padding: $spacing-sm;
+  }
+
+  &__upload-section {
+    margin-bottom: $spacing-sm;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-100;
+  }
+
+  &__upload-btn {
+    width: 100%;
+    padding: $spacing-sm;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    background: $gray-50;
+    color: $gray-600;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary-400;
+      background: $primary-50;
+      color: $primary-600;
+    }
+  }
+
+  &__image-preview {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-xs;
+    background: $gray-50;
+    border-radius: $radius-md;
+
+    img {
+      width: 40px;
+      height: 40px;
+      border-radius: $radius-md;
+      object-fit: cover;
+    }
+
+    button {
+      margin-left: auto;
+      padding: $spacing-xs $spacing-sm;
+      border: none;
+      border-radius: $radius-sm;
+      background: $gray-200;
+      color: $gray-600;
+      font-size: $font-size-xs;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: $error;
+        color: white;
+      }
+    }
+  }
+
+  &__icons {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: $spacing-xs;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: $spacing-xs;
+  }
+
+  &__item {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    background: $gray-100;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: $spacing-xs;
+
+    img {
+      width: 20px;
+      height: 20px;
+      opacity: 0.6;
+      transition: opacity $transition-fast;
+    }
+
+    &:hover {
+      background: $gray-200;
+
+      img {
+        opacity: 1;
+      }
+    }
+
+    &--selected {
+      background: $primary-500;
+      border-color: $primary-600;
+
+      img {
+        opacity: 1;
+        filter: brightness(0) invert(1);
+      }
+    }
+  }
+
+  &__colors {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: $spacing-sm;
+    padding: $spacing-md;
+  }
+
+  &__color {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &--selected {
+      border-color: $gray-900;
+      box-shadow: 0 0 0 2px white, 0 0 0 4px $gray-900;
+    }
+
+    &--transparent {
+      background: linear-gradient(
+        45deg,
+        #ccc 25%,
+        transparent 25%,
+        transparent 75%,
+        #ccc 75%
+      ),
+      linear-gradient(
+        45deg,
+        #ccc 25%,
+        transparent 25%,
+        transparent 75%,
+        #ccc 75%
+      );
+      background-size: 10px 10px;
+      background-position: 0 0, 5px 5px;
+      background-color: white;
+    }
+  }
+}

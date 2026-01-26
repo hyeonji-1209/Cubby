@@ -20,6 +20,7 @@ export enum GroupType {
   RELIGIOUS = 'religious',     // 교회/종교
   COMMUNITY = 'community',     // 동호회/커뮤니티
   COMPANY = 'company',         // 회사/팀
+  COUPLE = 'couple',           // 연인/커플
 }
 
 export enum GroupStatus {
@@ -41,6 +42,12 @@ export class Group {
 
   @Column({ type: 'enum', enum: GroupType })
   type: GroupType;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  icon: string;
+
+  @Column({ type: 'varchar', length: 7, nullable: true })
+  color: string;
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   logoImage: string;

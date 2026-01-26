@@ -3,47 +3,25 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useGroupStore } from '@/store/groupStore';
 import { useAuthStore } from '@/store';
 import { groupApi, announcementApi, scheduleApi } from '@/api';
-import { Modal, EmptyState, Calendar } from '@/components';
+import { Modal, EmptyState, Calendar, useToast } from '@/components';
+import { formatDate } from '@/utils/dateFormat';
+import {
+  GROUP_TYPE_LABELS,
+  MEMBER_ROLE_LABELS,
+  SCHEDULE_COLORS,
+  ROLE_OPTIONS,
+} from '@/constants/labels';
 import type { GroupMember, SubGroupRequest, Announcement, AnnouncementFormData, Schedule, ScheduleFormData } from '@/types';
+import PositionsTab from './PositionsTab';
 import './GroupPages.scss';
 
-type TabType = 'home' | 'members' | 'subgroups' | 'announcements' | 'schedules' | 'requests' | 'settings';
-
-// 일정 색상 옵션
-const scheduleColors = [
-  { value: '#3b82f6', label: '파랑' },
-  { value: '#10b981', label: '초록' },
-  { value: '#f59e0b', label: '주황' },
-  { value: '#ef4444', label: '빨강' },
-  { value: '#8b5cf6', label: '보라' },
-  { value: '#ec4899', label: '분홍' },
-];
-
-const groupTypeLabels: Record<string, string> = {
-  education: '학원/교육',
-  religious: '교회/종교',
-  community: '동호회/커뮤니티',
-  company: '회사/팀',
-};
-
-const roleLabels: Record<string, string> = {
-  owner: '운영자',
-  admin: '관리자',
-  leader: '리더',
-  member: '멤버',
-  guardian: '보호자',
-};
-
-const roleOptions = [
-  { value: 'admin', label: '관리자' },
-  { value: 'leader', label: '리더' },
-  { value: 'member', label: '멤버' },
-];
+type TabType = 'home' | 'members' | 'subgroups' | 'announcements' | 'schedules' | 'positions' | 'requests' | 'settings';
 
 const GroupDetailPage = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const toast = useToast();
 
   const {
     currentGroup,
@@ -61,11 +39,13 @@ const GroupDetailPage = () => {
     approveRequest,
     rejectRequest,
     leaveGroup,
+    deleteGroup,
     clearCurrentGroup,
   } = useGroupStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('home');
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSubGroupModal, setShowSubGroupModal] = useState(false);
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<GroupMember | null>(null);
@@ -133,8 +113,10 @@ const GroupDetailPage = () => {
   }, [groupId, members]);
 
   const currentMember = members.find((m) => m.userId === user?.id);
-  const isOwner = currentMember?.role === 'owner';
-  const isAdmin = isOwner || currentMember?.role === 'admin';
+  const myRole = currentGroup?.myRole || currentMember?.role;
+  const isOwner = myRole === 'owner';
+  const isAdmin = isOwner || myRole === 'admin';
+  const memberCount = currentGroup?.memberCount ?? members.length;
 
   const handleLeaveGroup = async () => {
     if (!groupId) return;
@@ -143,14 +125,26 @@ const GroupDetailPage = () => {
       await leaveGroup(groupId);
       navigate('/groups');
     } catch {
-      alert('모임 탈퇴에 실패했습니다.');
+      toast.error('모임 탈퇴에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupId) return;
+
+    try {
+      await deleteGroup(groupId);
+      toast.success('모임이 삭제되었습니다.');
+      navigate('/groups');
+    } catch {
+      toast.error('모임 삭제에 실패했습니다.');
     }
   };
 
   const copyInviteCode = () => {
     if (currentGroup?.inviteCode) {
       navigator.clipboard.writeText(currentGroup.inviteCode);
-      alert('초대 코드가 복사되었습니다!');
+      toast.success('초대 코드가 복사되었습니다!');
     }
   };
 
@@ -186,9 +180,9 @@ const GroupDetailPage = () => {
     try {
       await groupApi.regenerateInviteCode(groupId);
       await fetchGroup(groupId);
-      alert('초대 코드가 재생성되었습니다.');
+      toast.success('초대 코드가 재생성되었습니다.');
     } catch {
-      alert('초대 코드 재생성에 실패했습니다.');
+      toast.error('초대 코드 재생성에 실패했습니다.');
     } finally {
       setRegeneratingCode(false);
     }
@@ -207,9 +201,9 @@ const GroupDetailPage = () => {
 
       // 승인 요청인 경우
       if ('status' in result && result.status === 'pending') {
-        alert('소모임 생성 요청이 전송되었습니다. 관리자 승인을 기다려주세요.');
+        toast.info('소모임 생성 요청이 전송되었습니다. 관리자 승인을 기다려주세요.');
       } else {
-        alert('소모임이 생성되었습니다!');
+        toast.success('소모임이 생성되었습니다!');
         await fetchSubGroups(groupId);
       }
 
@@ -217,7 +211,7 @@ const GroupDetailPage = () => {
       setSubGroupName('');
       setSubGroupDesc('');
     } catch {
-      alert('소모임 생성에 실패했습니다.');
+      toast.error('소모임 생성에 실패했습니다.');
     } finally {
       setSubGroupLoading(false);
     }
@@ -229,9 +223,9 @@ const GroupDetailPage = () => {
 
     try {
       await approveRequest(groupId, request.id);
-      alert(`"${request.name}" 소모임이 승인되었습니다.`);
+      toast.success(`"${request.name}" 소모임이 승인되었습니다.`);
     } catch {
-      alert('승인에 실패했습니다.');
+      toast.error('승인에 실패했습니다.');
     }
   };
 
@@ -241,9 +235,9 @@ const GroupDetailPage = () => {
     const reason = prompt('거절 사유를 입력하세요 (선택사항):');
     try {
       await rejectRequest(groupId, request.id, reason || undefined);
-      alert('요청이 거절되었습니다.');
+      toast.success('요청이 거절되었습니다.');
     } catch {
-      alert('거절에 실패했습니다.');
+      toast.error('거절에 실패했습니다.');
     }
   };
 
@@ -261,10 +255,10 @@ const GroupDetailPage = () => {
     try {
       await groupApi.updateMemberRole(groupId, selectedMember.id, newRole);
       await fetchMembers(groupId);
-      alert('역할이 변경되었습니다.');
+      toast.success('역할이 변경되었습니다.');
       setShowMemberModal(false);
     } catch {
-      alert('역할 변경에 실패했습니다.');
+      toast.error('역할 변경에 실패했습니다.');
     } finally {
       setRoleLoading(false);
     }
@@ -280,10 +274,10 @@ const GroupDetailPage = () => {
     try {
       await groupApi.removeMember(groupId, selectedMember.id);
       await fetchMembers(groupId);
-      alert('멤버가 제거되었습니다.');
+      toast.success('멤버가 제거되었습니다.');
       setShowMemberModal(false);
     } catch {
-      alert('멤버 제거에 실패했습니다.');
+      toast.error('멤버 제거에 실패했습니다.');
     }
   };
 
@@ -310,15 +304,15 @@ const GroupDetailPage = () => {
     try {
       if (editingAnnouncement) {
         await announcementApi.update(editingAnnouncement.id, announcementForm);
-        alert('공지사항이 수정되었습니다.');
+        toast.success('공지사항이 수정되었습니다.');
       } else {
         await announcementApi.create(groupId, announcementForm);
-        alert('공지사항이 등록되었습니다.');
+        toast.success('공지사항이 등록되었습니다.');
       }
       await fetchAnnouncements();
       closeAnnouncementModal();
     } catch {
-      alert('공지사항 저장에 실패했습니다.');
+      toast.error('공지사항 저장에 실패했습니다.');
     } finally {
       setAnnouncementSaving(false);
     }
@@ -330,10 +324,10 @@ const GroupDetailPage = () => {
 
     try {
       await announcementApi.delete(announcement.id);
-      alert('공지사항이 삭제되었습니다.');
+      toast.success('공지사항이 삭제되었습니다.');
       await fetchAnnouncements();
     } catch {
-      alert('공지사항 삭제에 실패했습니다.');
+      toast.error('공지사항 삭제에 실패했습니다.');
     }
   };
 
@@ -343,7 +337,7 @@ const GroupDetailPage = () => {
       await announcementApi.togglePin(announcement.id);
       await fetchAnnouncements();
     } catch {
-      alert('고정 설정에 실패했습니다.');
+      toast.error('고정 설정에 실패했습니다.');
     }
   };
 
@@ -363,16 +357,6 @@ const GroupDetailPage = () => {
     setShowAnnouncementModal(false);
     setEditingAnnouncement(null);
     setAnnouncementForm({ title: '', content: '', isPinned: false });
-  };
-
-  // 날짜 포맷
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
   };
 
   // 공지사항 작성 권한 (운영자, 관리자, 리더)
@@ -401,15 +385,15 @@ const GroupDetailPage = () => {
     try {
       if (editingSchedule) {
         await scheduleApi.update(editingSchedule.id, scheduleForm);
-        alert('일정이 수정되었습니다.');
+        toast.success('일정이 수정되었습니다.');
       } else {
         await scheduleApi.create(groupId, scheduleForm);
-        alert('일정이 등록되었습니다.');
+        toast.success('일정이 등록되었습니다.');
       }
       await fetchSchedules();
       closeScheduleModal();
     } catch {
-      alert('일정 저장에 실패했습니다.');
+      toast.error('일정 저장에 실패했습니다.');
     } finally {
       setScheduleSaving(false);
     }
@@ -421,10 +405,10 @@ const GroupDetailPage = () => {
 
     try {
       await scheduleApi.delete(schedule.id);
-      alert('일정이 삭제되었습니다.');
+      toast.success('일정이 삭제되었습니다.');
       await fetchSchedules();
     } catch {
-      alert('일정 삭제에 실패했습니다.');
+      toast.error('일정 삭제에 실패했습니다.');
     }
   };
 
@@ -520,7 +504,7 @@ const GroupDetailPage = () => {
           <div className="group-detail__text">
             <h1 className="group-detail__name">{currentGroup.name}</h1>
             <span className="group-detail__type">
-              {groupTypeLabels[currentGroup.type] || currentGroup.type}
+              {GROUP_TYPE_LABELS[currentGroup.type] || currentGroup.type}
             </span>
             {currentGroup.description && (
               <p className="group-detail__desc">{currentGroup.description}</p>
@@ -569,6 +553,14 @@ const GroupDetailPage = () => {
         </button>
         {isAdmin && (
           <button
+            className={`group-detail__tab ${activeTab === 'positions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('positions')}
+          >
+            직책
+          </button>
+        )}
+        {isAdmin && (
+          <button
             className={`group-detail__tab ${activeTab === 'requests' ? 'active' : ''}`}
             onClick={() => setActiveTab('requests')}
           >
@@ -588,28 +580,17 @@ const GroupDetailPage = () => {
         {/* 홈 탭 */}
         {activeTab === 'home' && (
           <div className="group-detail__home">
-            <div className="group-detail__stats">
-              <div className="group-detail__stat">
-                <span className="group-detail__stat-value">{members.length}</span>
-                <span className="group-detail__stat-label">멤버</span>
-              </div>
-              <div className="group-detail__stat">
-                <span className="group-detail__stat-value">{subGroups.length}</span>
-                <span className="group-detail__stat-label">소모임</span>
-              </div>
-            </div>
-
-            <div className={`group-detail__invite-box ${isInviteCodeExpired() ? 'group-detail__invite-box--expired' : ''}`}>
-              <div className="group-detail__invite-header">
-                <h3>초대 코드</h3>
-                <span className={`group-detail__invite-expiry ${isInviteCodeExpired() ? 'expired' : ''}`}>
-                  {formatExpiryDate(currentGroup.inviteCodeExpiresAt)}
-                </span>
-              </div>
-              <div className="group-detail__invite-code">
-                <code className={isInviteCodeExpired() ? 'expired' : ''}>{currentGroup.inviteCode}</code>
-                <button onClick={copyInviteCode} disabled={isInviteCodeExpired()}>복사</button>
-                {isAdmin && (
+            {isOwner && (
+              <div className={`group-detail__invite-box ${isInviteCodeExpired() ? 'group-detail__invite-box--expired' : ''}`}>
+                <div className="group-detail__invite-header">
+                  <h3>초대 코드</h3>
+                  <span className={`group-detail__invite-expiry ${isInviteCodeExpired() ? 'expired' : ''}`}>
+                    {formatExpiryDate(currentGroup.inviteCodeExpiresAt)}
+                  </span>
+                </div>
+                <div className="group-detail__invite-code">
+                  <code className={isInviteCodeExpired() ? 'expired' : ''}>{currentGroup.inviteCode}</code>
+                  <button onClick={copyInviteCode} disabled={isInviteCodeExpired()}>복사</button>
                   <button
                     className="regenerate"
                     onClick={handleRegenerateInviteCode}
@@ -617,31 +598,105 @@ const GroupDetailPage = () => {
                   >
                     {regeneratingCode ? '생성 중...' : '재생성'}
                   </button>
-                )}
+                </div>
+                <p>
+                  {isInviteCodeExpired()
+                    ? '초대 코드가 만료되었습니다. 새 코드를 생성해주세요.'
+                    : '이 코드를 공유하여 새 멤버를 초대하세요'}
+                </p>
               </div>
-              <p>
-                {isInviteCodeExpired()
-                  ? '초대 코드가 만료되었습니다. 새 코드를 생성해주세요.'
-                  : '이 코드를 공유하여 새 멤버를 초대하세요'}
-              </p>
-            </div>
+            )}
 
-            <div className="group-detail__section">
-              <h2>최근 멤버</h2>
-              <div className="group-detail__member-list">
-                {members.slice(0, 5).map((member) => (
-                  <div key={member.id} className="member-item">
-                    <div className="member-item__avatar">
-                      {member.user?.name?.charAt(0) || '?'}
+            {/* 공지사항 & 일정 미니 섹션 */}
+            <div className="group-detail__home-grid">
+              {/* 공지사항 미니 */}
+              <div className="group-detail__home-section">
+                <div className="group-detail__home-section-header">
+                  <h3>공지사항</h3>
+                  <button
+                    className="group-detail__home-more"
+                    onClick={() => setActiveTab('announcements')}
+                  >
+                    더보기
+                  </button>
+                </div>
+                <div className="group-detail__home-section-content">
+                  {announcementsLoading ? (
+                    <p className="group-detail__home-empty">로딩 중...</p>
+                  ) : announcements.length === 0 ? (
+                    <p className="group-detail__home-empty">등록된 공지사항이 없습니다</p>
+                  ) : (
+                    <div className="group-detail__home-announcements">
+                      {announcements.slice(0, 3).map((announcement) => (
+                        <div
+                          key={announcement.id}
+                          className={`group-detail__home-announcement ${announcement.isPinned ? 'pinned' : ''}`}
+                        >
+                          {announcement.isPinned && <span className="pin-badge">고정</span>}
+                          <span className="title">{announcement.title}</span>
+                          <span className="date">{formatDate(announcement.createdAt)}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="member-item__info">
-                      <span className="member-item__name">{member.user?.name}</span>
-                      <span className={`member-item__role member-item__role--${member.role}`}>
-                        {roleLabels[member.role] || member.role}
-                      </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 일정 미니 캘린더 */}
+              <div className="group-detail__home-section">
+                <div className="group-detail__home-section-header">
+                  <h3>다가오는 일정</h3>
+                  <button
+                    className="group-detail__home-more"
+                    onClick={() => setActiveTab('schedules')}
+                  >
+                    더보기
+                  </button>
+                </div>
+                <div className="group-detail__home-section-content">
+                  {schedulesLoading ? (
+                    <p className="group-detail__home-empty">로딩 중...</p>
+                  ) : schedules.length === 0 ? (
+                    <p className="group-detail__home-empty">등록된 일정이 없습니다</p>
+                  ) : (
+                    <div className="group-detail__home-schedules">
+                      {schedules
+                        .filter((s) => new Date(s.startAt) >= new Date())
+                        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+                        .slice(0, 3)
+                        .map((schedule) => (
+                          <div
+                            key={schedule.id}
+                            className="group-detail__home-schedule"
+                            style={{ borderLeftColor: schedule.color || '#3b82f6' }}
+                          >
+                            <div className="schedule-date">
+                              <span className="month">
+                                {new Date(schedule.startAt).toLocaleDateString('ko-KR', { month: 'short' })}
+                              </span>
+                              <span className="day">
+                                {new Date(schedule.startAt).getDate()}
+                              </span>
+                            </div>
+                            <div className="schedule-info">
+                              <span className="title">{schedule.title}</span>
+                              <span className="time">
+                                {schedule.isAllDay
+                                  ? '종일'
+                                  : new Date(schedule.startAt).toLocaleTimeString('ko-KR', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      {schedules.filter((s) => new Date(s.startAt) >= new Date()).length === 0 && (
+                        <p className="group-detail__home-empty">다가오는 일정이 없습니다</p>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -671,7 +726,7 @@ const GroupDetailPage = () => {
                     <div className="member-card__info">
                       <h3 className="member-card__name">{member.user?.name}</h3>
                       <span className={`member-card__role member-card__role--${member.role}`}>
-                        {roleLabels[member.role] || member.role}
+                        {MEMBER_ROLE_LABELS[member.role] || member.role}
                       </span>
                       <span className="member-card__email">{member.user?.email}</span>
                     </div>
@@ -930,6 +985,11 @@ const GroupDetailPage = () => {
           </div>
         )}
 
+        {/* 직책 탭 (관리자 전용) */}
+        {activeTab === 'positions' && isAdmin && groupId && (
+          <PositionsTab groupId={groupId} members={members} isAdmin={isAdmin} />
+        )}
+
         {/* 승인 요청 탭 (관리자 전용) */}
         {activeTab === 'requests' && isAdmin && (
           <div className="group-detail__requests">
@@ -989,7 +1049,7 @@ const GroupDetailPage = () => {
               </div>
               <div className="group-detail__setting-item">
                 <span className="label">타입</span>
-                <span className="value">{groupTypeLabels[currentGroup.type]}</span>
+                <span className="value">{GROUP_TYPE_LABELS[currentGroup.type]}</span>
               </div>
               <div className="group-detail__setting-item">
                 <span className="label">초대 코드</span>
@@ -997,88 +1057,112 @@ const GroupDetailPage = () => {
               </div>
               <div className="group-detail__setting-item">
                 <span className="label">내 역할</span>
-                <span className="value">{roleLabels[currentMember?.role || 'member']}</span>
+                <span className="value">{MEMBER_ROLE_LABELS[currentMember?.role || 'member']}</span>
               </div>
             </div>
 
-            <div className="group-detail__setting-section group-detail__setting-section--danger">
-              <h3>위험 구역</h3>
-              {!isOwner && (
+            {!isAdmin && (
+              <div className="group-detail__setting-section">
                 <button
-                  className="group-detail__danger-btn"
+                  className="group-detail__leave-btn"
                   onClick={() => setShowLeaveModal(true)}
                 >
                   모임 나가기
                 </button>
-              )}
-              {isOwner && (
-                <p className="group-detail__warning">
-                  운영자는 모임을 나갈 수 없습니다. 다른 멤버에게 운영자 권한을 넘긴 후 나가세요.
-                </p>
-              )}
-            </div>
+              </div>
+            )}
+
+            {isOwner && (
+              <div className="group-detail__setting-section group-detail__setting-section--danger">
+                <h3>위험 구역</h3>
+                {memberCount === 1 ? (
+                  <button
+                    className="group-detail__danger-btn"
+                    onClick={() => setShowDeleteModal(true)}
+                  >
+                    모임 삭제
+                  </button>
+                ) : (
+                  <p className="group-detail__warning">
+                    운영자는 모임을 나갈 수 없습니다. 다른 멤버에게 운영자 권한을 넘긴 후 나가세요.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* 소모임 생성 모달 */}
-      {showSubGroupModal && (
-        <div className="modal-overlay" onClick={() => setShowSubGroupModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal__title">소모임 만들기</h2>
-            <p className="modal__desc">
-              {isAdmin
-                ? '새 소모임이 바로 생성됩니다.'
-                : '관리자의 승인 후 소모임이 생성됩니다.'}
-            </p>
-
-            <div className="modal__field">
-              <label className="modal__label">소모임 이름 *</label>
-              <input
-                type="text"
-                className="modal__input"
-                placeholder="예: 청년부, 수학반, 개발팀"
-                value={subGroupName}
-                onChange={(e) => setSubGroupName(e.target.value)}
-                maxLength={100}
-              />
-            </div>
-
-            <div className="modal__field">
-              <label className="modal__label">설명 (선택)</label>
-              <textarea
-                className="modal__textarea"
-                placeholder="소모임에 대한 간단한 설명"
-                value={subGroupDesc}
-                onChange={(e) => setSubGroupDesc(e.target.value)}
-                rows={3}
-              />
-            </div>
-
-            <div className="modal__actions">
-              <button
-                className="modal__cancel"
-                onClick={() => setShowSubGroupModal(false)}
-              >
-                취소
-              </button>
-              <button
-                className="modal__submit"
-                onClick={handleCreateSubGroup}
-                disabled={!subGroupName.trim() || subGroupLoading}
-              >
-                {subGroupLoading ? '처리 중...' : isAdmin ? '생성하기' : '요청 보내기'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        isOpen={showSubGroupModal}
+        onClose={() => setShowSubGroupModal(false)}
+        title="소모임 만들기"
+        description={isAdmin ? '새 소모임이 바로 생성됩니다.' : '관리자의 승인 후 소모임이 생성됩니다.'}
+        actions={
+          <>
+            <button className="modal__cancel" onClick={() => setShowSubGroupModal(false)}>
+              취소
+            </button>
+            <button
+              className="modal__submit"
+              onClick={handleCreateSubGroup}
+              disabled={!subGroupName.trim() || subGroupLoading}
+            >
+              {subGroupLoading ? '처리 중...' : isAdmin ? '생성하기' : '요청 보내기'}
+            </button>
+          </>
+        }
+      >
+        <div className="modal__field">
+          <label className="modal__label">소모임 이름 *</label>
+          <input
+            type="text"
+            className="modal__input"
+            placeholder="예: 청년부, 수학반, 개발팀"
+            value={subGroupName}
+            onChange={(e) => setSubGroupName(e.target.value)}
+            maxLength={100}
+          />
         </div>
-      )}
+
+        <div className="modal__field">
+          <label className="modal__label">설명 (선택)</label>
+          <textarea
+            className="modal__textarea"
+            placeholder="소모임에 대한 간단한 설명"
+            value={subGroupDesc}
+            onChange={(e) => setSubGroupDesc(e.target.value)}
+            rows={3}
+          />
+        </div>
+      </Modal>
 
       {/* 멤버 관리 모달 */}
-      {showMemberModal && selectedMember && (
-        <div className="modal-overlay" onClick={() => setShowMemberModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal__title">멤버 관리</h2>
+      <Modal
+        isOpen={showMemberModal && !!selectedMember}
+        onClose={() => setShowMemberModal(false)}
+        title="멤버 관리"
+        actions={
+          <>
+            <button className="modal__cancel" onClick={() => setShowMemberModal(false)}>
+              취소
+            </button>
+            <button className="modal__submit modal__submit--danger" onClick={handleRemoveMember}>
+              내보내기
+            </button>
+            <button
+              className="modal__submit"
+              onClick={handleUpdateRole}
+              disabled={roleLoading || newRole === selectedMember?.role}
+            >
+              {roleLoading ? '저장 중...' : '역할 저장'}
+            </button>
+          </>
+        }
+      >
+        {selectedMember && (
+          <>
             <div className="modal__member-info">
               <div className="modal__member-avatar">
                 {selectedMember.user?.name?.charAt(0) || '?'}
@@ -1096,61 +1180,52 @@ const GroupDetailPage = () => {
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value)}
               >
-                {roleOptions.map((opt) => (
+                {ROLE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
               </select>
             </div>
-
-            <div className="modal__actions">
-              <button
-                className="modal__cancel"
-                onClick={() => setShowMemberModal(false)}
-              >
-                취소
-              </button>
-              <button
-                className="modal__submit modal__submit--danger"
-                onClick={handleRemoveMember}
-              >
-                내보내기
-              </button>
-              <button
-                className="modal__submit"
-                onClick={handleUpdateRole}
-                disabled={roleLoading || newRole === selectedMember.role}
-              >
-                {roleLoading ? '저장 중...' : '역할 저장'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* 모임 나가기 모달 */}
-      {showLeaveModal && (
-        <div className="modal-overlay" onClick={() => setShowLeaveModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal__title">모임 나가기</h2>
-            <p className="modal__desc">
-              정말 <strong>{currentGroup.name}</strong> 모임을 나가시겠습니까?
-            </p>
-            <div className="modal__actions">
-              <button
-                className="modal__cancel"
-                onClick={() => setShowLeaveModal(false)}
-              >
-                취소
-              </button>
-              <button className="modal__submit modal__submit--danger" onClick={handleLeaveGroup}>
-                나가기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        isOpen={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        title="모임 나가기"
+        description={`정말 ${currentGroup.name} 모임을 나가시겠습니까?`}
+        actions={
+          <>
+            <button className="modal__cancel" onClick={() => setShowLeaveModal(false)}>
+              취소
+            </button>
+            <button className="modal__submit modal__submit--danger" onClick={handleLeaveGroup}>
+              나가기
+            </button>
+          </>
+        }
+      />
+
+      {/* 모임 삭제 모달 */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="모임 삭제"
+        description={`정말 ${currentGroup.name} 모임을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+        actions={
+          <>
+            <button className="modal__cancel" onClick={() => setShowDeleteModal(false)}>
+              취소
+            </button>
+            <button className="modal__submit modal__submit--danger" onClick={handleDeleteGroup}>
+              삭제
+            </button>
+          </>
+        }
+      />
 
       {/* 공지사항 작성/수정 모달 */}
       <Modal
@@ -1300,7 +1375,7 @@ const GroupDetailPage = () => {
         <div className="modal__field">
           <label className="modal__label">색상</label>
           <div className="modal__color-picker">
-            {scheduleColors.map((color) => (
+            {SCHEDULE_COLORS.map((color) => (
               <button
                 key={color.value}
                 type="button"

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store';
 import { userApi } from '@/api';
+import { useToast, Modal } from '@/components';
 import './SettingsPage.scss';
 
 const SettingsPage = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const { user, logout, fetchUser } = useAuthStore();
 
   // 프로필 수정
@@ -28,7 +30,7 @@ const SettingsPage = () => {
   // 프로필 저장
   const handleSaveProfile = async () => {
     if (!name.trim()) {
-      alert('이름을 입력해주세요.');
+      toast.error('이름을 입력해주세요.');
       return;
     }
 
@@ -39,9 +41,9 @@ const SettingsPage = () => {
         phone: phone.trim() || undefined,
       });
       await fetchUser();
-      alert('프로필이 저장되었습니다.');
+      toast.success('프로필이 저장되었습니다.');
     } catch {
-      alert('프로필 저장에 실패했습니다.');
+      toast.error('프로필 저장에 실패했습니다.');
     } finally {
       setProfileSaving(false);
     }
@@ -69,7 +71,7 @@ const SettingsPage = () => {
     setPasswordSaving(true);
     try {
       await userApi.updatePassword(currentPassword, newPassword);
-      alert('비밀번호가 변경되었습니다.');
+      toast.success('비밀번호가 변경되었습니다.');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -83,18 +85,18 @@ const SettingsPage = () => {
   // 회원 탈퇴
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
-      alert('비밀번호를 입력해주세요.');
+      toast.error('비밀번호를 입력해주세요.');
       return;
     }
 
     setDeleteLoading(true);
     try {
       await userApi.deleteMe(deletePassword);
-      alert('계정이 삭제되었습니다.');
+      toast.success('계정이 삭제되었습니다.');
       logout();
       navigate('/login');
     } catch {
-      alert('비밀번호가 올바르지 않습니다.');
+      toast.error('비밀번호가 올바르지 않습니다.');
     } finally {
       setDeleteLoading(false);
     }
@@ -278,45 +280,44 @@ const SettingsPage = () => {
       </div>
 
       {/* 회원 탈퇴 모달 */}
-      {showDeleteModal && (
-        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal__title">회원 탈퇴</h2>
-            <p className="modal__desc">
-              정말로 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.
-            </p>
-
-            {user?.provider === 'local' && (
-              <div className="modal__field">
-                <label className="modal__label">비밀번호 확인</label>
-                <input
-                  type="password"
-                  className="modal__input"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  placeholder="비밀번호를 입력하세요"
-                />
-              </div>
-            )}
-
-            <div className="modal__actions">
-              <button
-                className="modal__cancel"
-                onClick={() => setShowDeleteModal(false)}
-              >
-                취소
-              </button>
-              <button
-                className="modal__submit modal__submit--danger"
-                onClick={handleDeleteAccount}
-                disabled={deleteLoading || (user?.provider === 'local' && !deletePassword)}
-              >
-                {deleteLoading ? '처리 중...' : '탈퇴하기'}
-              </button>
-            </div>
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="회원 탈퇴"
+        description="정말로 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다."
+        showCloseButton
+        size="sm"
+        actions={
+          <>
+            <button
+              className="modal__cancel"
+              onClick={() => setShowDeleteModal(false)}
+            >
+              취소
+            </button>
+            <button
+              className="modal__submit modal__submit--danger"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading || (user?.provider === 'local' && !deletePassword)}
+            >
+              {deleteLoading ? '처리 중...' : '탈퇴하기'}
+            </button>
+          </>
+        }
+      >
+        {user?.provider === 'local' && (
+          <div className="modal__field">
+            <label className="modal__label">비밀번호 확인</label>
+            <input
+              type="password"
+              className="modal__input"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="비밀번호를 입력하세요"
+            />
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

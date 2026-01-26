@@ -16,7 +16,9 @@ import {
   onImageSelected,
   onImageSelectionCancelled,
   onBiometricAuthResult,
+  type ShareResult,
 } from '@/utils/nativeBridge';
+import { useToast } from '@/components';
 
 interface UseNativeBridgeReturn {
   isNative: boolean;
@@ -24,7 +26,9 @@ interface UseNativeBridgeReturn {
   fcmToken: string | null;
   isReady: boolean;
   share: typeof share;
+  shareWithToast: (title: string, text: string, url: string) => Promise<ShareResult>;
   copyToClipboard: typeof copyToClipboard;
+  copyToClipboardWithToast: (text: string) => Promise<void>;
   openExternalUrl: typeof openExternalUrl;
   showToast: typeof showToast;
   vibrate: typeof vibrate;
@@ -40,6 +44,7 @@ interface UseNativeBridgeReturn {
 export const useNativeBridge = (): UseNativeBridgeReturn => {
   const [isReady, setIsReady] = useState(isNativeApp());
   const [fcmToken, setFcmToken] = useState<string | null>(getFcmToken());
+  const toast = useToast();
 
   useEffect(() => {
     const cleanupReady = onNativeReady((detail) => {
@@ -119,6 +124,27 @@ export const useNativeBridge = (): UseNativeBridgeReturn => {
     []
   );
 
+  // 공유하기 (토스트 알림 포함)
+  const shareWithToast = useCallback(
+    async (title: string, text: string, url: string): Promise<ShareResult> => {
+      const result = await share(title, text, url);
+      if (result.method === 'clipboard') {
+        toast.success('링크가 클립보드에 복사되었습니다.');
+      }
+      return result;
+    },
+    [toast]
+  );
+
+  // 클립보드 복사 (토스트 알림 포함)
+  const copyToClipboardWithToast = useCallback(
+    async (text: string): Promise<void> => {
+      await copyToClipboard(text);
+      toast.success('클립보드에 복사되었습니다.');
+    },
+    [toast]
+  );
+
   // 생체 인증 (Promise 기반)
   const authenticate = useCallback((): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -143,7 +169,9 @@ export const useNativeBridge = (): UseNativeBridgeReturn => {
     fcmToken,
     isReady,
     share,
+    shareWithToast,
     copyToClipboard,
+    copyToClipboardWithToast,
     openExternalUrl,
     showToast,
     vibrate,

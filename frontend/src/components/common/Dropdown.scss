@@ -1,0 +1,122 @@
+@use '../../styles/variables' as *;
+
+.dropdown {
+  position: relative;
+
+  &--disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    color: $gray-900;
+    cursor: pointer;
+    transition: all $transition-fast;
+    text-align: left;
+
+    &:hover {
+      border-color: $gray-400;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &--open {
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+
+      .dropdown__arrow {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  &__value {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__arrow {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $gray-500;
+    transition: transform $transition-fast;
+  }
+
+  &__menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    box-shadow: $shadow-lg;
+    z-index: $z-dropdown;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  &__option {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    background: none;
+    border: none;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    cursor: pointer;
+    transition: background-color $transition-fast;
+    text-align: left;
+
+    &:hover:not(&--disabled) {
+      background-color: $gray-50;
+    }
+
+    &--selected {
+      background-color: $primary-50;
+      color: $primary-700;
+
+      .dropdown__option-label {
+        font-weight: $font-weight-medium;
+      }
+    }
+
+    &--disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    & + & {
+      border-top: 1px solid $gray-100;
+    }
+  }
+
+  &__option-label {
+    line-height: 1.4;
+  }
+
+  &__option-desc {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    margin-top: 2px;
+  }
+}

@@ -1,14 +1,8 @@
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useGroupStore } from '@/store/groupStore';
+import { GROUP_TYPE_LABELS } from '@/constants/labels';
 import './GroupPages.scss';
-
-const groupTypeLabels: Record<string, string> = {
-  education: '학원/교육',
-  religious: '교회/종교',
-  community: '동호회/커뮤니티',
-  company: '회사/팀',
-};
 
 const GroupListPage = () => {
   const { myGroups, myGroupsLoading, fetchMyGroups } = useGroupStore();
@@ -61,7 +55,7 @@ const GroupListPage = () => {
               <div className="group-card__body">
                 <h3 className="group-card__name">{group.name}</h3>
                 <span className="group-card__type">
-                  {groupTypeLabels[group.type] || group.type}
+                  {GROUP_TYPE_LABELS[group.type] || group.type}
                 </span>
                 {group.description && (
                   <p className="group-card__desc">{group.description}</p>

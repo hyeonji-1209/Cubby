@@ -12,7 +12,7 @@ export interface User {
 }
 
 // Group
-export type GroupType = 'education' | 'religious' | 'community' | 'company';
+export type GroupType = 'education' | 'religious' | 'community' | 'company' | 'couple';
 export type GroupStatus = 'active' | 'inactive' | 'suspended';
 
 export interface Group {
@@ -20,6 +20,8 @@ export interface Group {
   name: string;
   description?: string;
   type: GroupType;
+  icon?: string; // emoji or icon name
+  color?: string; // group color
   logoImage?: string;
   coverImage?: string;
   inviteCode: string;
@@ -199,6 +201,62 @@ export interface ScheduleFormData {
   location?: string;
   color?: string;
   recurrence?: Schedule['recurrence'];
+}
+
+// Position (직책)
+export interface PositionPermissions {
+  canManageMembers?: boolean;
+  canManageSubGroups?: boolean;
+  canManageAnnouncements?: boolean;
+  canManageSchedules?: boolean;
+  canManageFinance?: boolean;
+  canApproveRequests?: boolean;
+  customPermissions?: string[];
+}
+
+export interface Position {
+  id: string;
+  groupId: string;
+  subGroupId?: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sortOrder: number;
+  permissions?: PositionPermissions;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PositionFormData {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  subGroupId?: string;
+  permissions?: PositionPermissions;
+}
+
+export interface MemberPosition {
+  id: string;
+  memberId: string;
+  positionId: string;
+  startDate?: string;
+  endDate?: string;
+  isActive: boolean;
+  position: Position;
+  createdAt: string;
+}
+
+export interface PositionMember {
+  memberId: string;
+  userId: string;
+  name: string;
+  profileImage?: string;
+  startDate?: string;
+  endDate?: string;
+  assignedAt: string;
 }
 
 // Subscription

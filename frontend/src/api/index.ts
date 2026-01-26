@@ -6,3 +6,4 @@ export { subGroupApi } from './subgroup.api';
 export { notificationApi } from './notification.api';
 export { announcementApi } from './announcement.api';
 export { scheduleApi } from './schedule.api';
+export { positionApi } from './position.api';
