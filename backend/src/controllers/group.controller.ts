@@ -3,6 +3,8 @@ import { AppDataSource } from '../config/database';
 import { Group, GroupType, GroupStatus } from '../models/Group';
 import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
 import { SubGroup } from '../models/SubGroup';
+import { Announcement } from '../models/Announcement';
+import { Schedule } from '../models/Schedule';
 import { generateInviteCode, getInviteCodeExpiryDate, isInviteCodeExpired } from '../utils/inviteCode.util';
 import { AppError } from '../middlewares/error.middleware';
 
@@ -10,6 +12,8 @@ export class GroupController {
   private groupRepository = AppDataSource.getRepository(Group);
   private memberRepository = AppDataSource.getRepository(GroupMember);
   private subGroupRepository = AppDataSource.getRepository(SubGroup);
+  private announcementRepository = AppDataSource.getRepository(Announcement);
+  private scheduleRepository = AppDataSource.getRepository(Schedule);
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -54,7 +58,10 @@ export class GroupController {
 
       res.status(201).json({
         success: true,
-        data: group,
+        data: {
+          ...group,
+          myMembershipId: membership.id,
+        },
       });
     } catch (error) {
       next(error);
@@ -158,6 +165,116 @@ export class GroupController {
             name: group.owner.name,
             profileImage: group.owner.profileImage,
           },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 홈탭용 통합 조회 (그룹 정보 + 최근 공지사항 + 이번 달 일정)
+  getOverview = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId } = req.params;
+
+      // 그룹 정보 조회
+      const group = await this.groupRepository.findOne({
+        where: { id: groupId },
+        relations: ['owner'],
+      });
+
+      if (!group) {
+        throw new AppError('Group not found', 404);
+      }
+
+      // 멤버 수, 소모임 수 조회
+      const [memberCount, subGroupCount] = await Promise.all([
+        this.memberRepository.count({
+          where: { groupId, status: MemberStatus.ACTIVE },
+        }),
+        this.subGroupRepository.count({
+          where: { parentGroupId: groupId },
+        }),
+      ]);
+
+      // 현재 사용자의 역할 조회
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      // 최근 공지사항 5개 (고정 우선, 최신순)
+      const announcements = await this.announcementRepository
+        .createQueryBuilder('announcement')
+        .leftJoinAndSelect('announcement.author', 'author')
+        .where('announcement.groupId = :groupId', { groupId })
+        .andWhere('announcement.isPublished = :isPublished', { isPublished: true })
+        .andWhere('announcement.deletedAt IS NULL')
+        .orderBy('announcement.isPinned', 'DESC')
+        .addOrderBy('announcement.createdAt', 'DESC')
+        .take(5)
+        .getMany();
+
+      // 이번 달 일정
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      const schedules = await this.scheduleRepository
+        .createQueryBuilder('schedule')
+        .leftJoinAndSelect('schedule.author', 'author')
+        .where('schedule.groupId = :groupId', { groupId })
+        .andWhere('schedule.deletedAt IS NULL')
+        .andWhere(
+          '(schedule.startAt BETWEEN :startOfMonth AND :endOfMonth OR schedule.endAt BETWEEN :startOfMonth AND :endOfMonth)',
+          { startOfMonth, endOfMonth }
+        )
+        .orderBy('schedule.startAt', 'ASC')
+        .getMany();
+
+      res.json({
+        success: true,
+        data: {
+          group: {
+            ...group,
+            memberCount,
+            subGroupCount,
+            myRole: currentMembership?.role,
+            owner: {
+              id: group.owner.id,
+              name: group.owner.name,
+              profileImage: group.owner.profileImage,
+            },
+          },
+          announcements: announcements.map((a) => ({
+            id: a.id,
+            title: a.title,
+            isPinned: a.isPinned,
+            isAdminOnly: a.isAdminOnly,
+            hasAttachments: !!(a.attachments && a.attachments.length > 0),
+            author: {
+              id: a.author.id,
+              name: a.author.name,
+              profileImage: a.author.profileImage,
+            },
+            createdAt: a.createdAt,
+          })),
+          schedules: schedules.map((s) => ({
+            id: s.id,
+            title: s.title,
+            description: s.description,
+            startAt: s.startAt,
+            endAt: s.endAt,
+            isAllDay: s.isAllDay,
+            location: s.location,
+            color: s.color,
+            authorId: s.authorId,
+            author: {
+              id: s.author.id,
+              name: s.author.name,
+              profileImage: s.author.profileImage,
+            },
+            createdAt: s.createdAt,
+          })),
         },
       });
     } catch (error) {
@@ -276,6 +393,7 @@ export class GroupController {
         role: member.role,
         status: member.status,
         nickname: member.nickname,
+        title: member.title,
         joinedAt: member.joinedAt,
         user: {
           id: member.user.id,
@@ -378,6 +496,37 @@ export class GroupController {
       res.json({
         success: true,
         message: 'Left group successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 본인 프로필 수정 (닉네임, 직책)
+  updateMyProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId } = req.params;
+      const { nickname, title } = req.body;
+
+      const membership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!membership) {
+        throw new AppError('Not a member of this group', 400);
+      }
+
+      if (nickname !== undefined) membership.nickname = nickname;
+      if (title !== undefined) membership.title = title;
+
+      await this.memberRepository.save(membership);
+
+      res.json({
+        success: true,
+        data: {
+          nickname: membership.nickname,
+          title: membership.title,
+        },
       });
     } catch (error) {
       next(error);

@@ -7,7 +7,7 @@ export const positionApi = {
     groupId: string,
     subGroupId?: string
   ): Promise<ApiResponse<Position[]>> => {
-    const response = await apiClient.get(`/positions/${groupId}/positions`, {
+    const response = await apiClient.get(`/groups/${groupId}/positions`, {
       params: subGroupId ? { subGroupId } : undefined,
     });
     return response.data;
@@ -18,7 +18,7 @@ export const positionApi = {
     groupId: string,
     data: PositionFormData
   ): Promise<ApiResponse<Position>> => {
-    const response = await apiClient.post(`/positions/${groupId}/positions`, data);
+    const response = await apiClient.post(`/groups/${groupId}/positions`, data);
     return response.data;
   },
 
@@ -29,7 +29,7 @@ export const positionApi = {
     data: Partial<PositionFormData & { sortOrder?: number }>
   ): Promise<ApiResponse<Position>> => {
     const response = await apiClient.patch(
-      `/positions/${groupId}/positions/${positionId}`,
+      `/groups/${groupId}/positions/${positionId}`,
       data
     );
     return response.data;
@@ -38,7 +38,7 @@ export const positionApi = {
   // 직책 삭제
   delete: async (groupId: string, positionId: string): Promise<ApiResponse<null>> => {
     const response = await apiClient.delete(
-      `/positions/${groupId}/positions/${positionId}`
+      `/groups/${groupId}/positions/${positionId}`
     );
     return response.data;
   },
@@ -49,7 +49,7 @@ export const positionApi = {
     positionId: string
   ): Promise<ApiResponse<PositionMember[]>> => {
     const response = await apiClient.get(
-      `/positions/${groupId}/positions/${positionId}/members`
+      `/groups/${groupId}/positions/${positionId}/members`
     );
     return response.data;
   },
@@ -60,7 +60,7 @@ export const positionApi = {
     memberId: string
   ): Promise<ApiResponse<Position[]>> => {
     const response = await apiClient.get(
-      `/positions/${groupId}/members/${memberId}/positions`
+      `/groups/${groupId}/members/${memberId}/positions`
     );
     return response.data;
   },
@@ -72,7 +72,7 @@ export const positionApi = {
     data: { positionId: string; startDate?: string; endDate?: string }
   ): Promise<ApiResponse<{ id: string }>> => {
     const response = await apiClient.post(
-      `/positions/${groupId}/members/${memberId}/positions`,
+      `/groups/${groupId}/members/${memberId}/positions`,
       data
     );
     return response.data;
@@ -85,7 +85,7 @@ export const positionApi = {
     positionId: string
   ): Promise<ApiResponse<null>> => {
     const response = await apiClient.delete(
-      `/positions/${groupId}/members/${memberId}/positions/${positionId}`
+      `/groups/${groupId}/members/${memberId}/positions/${positionId}`
     );
     return response.data;
   },

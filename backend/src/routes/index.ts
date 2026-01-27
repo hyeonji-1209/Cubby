@@ -6,6 +6,9 @@ import positionRoutes from './position.routes';
 import announcementRoutes from './announcement.routes';
 import scheduleRoutes from './schedule.routes';
 import notificationRoutes from './notification.routes';
+import verificationRoutes from './verification.routes';
+import uploadRoutes from './upload.routes';
+import locationRoutes from './location.routes';
 
 const router = Router();
 
@@ -13,8 +16,11 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/groups', groupRoutes);
 router.use('/groups', positionRoutes); // /groups/:groupId/positions
+router.use('/', locationRoutes); // /groups/:groupId/locations
 router.use('/announcements', announcementRoutes);
 router.use('/schedules', scheduleRoutes);
 router.use('/notifications', notificationRoutes);
+router.use('/verification', verificationRoutes);
+router.use('/upload', uploadRoutes);
 
 export default router;

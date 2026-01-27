@@ -7,12 +7,15 @@ import {
   DeleteDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Group } from './Group';
 import { SubGroup } from './SubGroup';
 import { User } from './User';
 
 @Entity('announcements')
+@Index(['groupId', 'isPinned', 'createdAt']) // 홈탭 조회 최적화
+@Index(['groupId', 'isPublished', 'deletedAt']) // 목록 조회 최적화
 export class Announcement {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -38,8 +41,14 @@ export class Announcement {
   @Column({ type: 'boolean', default: true })
   isPublished: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isAdminOnly: boolean;
+
   @Column({ type: 'json', nullable: true })
   attachments: { name: string; url: string; type: string }[];
+
+  @Column({ type: 'int', default: 0 })
+  viewCount: number;
 
   @ManyToOne(() => Group, (group) => group.announcements, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'groupId' })

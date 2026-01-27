@@ -131,3 +131,12 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
   approved: '승인됨',
   rejected: '거절됨',
 };
+
+/**
+ * 직책/직분 레이블 반환
+ * - 종교 모임: 직분
+ * - 그 외: 직책
+ */
+export const getPositionLabel = (groupType?: string): string => {
+  return groupType === 'religious' ? '직분' : '직책';
+};

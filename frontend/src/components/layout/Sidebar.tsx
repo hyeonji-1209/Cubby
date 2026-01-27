@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { NavLink, useLocation, Link } from 'react-router-dom';
 import { useGroupStore } from '@/store/groupStore';
-import { subGroupApi } from '@/api';
+import { subGroupApi, groupApi } from '@/api';
 import { useToast } from '@/components/common';
+import { useLoading } from '@/hooks';
+import { getPositionLabel } from '@/constants/labels';
 import { homeIcon, settingsIcon, chevronRightIcon, plusIcon, linkIcon, getIconById } from '@/assets';
-import type { SubGroup } from '@/types';
+import type { SubGroup, GroupType } from '@/types';
 import './Sidebar.scss';
 
 // 소모임 점 아이콘
@@ -22,18 +24,13 @@ interface GroupMenuItemProps {
 }
 
 const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }: GroupMenuItemProps) => {
-  const [isOpen, setIsOpen] = useState(true); // 기본 열림
+  const [isOpen, setIsOpen] = useState(false); // 기본 닫힘
   const [subGroups, setSubGroups] = useState<SubGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const hasLoadedRef = useRef(false);
   const location = useLocation();
 
-  // 마운트 시 소모임 로드
-  useEffect(() => {
-    loadSubGroups();
-  }, [groupId]);
-
-  // 현재 이 그룹 또는 그 소모임이 활성화되어 있으면 자동으로 열기
+  // 현재 이 그룹 또는 그 소모임이 활성화되어 있으면 자동으로 열고 로드
   useEffect(() => {
     const isGroupActive = location.pathname.includes(`/groups/${groupId}`);
     if (isGroupActive && !isOpen) {
@@ -41,15 +38,22 @@ const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }:
     }
   }, [location.pathname, groupId]);
 
+  // 열릴 때만 소모임 로드
+  useEffect(() => {
+    if (isOpen && !hasLoadedRef.current && !isLoading) {
+      loadSubGroups();
+    }
+  }, [isOpen]);
+
   // 소모임 로드
   const loadSubGroups = async () => {
-    if (hasLoaded || isLoading) return;
+    if (hasLoadedRef.current || isLoading) return;
 
     setIsLoading(true);
     try {
       const response = await subGroupApi.getList(groupId);
       setSubGroups(response.data);
-      setHasLoaded(true);
+      hasLoadedRef.current = true;
     } catch (error) {
       console.error('Failed to load subgroups:', error);
     } finally {
@@ -133,66 +137,147 @@ interface InviteModalProps {
   onClose: () => void;
 }
 
+interface JoinedGroupInfo {
+  id: string;
+  name: string;
+  type: GroupType;
+}
+
 const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
+  const [step, setStep] = useState<'code' | 'title'>('code');
   const [inviteCode, setInviteCode] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [myTitle, setMyTitle] = useState('');
+  const [joinedGroup, setJoinedGroup] = useState<JoinedGroupInfo | null>(null);
+  const { loading, withLoading } = useLoading();
   const [error, setError] = useState('');
-  const { joinGroup } = useGroupStore();
+  const { joinGroup, fetchMyGroups } = useGroupStore();
   const toast = useToast();
+
+  const positionLabel = getPositionLabel(joinedGroup?.type);
+
+  // 모달 닫을 때 초기화
+  const handleClose = useCallback(() => {
+    setStep('code');
+    setInviteCode('');
+    setMyTitle('');
+    setJoinedGroup(null);
+    setError('');
+    onClose();
+  }, [onClose]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async () => {
+  // Step 1: 초대 코드로 가입
+  const handleJoin = async () => {
     if (!inviteCode.trim()) {
       setError('초대 코드를 입력해주세요');
       return;
     }
 
-    setLoading(true);
     setError('');
+    await withLoading(async () => {
+      const result = await joinGroup(inviteCode.trim());
+      setJoinedGroup(result);
 
-    try {
-      await joinGroup(inviteCode.trim());
-      toast.success('모임에 가입되었습니다!');
-      onClose();
-      setInviteCode('');
-    } catch {
-      setError('유효하지 않은 초대 코드입니다');
-    } finally {
-      setLoading(false);
+      // 연인 타입이면 직책 설정 없이 바로 완료
+      if (result.type === 'couple') {
+        toast.success('모임에 가입되었습니다!');
+        await fetchMyGroups();
+        handleClose();
+      } else {
+        // 그 외 타입은 직책/직분 설정 단계로
+        setStep('title');
+      }
+    }).catch(() => setError('유효하지 않은 초대 코드입니다'));
+  };
+
+  // Step 2: 직책/직분 설정 후 완료
+  const handleSetTitle = async () => {
+    if (!myTitle.trim()) {
+      setError(`${positionLabel}을 입력해주세요`);
+      return;
     }
+
+    if (!joinedGroup) return;
+
+    setError('');
+    await withLoading(async () => {
+      await groupApi.updateMyProfile(joinedGroup.id, { title: myTitle.trim() });
+      toast.success('모임에 가입되었습니다!');
+      await fetchMyGroups();
+      handleClose();
+    }).catch(() => setError(`${positionLabel} 설정에 실패했습니다`));
   };
 
   return (
-    <div className="sidebar-modal-overlay" onClick={onClose}>
+    <div className="sidebar-modal-overlay" onClick={handleClose}>
       <div className="sidebar-modal" onClick={(e) => e.stopPropagation()}>
-        <h3 className="sidebar-modal__title">초대 코드 입력</h3>
-        <p className="sidebar-modal__desc">모임 초대 코드를 입력해주세요</p>
+        {step === 'code' ? (
+          <>
+            <h3 className="sidebar-modal__title">초대 코드 입력</h3>
+            <p className="sidebar-modal__desc">모임 초대 코드를 입력해주세요</p>
 
-        {error && <div className="sidebar-modal__error">{error}</div>}
+            {error && <div className="sidebar-modal__error">{error}</div>}
 
-        <input
-          type="text"
-          className="sidebar-modal__input"
-          value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-          placeholder="예: ABC123"
-          maxLength={10}
-          autoFocus
-        />
+            <input
+              type="text"
+              className="sidebar-modal__input"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              placeholder="예: ABC123"
+              maxLength={10}
+              autoFocus
+            />
 
-        <div className="sidebar-modal__actions">
-          <button className="sidebar-modal__btn sidebar-modal__btn--cancel" onClick={onClose}>
-            취소
-          </button>
-          <button
-            className="sidebar-modal__btn sidebar-modal__btn--submit"
-            onClick={handleSubmit}
-            disabled={loading || !inviteCode.trim()}
-          >
-            {loading ? '가입 중...' : '가입'}
-          </button>
-        </div>
+            <div className="sidebar-modal__actions">
+              <button className="sidebar-modal__btn sidebar-modal__btn--cancel" onClick={handleClose}>
+                취소
+              </button>
+              <button
+                className="sidebar-modal__btn sidebar-modal__btn--submit"
+                onClick={handleJoin}
+                disabled={loading || !inviteCode.trim()}
+              >
+                {loading ? '확인 중...' : '다음'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 className="sidebar-modal__title">{positionLabel} 설정</h3>
+            <p className="sidebar-modal__desc">
+              <strong>{joinedGroup?.name}</strong> 모임에서 사용할 {positionLabel}을 입력해주세요
+            </p>
+
+            {error && <div className="sidebar-modal__error">{error}</div>}
+
+            <input
+              type="text"
+              className="sidebar-modal__input"
+              value={myTitle}
+              onChange={(e) => setMyTitle(e.target.value)}
+              placeholder={joinedGroup?.type === 'religious' ? '예: 성도, 집사, 권사' : '예: 회원, 부원, 팀원'}
+              maxLength={30}
+              autoFocus
+            />
+
+            <div className="sidebar-modal__actions">
+              <button
+                className="sidebar-modal__btn sidebar-modal__btn--cancel"
+                onClick={() => setStep('code')}
+              >
+                이전
+              </button>
+              <button
+                className="sidebar-modal__btn sidebar-modal__btn--submit"
+                onClick={handleSetTitle}
+                disabled={loading || !myTitle.trim()}
+              >
+                {loading ? '가입 중...' : '가입하기'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

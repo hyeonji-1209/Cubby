@@ -21,6 +21,9 @@ router.post('/join', groupController.joinByInviteCode);
 // 모임 상세 조회
 router.get('/:groupId', requireGroupMember, groupController.getById);
 
+// 모임 홈 개요 조회 (그룹 정보 + 최근 공지사항 + 이번 달 일정)
+router.get('/:groupId/overview', requireGroupMember, groupController.getOverview);
+
 // 모임 수정 (운영자, 관리자만)
 router.patch(
   '/:groupId',
@@ -61,6 +64,9 @@ router.delete(
 
 // 모임 나가기
 router.post('/:groupId/leave', requireGroupMember, groupController.leave);
+
+// 본인 프로필 수정 (닉네임, 직책)
+router.patch('/:groupId/my-profile', requireGroupMember, groupController.updateMyProfile);
 
 // === 소모임 관련 (계층 구조 + 승인 시스템) ===
 

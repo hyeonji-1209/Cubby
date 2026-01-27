@@ -18,8 +18,20 @@ export const authApi = {
     return response.data;
   },
 
-  register: async (email: string, password: string, name: string): Promise<AuthResponse> => {
-    const response = await apiClient.post('/auth/register', { email, password, name });
+  register: async (
+    email: string,
+    password: string,
+    name: string,
+    phone: string,
+    emailVerificationToken: string
+  ): Promise<AuthResponse> => {
+    const response = await apiClient.post('/auth/register', {
+      email,
+      password,
+      name,
+      phone,
+      emailVerificationToken,
+    });
     return response.data;
   },
 

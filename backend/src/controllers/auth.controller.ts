@@ -7,6 +7,7 @@ import { generateTokens, verifyRefreshToken } from '../utils/jwt.util';
 import { AppError } from '../middlewares/error.middleware';
 import { config } from '../config';
 import axios from 'axios';
+import { VerificationController } from './verification.controller';
 
 export class AuthController {
   private userRepository = AppDataSource.getRepository(User);
@@ -14,7 +15,18 @@ export class AuthController {
 
   register = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { email, password, name, phone } = req.body;
+      const { email, password, name, phone, emailVerificationToken } = req.body;
+
+      // 이메일 인증 필수
+      if (!emailVerificationToken) {
+        throw new AppError('Email verification is required', 400);
+      }
+
+      // 이메일 인증 토큰 검증
+      const isEmailVerified = await VerificationController.verifyEmailToken(email, emailVerificationToken);
+      if (!isEmailVerified) {
+        throw new AppError('Invalid or expired email verification', 400);
+      }
 
       // 이메일 중복 확인
       const existingUser = await this.userRepository.findOne({
@@ -28,12 +40,17 @@ export class AuthController {
       // 비밀번호 해싱
       const hashedPassword = await hashPassword(password);
 
+      // 휴대폰 번호 정리 (선택사항)
+      const cleanPhone = phone ? phone.replace(/-/g, '') : null;
+
       // 사용자 생성
       const user = this.userRepository.create({
         email,
         password: hashedPassword,
         name,
-        phone,
+        phone: cleanPhone,
+        emailVerified: true,
+        phoneVerified: false,
         provider: AuthProvider.LOCAL,
       });
 
@@ -57,6 +74,8 @@ export class AuthController {
             id: user.id,
             email: user.email,
             name: user.name,
+            phone: user.phone,
+            phoneVerified: user.phoneVerified,
             profileImage: user.profileImage,
           },
           tokens,

@@ -26,7 +26,7 @@ interface GroupState {
   fetchMyGroups: () => Promise<void>;
   fetchGroup: (groupId: string) => Promise<void>;
   createGroup: (data: { name: string; description?: string; type: GroupType; icon?: string; color?: string; logoImage?: string }) => Promise<Group>;
-  joinGroup: (inviteCode: string) => Promise<void>;
+  joinGroup: (inviteCode: string) => Promise<{ id: string; name: string; type: GroupType }>;
   leaveGroup: (groupId: string) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
 
@@ -87,8 +87,9 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   },
 
   joinGroup: async (inviteCode: string) => {
-    await groupApi.joinByInviteCode(inviteCode);
-    await get().fetchMyGroups();
+    const response = await groupApi.joinByInviteCode(inviteCode);
+    // fetchMyGroups는 InviteModal에서 처리
+    return response.data;
   },
 
   leaveGroup: async (groupId: string) => {

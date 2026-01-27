@@ -130,6 +130,21 @@
     &.saturday .calendar__date {
       color: $primary-500;
     }
+
+    &.holiday .calendar__date {
+      color: $error;
+    }
+
+    &.selected {
+      background: $primary-100;
+
+      .calendar__date {
+        background: $primary-500;
+        color: $white !important;
+        border-radius: $radius-full;
+        padding: 2px 8px;
+      }
+    }
   }
 
   &__date {

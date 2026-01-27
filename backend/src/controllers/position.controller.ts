@@ -18,6 +18,9 @@ export class PositionController {
 
       const queryBuilder = this.positionRepository
         .createQueryBuilder('position')
+        .loadRelationCountAndMap('position.memberCount', 'position.memberPositions', 'mp', (qb) =>
+          qb.where('mp.isActive = :isActive', { isActive: true })
+        )
         .where('position.groupId = :groupId', { groupId })
         .andWhere('position.isActive = :isActive', { isActive: true });
 

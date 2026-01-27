@@ -8,6 +8,7 @@ export interface User {
   role: 'admin' | 'user';
   provider: 'local' | 'google' | 'kakao';
   emailVerified: boolean;
+  phoneVerified: boolean;
   createdAt: string;
 }
 
@@ -34,6 +35,7 @@ export interface Group {
   memberCount?: number;
   subGroupCount?: number;
   myRole?: MemberRole;
+  myMembershipId?: string; // 그룹 생성 시 반환
   joinedAt?: string;
   createdAt: string;
 }
@@ -49,6 +51,7 @@ export interface GroupMember {
   role: MemberRole;
   status: MemberStatus;
   nickname?: string;
+  title?: string; // 직책/직분 (본인이 설정)
   joinedAt: string;
   user: {
     id: string;
@@ -135,16 +138,22 @@ export interface Announcement {
   id: string;
   groupId: string;
   subGroupId?: string;
-  authorId: string;
+  authorId?: string;
   title: string;
-  content: string;
+  content?: string;           // 상세 조회에서만 포함
   isPinned: boolean;
-  isPublished: boolean;
-  attachments?: { name: string; url: string; type: string }[];
+  isPublished?: boolean;
+  isAdminOnly: boolean;
+  attachments?: { name: string; url: string; type: string }[]; // 상세 조회에서만 포함
+  hasAttachments?: boolean;   // 목록 조회에서 첨부파일 유무
+  viewCount?: number;         // 조회수
+  likeCount?: number;         // 좋아요 수 (상세 조회)
+  isLiked?: boolean;          // 내가 좋아요 했는지 (상세 조회)
   author: {
     id: string;
     name: string;
     profileImage?: string;
+    title?: string;
   };
   createdAt: string;
   updatedAt?: string;
@@ -155,10 +164,38 @@ export interface AnnouncementFormData {
   content: string;
   subGroupId?: string;
   isPinned?: boolean;
+  isAdminOnly?: boolean;
   attachments?: { name: string; url: string; type: string }[];
 }
 
+// Comment (공지사항 댓글)
+export interface Comment {
+  id: string;
+  content: string;
+  parentId?: string | null;
+  author: {
+    id: string;
+    name: string;
+    profileImage?: string;
+    title?: string; // 직책/직분
+  };
+  likeCount: number;
+  isLiked: boolean;
+  replies?: Comment[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
 // Schedule
+export interface ScheduleLocation {
+  name: string;
+  address: string;
+  detail?: string;
+  placeId?: string;
+  lat?: number;
+  lng?: number;
+}
+
 export interface Schedule {
   id: string;
   groupId: string;
@@ -169,7 +206,8 @@ export interface Schedule {
   startAt: string;
   endAt: string;
   isAllDay: boolean;
-  location?: string;
+  location?: string;           // 표시용 (호환성)
+  locationData?: ScheduleLocation; // 상세 장소 정보
   color?: string;
   recurrence?: {
     type: 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -199,6 +237,7 @@ export interface ScheduleFormData {
   endAt: string;
   isAllDay?: boolean;
   location?: string;
+  locationData?: ScheduleLocation;
   color?: string;
   recurrence?: Schedule['recurrence'];
 }
@@ -225,6 +264,7 @@ export interface Position {
   sortOrder: number;
   permissions?: PositionPermissions;
   isActive: boolean;
+  memberCount?: number;
   createdAt: string;
   updatedAt: string;
 }

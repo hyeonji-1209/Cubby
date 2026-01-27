@@ -46,6 +46,9 @@ export class GroupMember {
   @Column({ type: 'varchar', length: 100, nullable: true })
   nickname: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  title: string; // 직책/직분 (본인이 설정)
+
   @Column({ type: 'uuid', nullable: true })
   invitedBy: string;
 

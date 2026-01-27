@@ -1,17 +1,21 @@
 import { useState, useMemo } from 'react';
 import type { Schedule } from '@/types';
+import { isHoliday, getHolidayName } from '@/utils/holidays';
 import './Calendar.scss';
 
 interface CalendarProps {
   schedules: Schedule[];
   onDateClick?: (date: Date) => void;
+  onDateSelect?: (date: Date) => void;
   onScheduleClick?: (schedule: Schedule) => void;
+  selectedDate?: Date;
+  compact?: boolean;
 }
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
-const Calendar = ({ schedules, onDateClick, onScheduleClick }: CalendarProps) => {
+const Calendar = ({ schedules, onDateClick, onDateSelect, onScheduleClick, selectedDate, compact }: CalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const year = currentDate.getFullYear();
@@ -88,9 +92,19 @@ const Calendar = ({ schedules, onDateClick, onScheduleClick }: CalendarProps) =>
     );
   };
 
+  const isSelected = (date: Date | null) => {
+    if (!date || !selectedDate) return false;
+    return (
+      date.getDate() === selectedDate.getDate() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getFullYear() === selectedDate.getFullYear()
+    );
+  };
+
   const handleDateClick = (date: Date | null) => {
-    if (date && onDateClick) {
-      onDateClick(date);
+    if (date) {
+      onDateClick?.(date);
+      onDateSelect?.(date);
     }
   };
 
@@ -102,7 +116,7 @@ const Calendar = ({ schedules, onDateClick, onScheduleClick }: CalendarProps) =>
   };
 
   return (
-    <div className="calendar">
+    <div className={`calendar ${compact ? 'calendar--compact' : ''}`}>
       <div className="calendar__header">
         <button className="calendar__nav-btn" onClick={prevMonth}>
           ◀
@@ -134,34 +148,40 @@ const Calendar = ({ schedules, onDateClick, onScheduleClick }: CalendarProps) =>
         {calendarDays.map((date, index) => {
           const dateKey = date?.toISOString().split('T')[0];
           const daySchedules = dateKey ? schedulesByDate.get(dateKey) || [] : [];
+          const hasSchedules = daySchedules.length > 0;
 
           return (
             <div
               key={index}
               className={`calendar__cell ${!date ? 'empty' : ''} ${isToday(date) ? 'today' : ''} ${
-                date?.getDay() === 0 ? 'sunday' : ''
-              } ${date?.getDay() === 6 ? 'saturday' : ''}`}
+                isSelected(date) ? 'selected' : ''
+              } ${date?.getDay() === 0 ? 'sunday' : ''} ${date?.getDay() === 6 ? 'saturday' : ''} ${date && isHoliday(date) ? 'holiday' : ''}`}
               onClick={() => handleDateClick(date)}
+              title={date ? getHolidayName(date) || undefined : undefined}
             >
               {date && (
                 <>
                   <span className="calendar__date">{date.getDate()}</span>
-                  <div className="calendar__schedules">
-                    {daySchedules.slice(0, 3).map((schedule) => (
-                      <div
-                        key={schedule.id}
-                        className="calendar__schedule-item"
-                        style={{ backgroundColor: schedule.color || '#3b82f6' }}
-                        onClick={(e) => handleScheduleClick(e, schedule)}
-                        title={schedule.title}
-                      >
-                        {schedule.title}
-                      </div>
-                    ))}
-                    {daySchedules.length > 3 && (
-                      <div className="calendar__more">+{daySchedules.length - 3}개</div>
-                    )}
-                  </div>
+                  {compact ? (
+                    hasSchedules && <span className="calendar__dot" />
+                  ) : (
+                    <div className="calendar__schedules">
+                      {daySchedules.slice(0, 3).map((schedule) => (
+                        <div
+                          key={schedule.id}
+                          className="calendar__schedule-item"
+                          style={{ backgroundColor: schedule.color || '#3b82f6' }}
+                          onClick={(e) => handleScheduleClick(e, schedule)}
+                          title={schedule.title}
+                        >
+                          {schedule.title}
+                        </div>
+                      ))}
+                      {daySchedules.length > 3 && (
+                        <div className="calendar__more">+{daySchedules.length - 3}개</div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>

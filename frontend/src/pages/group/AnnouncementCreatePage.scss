@@ -1,0 +1,297 @@
+@use '../../styles/variables' as *;
+
+.announcement-create {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: $spacing-xl;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-xl;
+
+    h1 {
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $gray-900;
+      margin: 0;
+    }
+  }
+
+  &__back {
+    padding: $spacing-xs $spacing-sm;
+    background: none;
+    border: none;
+    color: $gray-600;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    transition: color $transition-fast;
+
+    &:hover {
+      color: $primary-600;
+    }
+  }
+
+  &__group-name {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    padding: $spacing-xs $spacing-sm;
+    background: $gray-100;
+    border-radius: $radius-full;
+  }
+
+  &__form {
+    background: white;
+    border-radius: $radius-lg;
+    padding: $spacing-xl;
+    box-shadow: $shadow-sm;
+  }
+
+  &__field {
+    margin-bottom: $spacing-xl;
+
+    &--inline {
+      margin-bottom: 0;
+    }
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__input {
+    width: 100%;
+    padding: $spacing-md;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: all $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__editor {
+    .ql-container {
+      min-height: 300px;
+      font-size: $font-size-base;
+      font-family: inherit;
+    }
+
+    .ql-editor {
+      min-height: 300px;
+
+      &.ql-blank::before {
+        color: $gray-400;
+        font-style: normal;
+      }
+    }
+
+    .ql-toolbar {
+      border-top-left-radius: $radius-md;
+      border-top-right-radius: $radius-md;
+      background: $gray-50;
+      border-color: $gray-200;
+    }
+
+    .ql-container {
+      border-bottom-left-radius: $radius-md;
+      border-bottom-right-radius: $radius-md;
+      border-color: $gray-200;
+    }
+  }
+
+  &__attachments {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__file-input {
+    display: none;
+  }
+
+  &__file-btn {
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary-500;
+      color: $primary-600;
+      background: $primary-50;
+    }
+  }
+
+  &__file-hint {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+
+  &__attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+  }
+
+  &__checkbox {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    span {
+      font-size: $font-size-sm;
+      color: $gray-700;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-md;
+    margin-top: $spacing-xl;
+    padding-top: $spacing-xl;
+    border-top: 1px solid $gray-100;
+  }
+
+  &__cancel {
+    padding: $spacing-md $spacing-xl;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $gray-50;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-md $spacing-xl;
+    background: $primary-500;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    color: white;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// 첨부파일 아이템
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: $gray-50;
+  border-radius: $radius-md;
+  border: 1px solid $gray-100;
+
+  &__preview {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-sm;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: $radius-sm;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__size {
+    display: block;
+    font-size: $font-size-xs;
+    color: $gray-400;
+    margin-top: 2px;
+  }
+
+  &__remove {
+    padding: $spacing-xs;
+    background: none;
+    border: none;
+    color: $gray-400;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    transition: color $transition-fast;
+    flex-shrink: 0;
+
+    &:hover {
+      color: $error;
+    }
+  }
+}

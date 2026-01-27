@@ -80,6 +80,77 @@
     &::placeholder {
       color: $gray-400;
     }
+
+    &:disabled {
+      background-color: $gray-100;
+      color: $gray-600;
+    }
+  }
+
+  &__input-group {
+    display: flex;
+    gap: $spacing-sm;
+
+    .auth-form__input {
+      flex: 1;
+    }
+  }
+
+  &__verify-btn {
+    flex-shrink: 0;
+    padding: $spacing-sm $spacing-md;
+    background-color: $gray-100;
+    color: $gray-700;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    white-space: nowrap;
+    transition: all $transition-fast;
+
+    &:hover:not(:disabled) {
+      background-color: $gray-200;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__verified {
+    flex-shrink: 0;
+    padding: $spacing-sm $spacing-md;
+    background-color: rgba($success, 0.1);
+    color: $success;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+  }
+
+  &__countdown {
+    margin-left: $spacing-sm;
+    color: $primary-500;
+    font-weight: $font-weight-medium;
+  }
+
+  &__dev-code {
+    background-color: rgba($warning, 0.1);
+    color: darken($warning, 20%);
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    margin-bottom: $spacing-sm;
+
+    strong {
+      font-family: monospace;
+      letter-spacing: 2px;
+    }
+  }
+
+  &__optional {
+    font-weight: $font-weight-normal;
+    color: $gray-400;
+    font-size: $font-size-xs;
   }
 
   &__submit {

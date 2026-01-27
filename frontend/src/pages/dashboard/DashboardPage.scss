@@ -305,9 +305,11 @@
     }
   }
 
-  &__emoji {
-    font-size: 18px;
-    line-height: 1;
+  &__icon {
+    width: 22px !important;
+    height: 22px !important;
+    object-fit: contain !important;
+    filter: brightness(0) invert(1);
   }
 
   &__name {

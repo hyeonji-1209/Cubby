@@ -7,12 +7,15 @@ import {
   DeleteDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Group } from './Group';
 import { SubGroup } from './SubGroup';
 import { User } from './User';
 
 @Entity('schedules')
+@Index(['groupId', 'startAt', 'endAt']) // 기간별 조회 최적화
+@Index(['groupId', 'deletedAt']) // 목록 조회 최적화
 export class Schedule {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -43,6 +46,16 @@ export class Schedule {
 
   @Column({ type: 'varchar', length: 300, nullable: true })
   location: string;
+
+  @Column({ type: 'json', nullable: true })
+  locationData: {
+    name: string;
+    address: string;
+    detail?: string;
+    placeId?: string;
+    lat?: number;
+    lng?: number;
+  };
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   color: string;

@@ -8,3 +8,6 @@ export { default as IconPicker } from './IconPicker';
 export { default as Dropdown } from './Dropdown';
 export type { DropdownOption } from './Dropdown';
 export { ToastProvider, useToast } from './Toast';
+export { default as CommentSection } from './CommentSection';
+export { default as LocationPicker } from './LocationPicker';
+export type { LocationData } from './LocationPicker';

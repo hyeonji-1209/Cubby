@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 // Pages
 import { LoginPage, RegisterPage, AuthCallbackPage } from './pages/auth';
 import { DashboardPage } from './pages/dashboard';
-import { GroupListPage, GroupDetailPage, GroupCreatePage, SubGroupDetailPage } from './pages/group';
+import { GroupListPage, GroupDetailPage, GroupCreatePage, SubGroupDetailPage, AnnouncementCreatePage } from './pages/group';
 import { SettingsPage } from './pages/settings';
 import { NotFoundPage } from './pages';
 
@@ -29,6 +29,7 @@ function App() {
             <Route path="/groups" element={<GroupListPage />} />
             <Route path="/groups/create" element={<GroupCreatePage />} />
             <Route path="/groups/:groupId" element={<GroupDetailPage />} />
+            <Route path="/groups/:groupId/announcements/create" element={<AnnouncementCreatePage />} />
             <Route path="/groups/:groupId/subgroups/:subGroupId" element={<SubGroupDetailPage />} />
 
             {/* Settings */}

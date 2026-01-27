@@ -1,5 +1,12 @@
 import { apiClient } from './client';
-import type { ApiResponse, Group, GroupMember, GroupType } from '@/types';
+import type { ApiResponse, Group, GroupMember, GroupType, Announcement, Schedule } from '@/types';
+
+// Overview API 응답 타입
+export interface GroupOverviewResponse {
+  group: Group;
+  announcements: Announcement[];
+  schedules: Schedule[];
+}
 
 export const groupApi = {
   // 모임 생성
@@ -25,6 +32,12 @@ export const groupApi = {
   // 모임 상세 조회
   getById: async (groupId: string): Promise<ApiResponse<Group>> => {
     const response = await apiClient.get(`/groups/${groupId}`);
+    return response.data;
+  },
+
+  // 모임 홈 개요 조회 (그룹 정보 + 최근 공지사항 + 이번 달 일정)
+  getOverview: async (groupId: string): Promise<ApiResponse<GroupOverviewResponse>> => {
+    const response = await apiClient.get(`/groups/${groupId}/overview`);
     return response.data;
   },
 
@@ -70,6 +83,15 @@ export const groupApi = {
   // 모임 나가기
   leave: async (groupId: string): Promise<ApiResponse<null>> => {
     const response = await apiClient.post(`/groups/${groupId}/leave`);
+    return response.data;
+  },
+
+  // 본인 프로필 수정 (닉네임, 직책)
+  updateMyProfile: async (
+    groupId: string,
+    data: { nickname?: string; title?: string }
+  ): Promise<ApiResponse<{ nickname?: string; title?: string }>> => {
+    const response = await apiClient.patch(`/groups/${groupId}/my-profile`, data);
     return response.data;
   },
 };

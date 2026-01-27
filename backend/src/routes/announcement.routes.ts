@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { AnnouncementController } from '../controllers/announcement.controller';
+import { CommentController } from '../controllers/comment.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { requireGroupRole, requireGroupMember } from '../middlewares/role.middleware';
 import { MemberRole } from '../models/GroupMember';
 
 const router = Router();
 const announcementController = new AnnouncementController();
+const commentController = new CommentController();
 
 // 모든 라우트에 인증 필요
 router.use(authMiddleware);
@@ -40,5 +42,25 @@ router.patch(
   '/:announcementId/pin',
   announcementController.togglePin
 );
+
+// 공지사항 좋아요 토글
+router.post('/:announcementId/like', announcementController.toggleLike);
+
+// === 댓글 관련 ===
+
+// 댓글 목록 조회
+router.get('/:announcementId/comments', commentController.getComments);
+
+// 댓글 작성
+router.post('/:announcementId/comments', commentController.createComment);
+
+// 댓글 수정 (본인, 관리자, 오너만)
+router.patch('/:announcementId/comments/:commentId', commentController.updateComment);
+
+// 댓글 삭제 (본인, 관리자, 오너만)
+router.delete('/:announcementId/comments/:commentId', commentController.deleteComment);
+
+// 댓글 좋아요 토글
+router.post('/:announcementId/comments/:commentId/like', commentController.toggleCommentLike);
 
 export default router;

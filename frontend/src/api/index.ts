@@ -7,3 +7,6 @@ export { notificationApi } from './notification.api';
 export { announcementApi } from './announcement.api';
 export { scheduleApi } from './schedule.api';
 export { positionApi } from './position.api';
+export { uploadApi } from './upload.api';
+export { locationApi } from './location.api';
+export type { FavoriteLocation, CreateLocationDto, UpdateLocationDto } from './location.api';

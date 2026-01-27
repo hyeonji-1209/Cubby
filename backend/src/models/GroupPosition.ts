@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Group } from './Group';
+import { MemberPosition } from './MemberPosition';
 
 // 직책 권한 플래그
 export interface PositionPermissions {
@@ -55,6 +57,9 @@ export class GroupPosition {
   @ManyToOne(() => Group, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'groupId' })
   group: Group;
+
+  @OneToMany(() => MemberPosition, (mp) => mp.position)
+  memberPositions: MemberPosition[];
 
   @CreateDateColumn()
   createdAt: Date;

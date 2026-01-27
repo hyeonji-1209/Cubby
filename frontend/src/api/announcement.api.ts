@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiResponse, Announcement, AnnouncementFormData } from '@/types';
+import type { ApiResponse, Announcement, AnnouncementFormData, Comment } from '@/types';
 
 interface AnnouncementListResponse {
   success: boolean;
@@ -52,6 +52,44 @@ export const announcementApi = {
   // 공지사항 고정/해제 토글
   togglePin: async (announcementId: string): Promise<ApiResponse<{ isPinned: boolean }>> => {
     const response = await apiClient.patch(`/announcements/${announcementId}/pin`);
+    return response.data;
+  },
+
+  // 공지사항 좋아요 토글
+  toggleLike: async (announcementId: string): Promise<ApiResponse<{ isLiked: boolean; likeCount: number }>> => {
+    const response = await apiClient.post(`/announcements/${announcementId}/like`);
+    return response.data;
+  },
+
+  // === 댓글 관련 ===
+
+  // 댓글 목록 조회
+  getComments: async (announcementId: string): Promise<ApiResponse<Comment[]>> => {
+    const response = await apiClient.get(`/announcements/${announcementId}/comments`);
+    return response.data;
+  },
+
+  // 댓글 작성 (대댓글은 parentId 전달)
+  createComment: async (announcementId: string, content: string, parentId?: string): Promise<ApiResponse<Comment>> => {
+    const response = await apiClient.post(`/announcements/${announcementId}/comments`, { content, parentId });
+    return response.data;
+  },
+
+  // 댓글 수정
+  updateComment: async (announcementId: string, commentId: string, content: string): Promise<ApiResponse<Comment>> => {
+    const response = await apiClient.patch(`/announcements/${announcementId}/comments/${commentId}`, { content });
+    return response.data;
+  },
+
+  // 댓글 삭제
+  deleteComment: async (announcementId: string, commentId: string): Promise<ApiResponse<null>> => {
+    const response = await apiClient.delete(`/announcements/${announcementId}/comments/${commentId}`);
+    return response.data;
+  },
+
+  // 댓글 좋아요 토글
+  toggleCommentLike: async (announcementId: string, commentId: string): Promise<ApiResponse<{ isLiked: boolean; likeCount: number }>> => {
+    const response = await apiClient.post(`/announcements/${announcementId}/comments/${commentId}/like`);
     return response.data;
   },
 };

@@ -106,6 +106,46 @@
     border-radius: $radius-md;
   }
 
+  &__input-row {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+
+    .settings__input {
+      flex: 1;
+    }
+  }
+
+  &__badge {
+    display: inline-block;
+    margin-left: $spacing-sm;
+    padding: 2px $spacing-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-full;
+
+    &--success {
+      background-color: rgba($success, 0.1);
+      color: $success;
+    }
+  }
+
+  &__countdown {
+    margin-left: $spacing-sm;
+    color: $primary-500;
+    font-weight: $font-weight-medium;
+  }
+
+  &__verification-box {
+    margin-top: $spacing-md;
+    padding: $spacing-md;
+    background-color: $gray-50;
+    border-radius: $radius-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
   &__btn {
     padding: $spacing-sm $spacing-lg;
     font-size: $font-size-sm;
@@ -145,6 +185,42 @@
 
       &:hover {
         background-color: darken($error, 10%);
+      }
+    }
+
+    &--small {
+      padding: $spacing-xs $spacing-md;
+      flex-shrink: 0;
+      background-color: $gray-100;
+      color: $gray-700;
+
+      &:hover:not(:disabled) {
+        background-color: $gray-200;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      &.settings__btn--primary {
+        background-color: $primary-500;
+        color: white;
+
+        &:hover:not(:disabled) {
+          background-color: $primary-600;
+        }
+      }
+    }
+
+    &--text {
+      padding: $spacing-xs;
+      background: none;
+      color: $gray-500;
+      align-self: flex-start;
+
+      &:hover {
+        color: $gray-700;
       }
     }
   }

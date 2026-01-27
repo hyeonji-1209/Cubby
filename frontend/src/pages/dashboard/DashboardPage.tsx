@@ -6,6 +6,7 @@ import { useGroupStore } from '@/store/groupStore';
 import { scheduleApi, notificationApi } from '@/api';
 import { GROUP_TYPE_LABELS, MEMBER_ROLE_LABELS } from '@/constants/labels';
 import { usersIcon, calendarIcon, bellIcon, trashIcon } from '@/assets';
+import { getIconById } from '@/assets/icons';
 import { useToast, Modal } from '@/components/common';
 import type { Schedule, Notification } from '@/types';
 import './DashboardPage.scss';
@@ -48,6 +49,7 @@ const DashboardPage = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoaded, setNotificationsLoaded] = useState(false);
 
   // 모달
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; groupId: string; groupName: string; isOwner: boolean }>({
@@ -61,14 +63,22 @@ const DashboardPage = () => {
   const year = activeStartDate.getFullYear();
   const month = activeStartDate.getMonth();
 
+  // 초기 로드: 모임 목록 + 일정 (기본 탭)
   useEffect(() => {
     fetchMyGroups();
-    fetchNotifications();
   }, [fetchMyGroups]);
 
   useEffect(() => {
     fetchMonthSchedules();
   }, [year, month]);
+
+  // 탭별 lazy loading
+  useEffect(() => {
+    if (activeTab === 'notification' && !notificationsLoaded) {
+      fetchNotifications();
+      setNotificationsLoaded(true);
+    }
+  }, [activeTab, notificationsLoaded]);
 
   const fetchMonthSchedules = async () => {
     setSchedulesLoading(true);
@@ -424,12 +434,12 @@ const DashboardPage = () => {
                           <Link to={`/groups/${group.id}`} className="group-table__info">
                             <div
                               className="group-table__avatar"
-                              style={group.color && group.color !== 'transparent' ? { backgroundColor: group.color } : undefined}
+                              style={group.color && group.color !== 'transparent' ? { background: group.color } : undefined}
                             >
                               {group.logoImage ? (
                                 <img src={group.logoImage} alt={group.name} />
-                              ) : group.icon ? (
-                                <span className="group-table__emoji">{group.icon}</span>
+                              ) : group.icon && getIconById(group.icon) ? (
+                                <img src={getIconById(group.icon)} alt="" className="group-table__icon" />
                               ) : (
                                 <span>{group.name.charAt(0)}</span>
                               )}
