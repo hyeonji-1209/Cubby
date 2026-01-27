@@ -32,7 +32,13 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const tokens = useAuthStore.getState().tokens;
+      const { tokens, _hasHydrated } = useAuthStore.getState();
+
+      // 아직 hydration이 완료되지 않았으면 로그아웃하지 않음
+      if (!_hasHydrated) {
+        return Promise.reject(error);
+      }
+
       if (tokens?.refreshToken) {
         try {
           const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {

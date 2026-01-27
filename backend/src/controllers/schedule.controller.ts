@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/database';
 import { Schedule } from '../models/Schedule';
 import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
 import { AppError } from '../middlewares/error.middleware';
+import { requireActiveMember } from '../utils/membership';
 
 export class ScheduleController {
   private scheduleRepository = AppDataSource.getRepository(Schedule);
@@ -65,17 +66,7 @@ export class ScheduleController {
       }
 
       // 멤버인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: {
-          groupId: schedule.groupId,
-          userId: req.user!.id,
-          status: MemberStatus.ACTIVE,
-        },
-      });
-
-      if (!membership) {
-        throw new AppError('Not a member of this group', 403);
-      }
+      await requireActiveMember(this.memberRepository, schedule.groupId, req.user!.id);
 
       res.json({
         success: true,

@@ -25,7 +25,24 @@ interface GroupState {
   // Actions
   fetchMyGroups: () => Promise<void>;
   fetchGroup: (groupId: string) => Promise<void>;
-  createGroup: (data: { name: string; description?: string; type: GroupType; icon?: string; color?: string; logoImage?: string }) => Promise<Group>;
+  createGroup: (data: {
+    name: string;
+    description?: string;
+    type: GroupType;
+    icon?: string;
+    color?: string;
+    logoImage?: string;
+    // 학원(education) 타입 전용
+    hasClasses?: boolean;
+    hasPracticeRooms?: boolean;
+    allowGuardians?: boolean;
+    practiceRoomSettings?: {
+      openTime: string;
+      closeTime: string;
+      slotMinutes: 30 | 60;
+      maxHoursPerDay: number;
+    };
+  }) => Promise<Group>;
   joinGroup: (inviteCode: string) => Promise<{ id: string; name: string; type: GroupType }>;
   leaveGroup: (groupId: string) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;

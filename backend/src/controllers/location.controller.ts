@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database';
 import { FavoriteLocation } from '../models/FavoriteLocation';
-import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
+import { GroupMember } from '../models/GroupMember';
 import { AppError } from '../middlewares/error.middleware';
+import { requireActiveMember, requireAdmin } from '../utils/membership';
 
 export class LocationController {
   private locationRepository = AppDataSource.getRepository(FavoriteLocation);
@@ -12,16 +13,9 @@ export class LocationController {
   getByGroup = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId } = req.params;
-      const userId = req.user!.id;
 
       // 멤버인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: { groupId, userId, status: MemberStatus.ACTIVE },
-      });
-
-      if (!membership) {
-        throw new AppError('Not a member of this group', 403);
-      }
+      await requireActiveMember(this.memberRepository, groupId, req.user!.id);
 
       const locations = await this.locationRepository.find({
         where: { groupId },
@@ -41,17 +35,10 @@ export class LocationController {
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId } = req.params;
-      const userId = req.user!.id;
       const { name, address, placeId, lat, lng, detail } = req.body;
 
       // 관리자인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: { groupId, userId, status: MemberStatus.ACTIVE },
-      });
-
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
-        throw new AppError('Admin access required', 403);
-      }
+      await requireAdmin(this.memberRepository, groupId, req.user!.id, 'add locations');
 
       // 순서 계산
       const maxOrder = await this.locationRepository
@@ -87,17 +74,10 @@ export class LocationController {
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId, locationId } = req.params;
-      const userId = req.user!.id;
       const { name, address, placeId, lat, lng, sortOrder, detail } = req.body;
 
       // 관리자인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: { groupId, userId, status: MemberStatus.ACTIVE },
-      });
-
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
-        throw new AppError('Admin access required', 403);
-      }
+      await requireAdmin(this.memberRepository, groupId, req.user!.id, 'update locations');
 
       const location = await this.locationRepository.findOne({
         where: { id: locationId, groupId },
@@ -131,16 +111,9 @@ export class LocationController {
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId, locationId } = req.params;
-      const userId = req.user!.id;
 
       // 관리자인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: { groupId, userId, status: MemberStatus.ACTIVE },
-      });
-
-      if (!membership || !['owner', 'admin'].includes(membership.role)) {
-        throw new AppError('Admin access required', 403);
-      }
+      await requireAdmin(this.memberRepository, groupId, req.user!.id, 'delete locations');
 
       const location = await this.locationRepository.findOne({
         where: { id: locationId, groupId },

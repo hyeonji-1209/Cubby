@@ -5,6 +5,9 @@ export interface LocationData {
   name: string;           // 장소 이름 (ex: 스타벅스 강남점)
   address: string;        // 주소
   detail?: string;        // 하위 장소/상세 위치 (ex: 2층 회의실)
+  placeId?: string;       // Google Place ID (저장된 장소용)
+  lat?: number;           // 위도
+  lng?: number;           // 경도
 }
 
 interface LocationPickerProps {

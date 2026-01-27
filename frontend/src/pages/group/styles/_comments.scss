@@ -1,0 +1,381 @@
+// 댓글 섹션
+.comment-section {
+  padding: $spacing-md;
+  border-top: 1px solid $gray-100;
+  background: $gray-50;
+
+  &__title {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin-bottom: $spacing-sm;
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__count {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    font-weight: $font-weight-normal;
+  }
+
+  &__form {
+    margin-bottom: $spacing-md;
+  }
+
+  &__input-wrap {
+    display: flex;
+    gap: $spacing-xs;
+    align-items: flex-end;
+  }
+
+  &__input {
+    flex: 1;
+    padding: $spacing-sm;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    resize: none;
+    font-family: inherit;
+    background: white;
+    min-height: 40px;
+
+    &::placeholder {
+      color: $gray-400;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-400;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-md;
+    background: $primary-600;
+    color: white;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    white-space: nowrap;
+    height: 40px;
+
+    &:hover:not(:disabled) {
+      background: $primary-700;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__loading,
+  &__empty {
+    text-align: center;
+    color: $gray-500;
+    font-size: $font-size-sm;
+    padding: $spacing-lg 0;
+  }
+}
+
+.comment-item {
+  display: flex;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
+  background: white;
+  border-radius: $radius-md;
+  border: 1px solid $gray-100;
+
+  &__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: $primary-100;
+    color: $primary-700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    flex-shrink: 0;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-bottom: 2px;
+  }
+
+  &__author {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+  }
+
+  &__time {
+    font-size: 11px;
+    color: $gray-400;
+  }
+
+  &__text {
+    font-size: $font-size-sm;
+    color: $gray-700;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-xs;
+  }
+
+  &__action {
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: $gray-400;
+    cursor: pointer;
+
+    &:hover {
+      color: $gray-600;
+    }
+
+    &--delete:hover {
+      color: $error;
+    }
+  }
+
+  &__edit {
+    margin-top: $spacing-xs;
+  }
+
+  &__edit-input {
+    width: 100%;
+    padding: $spacing-xs $spacing-sm;
+    border: 1px solid $gray-200;
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    resize: none;
+    font-family: inherit;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-400;
+    }
+  }
+
+  &__edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-xs;
+    margin-top: $spacing-xs;
+  }
+
+  &__edit-btn {
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+
+    &--cancel {
+      background: none;
+      border: 1px solid $gray-200;
+      color: $gray-600;
+
+      &:hover {
+        background: $gray-50;
+      }
+    }
+
+    &--save {
+      background: $primary-600;
+      border: none;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: $primary-700;
+      }
+
+      &:disabled {
+        background: $gray-300;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  // 대댓글 스타일
+  &--reply {
+    margin-left: $spacing-lg;
+    border-left: 2px solid $primary-100;
+
+    .comment-item__avatar {
+      width: 28px;
+      height: 28px;
+      font-size: 10px;
+    }
+  }
+
+  // 하단 액션 영역 (좋아요, 답글, 수정, 삭제)
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-top: $spacing-xs;
+  }
+
+  // 좋아요 버튼
+  &__like {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: $gray-400;
+    cursor: pointer;
+
+    svg {
+      transition: all 0.15s ease;
+    }
+
+    span {
+      font-size: 11px;
+      font-weight: $font-weight-medium;
+    }
+
+    &:hover {
+      color: $error;
+    }
+
+    &--active {
+      color: $error;
+    }
+  }
+
+  // 답글 버튼
+  &__reply-btn {
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: $gray-400;
+    cursor: pointer;
+
+    &:hover {
+      color: $primary-600;
+    }
+  }
+
+  // 답글 작성 폼
+  &__reply-form {
+    margin-top: $spacing-sm;
+    padding-top: $spacing-sm;
+    border-top: 1px solid $gray-100;
+  }
+
+  &__reply-input {
+    width: 100%;
+    padding: $spacing-xs $spacing-sm;
+    border: 1px solid $gray-200;
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    resize: none;
+    font-family: inherit;
+    background: $gray-50;
+
+    &::placeholder {
+      color: $gray-400;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-400;
+      background: white;
+    }
+  }
+
+  &__reply-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-xs;
+    margin-top: $spacing-xs;
+  }
+
+  &__reply-cancel {
+    padding: $spacing-xs $spacing-sm;
+    background: none;
+    border: 1px solid $gray-200;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    color: $gray-600;
+    cursor: pointer;
+
+    &:hover {
+      background: $gray-50;
+    }
+  }
+
+  &__reply-submit {
+    padding: $spacing-xs $spacing-sm;
+    background: $primary-600;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    color: white;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: $primary-700;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// 댓글 스레드 (댓글 + 대댓글 묶음)
+.comment-thread {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+// 대댓글 목록
+.comment-replies {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+

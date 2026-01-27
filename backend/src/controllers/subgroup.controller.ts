@@ -352,6 +352,76 @@ export class SubGroupController {
     }
   };
 
+  // 소모임 상세 조회
+  getById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { subGroupId } = req.params;
+
+      const subGroup = await this.subGroupRepository.findOne({
+        where: { id: subGroupId },
+        relations: ['leader', 'parentGroup'],
+      });
+
+      if (!subGroup) {
+        throw new AppError('SubGroup not found', 404);
+      }
+
+      res.json({
+        success: true,
+        data: subGroup,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 소모임 수정
+  update = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { subGroupId } = req.params;
+      const { name, description, coverImage, leaderId, settings } = req.body;
+
+      const subGroup = await this.subGroupRepository.findOne({
+        where: { id: subGroupId },
+      });
+
+      if (!subGroup) {
+        throw new AppError('SubGroup not found', 404);
+      }
+
+      if (name) subGroup.name = name;
+      if (description !== undefined) subGroup.description = description;
+      if (coverImage !== undefined) subGroup.coverImage = coverImage;
+      if (leaderId !== undefined) subGroup.leaderId = leaderId;
+      if (settings !== undefined) subGroup.settings = settings;
+
+      await this.subGroupRepository.save(subGroup);
+
+      res.json({
+        success: true,
+        data: subGroup,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 소모임 삭제
+  delete = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { subGroupId } = req.params;
+
+      await this.subGroupRepository.softDelete(subGroupId);
+
+      res.json({
+        success: true,
+        message: 'SubGroup deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // 승인 권한 체크 헬퍼
   private async checkApprovalPermission(
     userId: string,

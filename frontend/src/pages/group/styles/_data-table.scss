@@ -1,0 +1,387 @@
+// 공통 데이터 테이블
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-sm;
+
+  thead {
+    tr {
+      border-bottom: 2px solid $gray-200;
+    }
+
+    th {
+      padding: $spacing-xs $spacing-sm;
+      text-align: left;
+      font-weight: $font-weight-semibold;
+      color: $gray-600;
+      white-space: nowrap;
+
+      &:last-child {
+        text-align: right;
+        width: 80px;
+      }
+    }
+  }
+
+  tbody {
+    tr {
+      border-bottom: 1px solid $gray-100;
+      transition: background $transition-fast;
+
+      &:hover {
+        background: $gray-50;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    td {
+      padding: $spacing-sm $spacing-sm;
+      vertical-align: middle;
+      color: $gray-700;
+
+      &:last-child {
+        text-align: right;
+      }
+    }
+  }
+
+  // 클릭 가능한 행
+  &__row--clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: $primary-50 !important;
+    }
+  }
+
+  // 고정된 행 (공지사항용)
+  &__row--pinned {
+    background: $primary-50;
+
+    &:hover {
+      background: darken($primary-50, 3%) !important;
+    }
+  }
+
+  // 사용자 셀 (아바타 + 이름)
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-full;
+    background: $primary-100;
+    color: $primary-600;
+    @include flex-center;
+    font-weight: $font-weight-medium;
+    font-size: $font-size-sm;
+    flex-shrink: 0;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__name {
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+  }
+
+  &__email {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  // 역할 배지
+  &__role {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    background: $gray-100;
+    color: $gray-600;
+
+    &--owner {
+      background: $primary-100;
+      color: $primary-700;
+    }
+
+    &--admin {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--leader {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+  }
+
+  // 상태 배지
+  &__status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+
+    &--active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    &--pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    &--inactive {
+      background: $gray-200;
+      color: $gray-600;
+    }
+  }
+
+  // 제목 셀
+  &__title-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__title-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__meta {
+    font-size: 11px;
+    color: $gray-400;
+  }
+
+  &__title {
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+  }
+
+  &__subtitle {
+    font-size: $font-size-xs;
+    color: $gray-500;
+
+    &--content {
+      max-width: 400px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  // 색상 도트 (일정용)
+  &__color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  // 배지 (종일, 고정 등)
+  &__badge {
+    padding: 2px 6px;
+    background: $primary-100;
+    color: $primary-700;
+    font-size: 10px;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+  }
+
+  &__pin-badge {
+    padding: 2px 6px;
+    background: $primary-500;
+    color: white;
+    font-size: 10px;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+  }
+
+  &__admin-badge {
+    padding: 2px 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 10px;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+  }
+
+  // 일반 텍스트
+  &__text {
+    color: $gray-600;
+  }
+
+  // 날짜 텍스트
+  &__date {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    white-space: nowrap;
+  }
+
+  // 시간 표시 (일정용)
+  &__time {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: $font-size-xs;
+    color: $gray-600;
+  }
+
+  &__time-separator {
+    color: $gray-400;
+  }
+
+  // 화살표 (링크용)
+  &__arrow {
+    color: $gray-400;
+    font-size: $font-size-lg;
+  }
+
+  // 액션 버튼 그룹
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+    justify-content: flex-end;
+  }
+
+  &__action-btn {
+    padding: $spacing-xs $spacing-sm;
+    background: $gray-100;
+    color: $gray-600;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $primary-500;
+      color: white;
+    }
+
+    &--approve {
+      background: $success;
+      color: white;
+
+      &:hover {
+        background: darken($success, 10%);
+      }
+    }
+
+    &--reject {
+      background: $gray-200;
+      color: $gray-700;
+
+      &:hover {
+        background: $gray-300;
+      }
+    }
+  }
+
+  &__icon-btn {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-base;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: background $transition-fast;
+    line-height: 1;
+
+    &:hover {
+      background: rgba($gray-500, 0.1);
+    }
+
+    &--danger:hover {
+      background: rgba($error, 0.1);
+    }
+  }
+
+  // 반응형
+  @include mobile {
+    display: block;
+
+    thead {
+      display: none;
+    }
+
+    tbody {
+      display: block;
+
+      tr {
+        display: block;
+        padding: $spacing-md;
+        margin-bottom: $spacing-sm;
+        background: $gray-50;
+        border-radius: $radius-md;
+        border-bottom: none;
+
+        &:hover {
+          background: $gray-100;
+        }
+      }
+
+      td {
+        display: block;
+        padding: $spacing-xs 0;
+        text-align: left !important;
+
+        &:first-child {
+          padding-top: 0;
+        }
+
+        &:last-child {
+          padding-top: $spacing-sm;
+          border-top: 1px solid $gray-200;
+          margin-top: $spacing-sm;
+        }
+
+        &:empty {
+          display: none;
+        }
+      }
+    }
+
+    &__actions {
+      justify-content: flex-start;
+    }
+  }
+}
+
+// 섹션 헤더 (테이블 위)
+.group-detail__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+
+  h2 {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+}
+

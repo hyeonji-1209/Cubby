@@ -98,20 +98,20 @@ router.post(
 );
 
 // 소모임 상세 조회
-router.get('/:groupId/subgroups/:subGroupId', requireGroupMember, groupController.getSubGroupById);
+router.get('/:groupId/subgroups/:subGroupId', requireGroupMember, subGroupController.getById);
 
 // 소모임 수정
 router.patch(
   '/:groupId/subgroups/:subGroupId',
   requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER),
-  groupController.updateSubGroup
+  subGroupController.update
 );
 
 // 소모임 삭제
 router.delete(
   '/:groupId/subgroups/:subGroupId',
   requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
-  groupController.deleteSubGroup
+  subGroupController.delete
 );
 
 export default router;

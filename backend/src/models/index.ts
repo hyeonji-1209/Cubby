@@ -16,3 +16,5 @@ export * from './GroupPosition';
 export * from './MemberPosition';
 export * from './VerificationCode';
 export * from './FavoriteLocation';
+export * from './PracticeRoom';
+export * from './PracticeRoomReservation';

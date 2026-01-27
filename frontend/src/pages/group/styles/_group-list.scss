@@ -1,0 +1,54 @@
+// Group List Page
+.group-list {
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__title {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: $gray-900;
+  }
+
+  &__create-btn {
+    padding: $spacing-sm $spacing-md;
+    background-color: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $primary-600;
+    }
+  }
+
+  &__empty {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-2xl;
+    background-color: white;
+    border-radius: $radius-lg;
+    border: 1px dashed $gray-300;
+  }
+
+  &__empty-text {
+    font-size: $font-size-lg;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__empty-subtext {
+    color: $gray-500;
+    font-size: $font-size-sm;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: $spacing-lg;
+  }
+}
+

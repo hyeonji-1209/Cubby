@@ -33,7 +33,7 @@ const GroupListPage = () => {
         </div>
       ) : (
         <div className="group-list__grid">
-          {myGroups.map((group) => (
+          {myGroups.filter((group) => group.id).map((group) => (
             <Link
               key={group.id}
               to={`/groups/${group.id}`}
@@ -48,12 +48,12 @@ const GroupListPage = () => {
                   />
                 ) : (
                   <div className="group-card__logo group-card__logo--default">
-                    {group.name.charAt(0)}
+                    {group.name?.charAt(0) || '?'}
                   </div>
                 )}
               </div>
               <div className="group-card__body">
-                <h3 className="group-card__name">{group.name}</h3>
+                <h3 className="group-card__name">{group.name || '이름 없음'}</h3>
                 <span className="group-card__type">
                   {GROUP_TYPE_LABELS[group.type] || group.type}
                 </span>

@@ -24,8 +24,8 @@ app.use(cors({
   credentials: true,
 }));
 app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // 정적 파일 서빙 (업로드된 파일)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

@@ -1,0 +1,941 @@
+// Group Create Page
+.group-create {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-md;
+    }
+  }
+
+  &__header-left {
+    flex: 1;
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $gray-900;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__subtitle {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__form {
+    flex: 1;
+    background-color: white;
+    padding: $spacing-xl;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-sm;
+  }
+
+  &__body {
+    display: flex;
+    gap: $spacing-xl;
+    height: 100%;
+
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+
+  &__left {
+    width: 240px;
+    flex-shrink: 0;
+
+    @include mobile {
+      width: 100%;
+    }
+  }
+
+  &__right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__types {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__type {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border: 2px solid $gray-200;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+    background: white;
+
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    &:hover {
+      border-color: var(--type-color, $primary-300);
+      background: $gray-50;
+    }
+
+    &--selected {
+      border-color: var(--type-color, $primary-500);
+      background: $gray-50;
+
+      .group-create__type-icon {
+        background: var(--type-color, $primary-500);
+
+        img {
+          filter: brightness(0) invert(1);
+        }
+      }
+
+      .group-create__type-label {
+        color: $gray-900;
+        font-weight: $font-weight-semibold;
+      }
+    }
+  }
+
+  &__type-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: $radius-md;
+    background: $gray-100;
+    @include flex-center;
+    flex-shrink: 0;
+    transition: all $transition-fast;
+
+    img {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+  }
+
+  &__type-label {
+    font-size: $font-size-sm;
+    color: $gray-700;
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+  }
+
+  &__row {
+    display: flex;
+    gap: $spacing-md;
+    align-items: flex-end;
+    margin-bottom: $spacing-lg;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  &__icon-field {
+    flex-shrink: 0;
+  }
+
+  &__field {
+    position: relative;
+
+    &--grow {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  &__label {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__optional {
+    font-weight: $font-weight-normal;
+    color: $gray-400;
+  }
+
+  &__input,
+  &__textarea {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__textarea {
+    min-height: 80px;
+  }
+
+  &__role-info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: $primary-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__role-label {
+    font-size: $font-size-sm;
+    color: $gray-600;
+  }
+
+  &__role-badge {
+    padding: $spacing-xs $spacing-sm;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    border-radius: $radius-sm;
+    text-transform: uppercase;
+  }
+
+  &__role-desc {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    margin-left: auto;
+  }
+
+  &__couple-fields {
+    padding: $spacing-md;
+    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__couple-role {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__couple-role-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: #9d174d;
+    white-space: nowrap;
+  }
+
+  &__couple-toggle {
+    display: flex;
+    background: white;
+    border-radius: $radius-full;
+    padding: 3px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+    flex: 1;
+  }
+
+  &__couple-btn {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    border: none;
+    background: transparent;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-500;
+    border-radius: $radius-full;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      color: #ec4899;
+    }
+
+    &--active {
+      background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+      color: white;
+      box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);
+    }
+  }
+
+  &__couple-dates {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__couple-date {
+    flex: 1;
+    background: white;
+    border-radius: $radius-md;
+    padding: $spacing-sm;
+  }
+
+  &__couple-date-label {
+    display: block;
+    font-size: $font-size-xs;
+    color: #9d174d;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__couple-date-input {
+    width: 100%;
+    padding: $spacing-xs;
+    border: none;
+    background: transparent;
+    font-size: $font-size-sm;
+    color: $gray-700;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  // 큰 인풋 (모임 이름용)
+  &__input--large {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-medium;
+    padding: $spacing-md;
+  }
+
+  // 학원 타입 전용 설정
+  &__academy-settings {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-md;
+  }
+
+  &__academy-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__academy-header-icon {
+    font-size: 16px;
+  }
+
+  &__academy-header-text {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__academy-card {
+    background: white;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+  }
+
+  &__academy-card-question {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__academy-card-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-sm;
+  }
+
+  &__academy-card-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: $spacing-sm $spacing-md;
+    background: $gray-50;
+    border: 2px solid transparent;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $gray-100;
+    }
+
+    &--active {
+      background: $primary-50;
+      border-color: $primary-500;
+
+      .group-create__academy-card-btn-label {
+        color: $primary-700;
+      }
+    }
+  }
+
+  &__academy-card-btn-icon {
+    font-size: 24px;
+  }
+
+  &__academy-card-btn-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__academy-card-btn-desc {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  &__academy-card-toggle {
+    display: flex;
+    gap: $spacing-xs;
+    background: $gray-100;
+    padding: 4px;
+    border-radius: $radius-md;
+  }
+
+  &__academy-toggle-btn {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    background: transparent;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-500;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      color: $gray-700;
+    }
+
+    &--active {
+      background: white;
+      color: $primary-600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  &__academy-card-note {
+    margin-top: $spacing-sm;
+    font-size: $font-size-xs;
+    color: $primary-600;
+  }
+
+  // 멤버 설정 (직책 만들기 + 내 직책)
+  &__member-settings {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-md;
+  }
+
+  &__member-settings-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__member-settings-header-icon {
+    font-size: 16px;
+  }
+
+  &__member-settings-header-text {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__member-settings-card {
+    background: white;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+  }
+
+  &__member-settings-card-question {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__member-settings-card-note {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  // 연습실 관리 설정
+  &__practice-room-settings {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-lg;
+    margin-top: $spacing-sm;
+  }
+
+  &__practice-room-settings-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__practice-room-settings-header-icon {
+    font-size: 16px;
+  }
+
+  &__practice-room-settings-header-text {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__practice-room-card {
+    background: white;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+  }
+
+  &__practice-room-card-question {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__practice-room-time-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__practice-room-time-separator {
+    color: $gray-500;
+    font-size: $font-size-sm;
+  }
+
+  &__practice-room-max-hours {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__practice-room-max-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: $gray-100;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-lg;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $gray-200;
+    }
+
+    &:active {
+      background: $gray-300;
+    }
+  }
+
+  &__practice-room-max-value {
+    min-width: 60px;
+    text-align: center;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__input--time {
+    width: 120px;
+  }
+
+  // 직책 태그 스타일
+  &__positions-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-top: $spacing-sm;
+  }
+
+  &__positions-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px 4px 12px;
+    background: $primary-100;
+    color: $primary-700;
+    border-radius: $radius-full;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+  }
+
+  &__positions-tag-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: transparent;
+    border: none;
+    border-radius: $radius-full;
+    color: $primary-500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $primary-200;
+      color: $primary-700;
+    }
+  }
+
+  &__field--half {
+    flex: 1;
+  }
+
+  &__features {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+
+    &--all {
+      padding: $spacing-lg;
+      background: $gray-50;
+      height: 100%;
+    }
+  }
+
+  &__features-guide {
+    text-align: center;
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0 0 $spacing-md 0;
+  }
+
+  &__features-all {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__features-group {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border-radius: $radius-md;
+  }
+
+  &__features-group-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+
+  &__features-group-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: $radius-sm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 14px;
+      height: 14px;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  &__features-group-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__features-group-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+  }
+
+  &__features-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+  }
+
+  &__features-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    img {
+      width: 18px;
+      height: 18px;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  &__features-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__features-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $gray-800;
+  }
+
+  &__features-note {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+
+  &__features-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+  }
+
+  &__feature-tag {
+    padding: $spacing-xs $spacing-sm;
+    background: white;
+    border: 1px solid $gray-200;
+    color: $gray-600;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-full;
+  }
+
+  &__cancel {
+    padding: $spacing-sm $spacing-lg;
+    color: $gray-700;
+    font-weight: $font-weight-medium;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover {
+      background-color: $gray-50;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-lg;
+    background-color: $primary-500;
+    color: white;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    transition: background-color $transition-fast;
+
+    &:hover:not(:disabled) {
+      background-color: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // 회사 직위/직책 모드 선택
+  &__company-mode {
+    margin-bottom: $spacing-lg;
+  }
+
+  &__company-mode-toggle {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__company-mode-btn {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover:not(&--active) {
+      border-color: $primary-300;
+      color: $primary-500;
+    }
+
+    &--active {
+      background: $primary-500;
+      border-color: $primary-500;
+      color: white;
+      font-weight: $font-weight-medium;
+    }
+  }
+
+  &__company-mode-hint {
+    display: block;
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  // 직책/직분 설정 섹션
+  &__positions {
+    margin-bottom: $spacing-md;
+  }
+
+  &__positions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-xs;
+    }
+  }
+
+  &__positions-hint {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  &__positions-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__position-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__position-remove {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    color: $gray-400;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $error;
+      color: $error;
+      background: rgba($error, 0.05);
+    }
+  }
+
+  &__position-add {
+    width: 100%;
+    margin-top: $spacing-sm;
+    padding: $spacing-sm;
+    background: white;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-500;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover:not(:disabled) {
+      border-color: $primary-500;
+      color: $primary-500;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // 본인 직책/직분 설정
+  &__my-title {
+    margin-bottom: $spacing-md;
+
+    .group-create__role-info {
+      margin-top: $spacing-sm;
+      margin-bottom: 0;
+      padding: $spacing-sm $spacing-md;
+    }
+  }
+
+  &__my-title-hint {
+    display: block;
+    margin-top: $spacing-xs;
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+}
+

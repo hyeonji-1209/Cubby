@@ -11,24 +11,45 @@ import { AppError } from '../middlewares/error.middleware';
 export class GroupController {
   private groupRepository = AppDataSource.getRepository(Group);
   private memberRepository = AppDataSource.getRepository(GroupMember);
-  private subGroupRepository = AppDataSource.getRepository(SubGroup);
+  private subGroupRepository = AppDataSource.getRepository(SubGroup); // Used for counting subgroups
   private announcementRepository = AppDataSource.getRepository(Announcement);
   private scheduleRepository = AppDataSource.getRepository(Schedule);
 
+  // 유니크한 초대 코드 생성 헬퍼
+  private generateUniqueInviteCode = async (): Promise<string> => {
+    let inviteCode = generateInviteCode();
+    let existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
+    while (existingCode) {
+      inviteCode = generateInviteCode();
+      existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
+    }
+    return inviteCode;
+  };
+
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { name, description, type, icon, color, logoImage, coverImage, settings, enabledFeatures } = req.body;
+      const {
+        name,
+        description,
+        type,
+        icon,
+        color,
+        logoImage,
+        coverImage,
+        settings,
+        enabledFeatures,
+        // 학원(education) 타입 전용
+        hasClasses,
+        hasPracticeRooms,
+        allowGuardians,
+        practiceRoomSettings,
+      } = req.body;
 
       if (!Object.values(GroupType).includes(type)) {
         throw new AppError('Invalid group type', 400);
       }
 
-      let inviteCode = generateInviteCode();
-      let existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
-      while (existingCode) {
-        inviteCode = generateInviteCode();
-        existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
-      }
+      const inviteCode = await this.generateUniqueInviteCode();
 
       const group = this.groupRepository.create({
         name,
@@ -43,6 +64,13 @@ export class GroupController {
         settings,
         enabledFeatures,
         ownerId: req.user!.id,
+        // 학원(education) 타입 전용 설정
+        hasClasses: type === GroupType.EDUCATION ? hasClasses ?? false : false,
+        hasPracticeRooms: type === GroupType.EDUCATION ? hasPracticeRooms ?? false : false,
+        allowGuardians: type === GroupType.EDUCATION ? allowGuardians ?? false : false,
+        ...(type === GroupType.EDUCATION && hasPracticeRooms && practiceRoomSettings
+          ? { practiceRoomSettings }
+          : {}),
       });
 
       await this.groupRepository.save(group);
@@ -285,7 +313,21 @@ export class GroupController {
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId } = req.params;
-      const { name, description, icon, color, logoImage, coverImage, settings, enabledFeatures } = req.body;
+      const {
+        name,
+        description,
+        icon,
+        color,
+        logoImage,
+        coverImage,
+        settings,
+        enabledFeatures,
+        // 학원 타입 전용 설정
+        hasClasses,
+        hasPracticeRooms,
+        allowGuardians,
+        practiceRoomSettings,
+      } = req.body;
 
       const group = await this.groupRepository.findOne({ where: { id: groupId } });
 
@@ -301,6 +343,12 @@ export class GroupController {
       if (coverImage !== undefined) group.coverImage = coverImage;
       if (settings !== undefined) group.settings = settings;
       if (enabledFeatures !== undefined) group.enabledFeatures = enabledFeatures;
+
+      // 학원 타입 전용 설정 업데이트
+      if (hasClasses !== undefined) group.hasClasses = hasClasses;
+      if (hasPracticeRooms !== undefined) group.hasPracticeRooms = hasPracticeRooms;
+      if (allowGuardians !== undefined) group.allowGuardians = allowGuardians;
+      if (practiceRoomSettings !== undefined) group.practiceRoomSettings = practiceRoomSettings;
 
       await this.groupRepository.save(group);
 
@@ -338,14 +386,7 @@ export class GroupController {
         throw new AppError('Group not found', 404);
       }
 
-      // 새 초대 코드 생성
-      let inviteCode = generateInviteCode();
-      let existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
-      while (existingCode) {
-        inviteCode = generateInviteCode();
-        existingCode = await this.groupRepository.findOne({ where: { inviteCode } });
-      }
-
+      const inviteCode = await this.generateUniqueInviteCode();
       group.inviteCode = inviteCode;
       group.inviteCodeExpiresAt = getInviteCodeExpiryDate();
 
@@ -527,127 +568,6 @@ export class GroupController {
           nickname: membership.nickname,
           title: membership.title,
         },
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  // === 소모임 관련 ===
-  getSubGroups = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { groupId } = req.params;
-
-      const subGroups = await this.subGroupRepository.find({
-        where: { parentGroupId: groupId },
-        relations: ['leader'],
-        order: { createdAt: 'ASC' },
-      });
-
-      res.json({
-        success: true,
-        data: subGroups.map((sg) => ({
-          ...sg,
-          leader: sg.leader
-            ? {
-                id: sg.leader.id,
-                name: sg.leader.name,
-                profileImage: sg.leader.profileImage,
-              }
-            : null,
-        })),
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  createSubGroup = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { groupId } = req.params;
-      const { name, description, coverImage, leaderId, settings } = req.body;
-
-      const subGroup = this.subGroupRepository.create({
-        parentGroupId: groupId,
-        name,
-        description,
-        coverImage,
-        leaderId,
-        settings,
-      });
-
-      await this.subGroupRepository.save(subGroup);
-
-      res.status(201).json({
-        success: true,
-        data: subGroup,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  getSubGroupById = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { subGroupId } = req.params;
-
-      const subGroup = await this.subGroupRepository.findOne({
-        where: { id: subGroupId },
-        relations: ['leader', 'parentGroup'],
-      });
-
-      if (!subGroup) {
-        throw new AppError('SubGroup not found', 404);
-      }
-
-      res.json({
-        success: true,
-        data: subGroup,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  updateSubGroup = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { subGroupId } = req.params;
-      const { name, description, coverImage, leaderId, settings } = req.body;
-
-      const subGroup = await this.subGroupRepository.findOne({
-        where: { id: subGroupId },
-      });
-
-      if (!subGroup) {
-        throw new AppError('SubGroup not found', 404);
-      }
-
-      if (name) subGroup.name = name;
-      if (description !== undefined) subGroup.description = description;
-      if (coverImage !== undefined) subGroup.coverImage = coverImage;
-      if (leaderId !== undefined) subGroup.leaderId = leaderId;
-      if (settings !== undefined) subGroup.settings = settings;
-
-      await this.subGroupRepository.save(subGroup);
-
-      res.json({
-        success: true,
-        data: subGroup,
-      });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  deleteSubGroup = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { subGroupId } = req.params;
-
-      await this.subGroupRepository.softDelete(subGroupId);
-
-      res.json({
-        success: true,
-        message: 'SubGroup deleted successfully',
       });
     } catch (error) {
       next(error);

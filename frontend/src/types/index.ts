@@ -16,6 +16,40 @@ export interface User {
 export type GroupType = 'education' | 'religious' | 'community' | 'company' | 'couple';
 export type GroupStatus = 'active' | 'inactive' | 'suspended';
 
+export interface PracticeRoomSettings {
+  openTime: string; // "09:00"
+  closeTime: string; // "22:00"
+  slotMinutes: 30 | 60;
+  maxHoursPerDay: number; // 1-8
+}
+
+export interface PracticeRoom {
+  id: string;
+  groupId: string;
+  name: string;
+  order: number;
+  isActive: boolean;
+  capacity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
+
+export interface PracticeRoomReservation {
+  id: string;
+  roomId: string;
+  roomName?: string;
+  userId: string;
+  userName?: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  status: ReservationStatus;
+  note?: string;
+  isOwn?: boolean;
+}
+
 export interface Group {
   id: string;
   name: string;
@@ -30,6 +64,11 @@ export interface Group {
   settings?: Record<string, unknown>;
   enabledFeatures?: string[];
   status: GroupStatus;
+  // 학원 타입 전용 설정
+  hasClasses?: boolean; // 반 운영 여부
+  hasPracticeRooms?: boolean; // 연습실 운영 여부
+  allowGuardians?: boolean; // 보호자 허용 여부
+  practiceRoomSettings?: PracticeRoomSettings;
   ownerId: string;
   owner?: User;
   memberCount?: number;

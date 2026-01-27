@@ -11,3 +11,4 @@ export { ToastProvider, useToast } from './Toast';
 export { default as CommentSection } from './CommentSection';
 export { default as LocationPicker } from './LocationPicker';
 export type { LocationData } from './LocationPicker';
+export { default as ConfirmDialog } from './ConfirmDialog';

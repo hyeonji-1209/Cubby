@@ -2,9 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database';
 import { Announcement } from '../models/Announcement';
 import { AnnouncementView } from '../models/AnnouncementView';
-import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
+import { GroupMember } from '../models/GroupMember';
 import { Like, LikeTargetType } from '../models/Like';
 import { AppError } from '../middlewares/error.middleware';
+import { requireActiveMember, canEditOrDelete, isLeaderOrAbove } from '../utils/membership';
 import fs from 'fs';
 import path from 'path';
 
@@ -114,17 +115,7 @@ export class AnnouncementController {
       }
 
       // 멤버인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: {
-          groupId: announcement.groupId,
-          userId,
-          status: MemberStatus.ACTIVE,
-        },
-      });
-
-      if (!membership) {
-        throw new AppError('Not a member of this group', 403);
-      }
+      await requireActiveMember(this.memberRepository, announcement.groupId, userId);
 
       // 조회 기록 확인 및 추가 (중복 방지)
       const existingView = await this.viewRepository.findOne({
@@ -216,17 +207,12 @@ export class AnnouncementController {
       }
 
       // 작성자이거나 관리자인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: {
-          groupId: announcement.groupId,
-          userId: req.user!.id,
-          status: MemberStatus.ACTIVE,
-        },
-      });
-
-      const canEdit =
-        announcement.authorId === req.user!.id ||
-        (membership && [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role));
+      const canEdit = await canEditOrDelete(
+        this.memberRepository,
+        announcement.groupId,
+        req.user!.id,
+        announcement.authorId
+      );
 
       if (!canEdit) {
         throw new AppError('Not authorized to edit this announcement', 403);
@@ -263,19 +249,14 @@ export class AnnouncementController {
       }
 
       // 작성자이거나 관리자인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: {
-          groupId: announcement.groupId,
-          userId: req.user!.id,
-          status: MemberStatus.ACTIVE,
-        },
-      });
+      const hasPermission = await canEditOrDelete(
+        this.memberRepository,
+        announcement.groupId,
+        req.user!.id,
+        announcement.authorId
+      );
 
-      const canDelete =
-        announcement.authorId === req.user!.id ||
-        (membership && [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role));
-
-      if (!canDelete) {
+      if (!hasPermission) {
         throw new AppError('Not authorized to delete this announcement', 403);
       }
 
@@ -306,16 +287,10 @@ export class AnnouncementController {
         throw new AppError('Announcement not found', 404);
       }
 
-      // 관리자인지 확인
-      const membership = await this.memberRepository.findOne({
-        where: {
-          groupId: announcement.groupId,
-          userId: req.user!.id,
-          status: MemberStatus.ACTIVE,
-        },
-      });
+      // 리더 이상인지 확인
+      const membership = await requireActiveMember(this.memberRepository, announcement.groupId, req.user!.id);
 
-      if (!membership || ![MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER].includes(membership.role)) {
+      if (!isLeaderOrAbove(membership)) {
         throw new AppError('Not authorized to pin/unpin announcements', 403);
       }
 

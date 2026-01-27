@@ -9,6 +9,8 @@ import notificationRoutes from './notification.routes';
 import verificationRoutes from './verification.routes';
 import uploadRoutes from './upload.routes';
 import locationRoutes from './location.routes';
+import practiceRoomRoutes from './practiceRoom.routes';
+import practiceRoomReservationRoutes from './practiceRoomReservation.routes';
 
 const router = Router();
 
@@ -17,6 +19,8 @@ router.use('/users', userRoutes);
 router.use('/groups', groupRoutes);
 router.use('/groups', positionRoutes); // /groups/:groupId/positions
 router.use('/', locationRoutes); // /groups/:groupId/locations
+router.use('/', practiceRoomRoutes); // /groups/:groupId/practice-rooms
+router.use('/', practiceRoomReservationRoutes); // /groups/:groupId/practice-room-reservations
 router.use('/announcements', announcementRoutes);
 router.use('/schedules', scheduleRoutes);
 router.use('/notifications', notificationRoutes);

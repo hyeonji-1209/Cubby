@@ -49,10 +49,10 @@ export class Group {
   @Column({ type: 'varchar', length: 7, nullable: true })
   color: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'longtext', nullable: true })
   logoImage: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'longtext', nullable: true })
   coverImage: string;
 
   @Column({ type: 'varchar', length: 8, unique: true })
@@ -69,6 +69,24 @@ export class Group {
 
   @Column({ type: 'enum', enum: GroupStatus, default: GroupStatus.ACTIVE })
   status: GroupStatus;
+
+  // 학원 타입 전용 설정
+  @Column({ type: 'boolean', default: false })
+  hasClasses: boolean; // 반 운영 여부
+
+  @Column({ type: 'boolean', default: false })
+  hasPracticeRooms: boolean; // 연습실 운영 여부
+
+  @Column({ type: 'boolean', default: false })
+  allowGuardians: boolean; // 보호자 허용 여부
+
+  @Column({ type: 'json', nullable: true })
+  practiceRoomSettings: {
+    openTime: string; // "09:00"
+    closeTime: string; // "22:00"
+    slotMinutes: number; // 30 or 60
+    maxHoursPerDay: number; // 2
+  } | null;
 
   @Column({ type: 'uuid' })
   ownerId: string;

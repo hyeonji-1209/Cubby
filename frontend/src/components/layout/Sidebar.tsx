@@ -47,7 +47,7 @@ const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }:
 
   // 소모임 로드
   const loadSubGroups = async () => {
-    if (hasLoadedRef.current || isLoading) return;
+    if (hasLoadedRef.current || isLoading || !groupId || groupId === 'undefined') return;
 
     setIsLoading(true);
     try {
@@ -338,17 +338,19 @@ const Sidebar = () => {
             <span>가입한 모임이 없습니다</span>
           </div>
         ) : (
-          myGroups.map((group) => (
-            <GroupMenuItem
-              key={group.id}
-              groupId={group.id}
-              groupName={group.name}
-              icon={group.icon}
-              color={group.color}
-              logoImage={group.logoImage}
-              isActive={location.pathname.includes(`/groups/${group.id}`)}
-            />
-          ))
+          myGroups
+            .filter((group) => group.id) // id가 있는 그룹만 렌더링
+            .map((group) => (
+              <GroupMenuItem
+                key={group.id}
+                groupId={group.id}
+                groupName={group.name}
+                icon={group.icon}
+                color={group.color}
+                logoImage={group.logoImage}
+                isActive={location.pathname.includes(`/groups/${group.id}`)}
+              />
+            ))
         )}
       </nav>
 

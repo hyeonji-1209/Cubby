@@ -1,0 +1,553 @@
+// 연습실 탭 스타일
+.group-detail {
+  &__practicerooms {
+    flex: 1;
+  }
+
+  &__practiceroom-info {
+    display: flex;
+    gap: $spacing-lg;
+    padding: $spacing-md $spacing-lg;
+    background: $gray-50;
+    border-radius: $radius-lg;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__practiceroom-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+
+    .label {
+      font-size: $font-size-xs;
+      color: $gray-500;
+    }
+
+    .value {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+  }
+
+  &__practiceroom-list {
+    margin-bottom: $spacing-lg;
+
+    h3 {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin-bottom: $spacing-md;
+    }
+  }
+
+  &__practiceroom-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: $spacing-md;
+  }
+
+  &__practiceroom-card {
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-lg;
+    padding: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    transition: all 0.2s;
+
+    &.unavailable {
+      opacity: 0.6;
+      background: $gray-50;
+    }
+  }
+
+  &__practiceroom-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__practiceroom-card-name {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+  }
+
+  &__practiceroom-card-status {
+    font-size: $font-size-xs;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-full;
+
+    &.available {
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &.unavailable {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+  }
+
+  &__practiceroom-reserve-btn {
+    width: 100%;
+    padding: $spacing-sm;
+    background: $primary-500;
+    color: white;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
+    }
+  }
+
+  &__practiceroom-notice {
+    padding: $spacing-md;
+    background: rgba($primary-500, 0.05);
+    border: 1px solid rgba($primary-500, 0.2);
+    border-radius: $radius-md;
+
+    p {
+      font-size: $font-size-sm;
+      color: $primary-600;
+      margin: 0;
+    }
+  }
+
+  &__practiceroom-date {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    margin-bottom: $spacing-lg;
+    background: white;
+    border-radius: $radius-lg;
+    border: 1px solid $gray-200;
+  }
+
+  &__practiceroom-date-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: $gray-100;
+    border-radius: $radius-md;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    transition: all 0.2s;
+
+    &:hover {
+      background: $gray-200;
+      color: $gray-900;
+    }
+  }
+
+  &__practiceroom-date-text {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    min-width: 200px;
+    text-align: center;
+  }
+
+  &__practiceroom-today-btn {
+    padding: $spacing-xs $spacing-md;
+    border: 1px solid $primary-500;
+    background: white;
+    border-radius: $radius-md;
+    color: $primary-500;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: $primary-50;
+    }
+  }
+
+  &__practiceroom-reservations {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+    background: $gray-50;
+    border-radius: $radius-md;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+
+  &__practiceroom-reservation {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-xs $spacing-sm;
+    background: white;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+
+    .time {
+      font-weight: $font-weight-medium;
+      color: $gray-700;
+    }
+
+    .user {
+      color: $gray-500;
+      flex: 1;
+    }
+
+    .cancel-btn {
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: rgba($error, 0.1);
+      color: $error;
+      border-radius: $radius-full;
+      cursor: pointer;
+      font-size: $font-size-xs;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+
+      &:hover {
+        background: $error;
+        color: white;
+      }
+    }
+
+    &.own {
+      background: rgba($primary-500, 0.05);
+      border: 1px solid rgba($primary-500, 0.2);
+    }
+  }
+
+  &__loading-text {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    text-align: center;
+    padding: $spacing-lg;
+  }
+
+  &__practiceroom-selector {
+    display: flex;
+    gap: $spacing-xl;
+    margin-bottom: $spacing-lg;
+    background: white;
+    border-radius: $radius-lg;
+    border: 1px solid $gray-200;
+    padding: $spacing-lg;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+    }
+  }
+
+  &__practiceroom-calendar {
+    flex-shrink: 0;
+
+    .react-calendar {
+      border: none;
+      border-radius: $radius-lg;
+      font-family: inherit;
+      width: 380px;
+      background: transparent;
+
+      @media (max-width: 768px) {
+        width: 100%;
+      }
+    }
+
+    .react-calendar__navigation {
+      margin-bottom: $spacing-md;
+      height: 48px;
+
+      button {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-bold;
+        min-width: 48px;
+      }
+    }
+
+    .react-calendar__month-view__weekdays {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      margin-bottom: $spacing-xs;
+
+      abbr {
+        text-decoration: none;
+      }
+    }
+
+    .react-calendar__tile {
+      padding: $spacing-md;
+      font-size: $font-size-base;
+      height: 48px;
+    }
+
+    .react-calendar__tile--active {
+      background: $primary-500;
+      border-radius: $radius-md;
+    }
+
+    .react-calendar__tile--now {
+      background: $primary-50;
+      border-radius: $radius-md;
+    }
+  }
+
+  &__practiceroom-time-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__practiceroom-selected-date {
+    .date {
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $gray-900;
+    }
+  }
+
+  &__practiceroom-time-hint {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__practiceroom-time-slots {
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: $spacing-xs;
+    }
+
+    .time-btn {
+      padding: $spacing-sm $spacing-md;
+      border: 1px solid $gray-300;
+      background: white;
+      border-radius: $radius-md;
+      font-size: $font-size-sm;
+      color: $gray-700;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 60px;
+
+      &:hover {
+        border-color: $primary-500;
+        background: $primary-50;
+      }
+
+      &.start {
+        background: $primary-500;
+        border-color: $primary-500;
+        color: white;
+      }
+
+      &.end {
+        background: $primary-600;
+        border-color: $primary-600;
+        color: white;
+      }
+
+      &.in-range {
+        background: $primary-100;
+        border-color: $primary-300;
+        color: $primary-700;
+      }
+
+      &:disabled {
+        background: $gray-100;
+        color: $gray-400;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  &__practiceroom-selected-time {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    background: $primary-50;
+    border-radius: $radius-md;
+
+    .time-range {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $primary-700;
+    }
+
+    .duration {
+      font-size: $font-size-sm;
+      color: $primary-500;
+    }
+
+    .clear-btn {
+      margin-left: auto;
+      padding: $spacing-xs $spacing-sm;
+      border: 1px solid $gray-400;
+      background: white;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      color: $gray-600;
+      cursor: pointer;
+
+      &:hover {
+        background: $gray-100;
+      }
+    }
+  }
+
+  &__practiceroom-my-reservations {
+    margin-bottom: $spacing-lg;
+    padding: $spacing-md $spacing-lg;
+    background: $primary-50;
+    border-radius: $radius-lg;
+    border: 1px solid $primary-100;
+
+    h3 {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $primary-700;
+      margin-bottom: $spacing-sm;
+    }
+  }
+
+  &__practiceroom-my-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+
+  &__practiceroom-my-item {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-xs $spacing-md;
+    background: white;
+    border-radius: $radius-full;
+    border: 1px solid $primary-200;
+
+    .date {
+      font-size: $font-size-xs;
+      color: $gray-500;
+      font-weight: $font-weight-medium;
+    }
+
+    .room {
+      font-weight: $font-weight-semibold;
+      font-size: $font-size-sm;
+      color: $gray-900;
+    }
+
+    .time {
+      color: $primary-600;
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+    }
+
+    .cancel-btn {
+      padding: 2px 6px;
+      border: none;
+      background: transparent;
+      color: $gray-400;
+      border-radius: $radius-sm;
+      font-size: $font-size-xs;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        color: $error;
+      }
+    }
+  }
+}
+
+// 연습실 예약 폼 스타일
+.reservation-form {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+
+  &__date,
+  &__time,
+  &__note {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__value {
+    font-size: $font-size-base;
+    color: $gray-900;
+    font-weight: $font-weight-semibold;
+  }
+
+  &__time-inputs {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    select {
+      flex: 1;
+      padding: $spacing-sm $spacing-md;
+      border: 1px solid $gray-300;
+      border-radius: $radius-md;
+      font-size: $font-size-sm;
+      color: $gray-900;
+      background: white;
+      cursor: pointer;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+      }
+    }
+
+    span {
+      color: $gray-500;
+    }
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-900;
+    resize: vertical;
+    font-family: inherit;
+
+    &::placeholder {
+      color: $gray-400;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+  }
+}

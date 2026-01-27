@@ -18,6 +18,10 @@ export const groupApi = {
     color?: string;
     logoImage?: string;
     coverImage?: string;
+    // 학원(education) 타입 전용
+    hasClasses?: boolean;
+    hasPracticeRooms?: boolean;
+    allowGuardians?: boolean;
   }): Promise<ApiResponse<Group>> => {
     const response = await apiClient.post('/groups', data);
     return response.data;
@@ -44,7 +48,7 @@ export const groupApi = {
   // 모임 수정
   update: async (
     groupId: string,
-    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures'>>
+    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures' | 'practiceRoomSettings' | 'hasPracticeRooms' | 'hasClasses' | 'allowGuardians'>>
   ): Promise<ApiResponse<Group>> => {
     const response = await apiClient.patch(`/groups/${groupId}`, data);
     return response.data;

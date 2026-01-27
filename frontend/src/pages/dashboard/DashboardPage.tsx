@@ -428,7 +428,7 @@ const DashboardPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {myGroups.map((group) => (
+                    {myGroups.filter((group) => group.id).map((group) => (
                       <tr key={group.id}>
                         <td>
                           <Link to={`/groups/${group.id}`} className="group-table__info">
@@ -441,7 +441,7 @@ const DashboardPage = () => {
                               ) : group.icon && getIconById(group.icon) ? (
                                 <img src={getIconById(group.icon)} alt="" className="group-table__icon" />
                               ) : (
-                                <span>{group.name.charAt(0)}</span>
+                                <span>{group.name?.charAt(0) || '?'}</span>
                               )}
                             </div>
                             <span className="group-table__name">{group.name}</span>

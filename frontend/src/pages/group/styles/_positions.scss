@@ -1,0 +1,197 @@
+// 직책 관리 탭
+.group-detail__positions {
+  &-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin: 0;
+    }
+  }
+}
+
+// 직책 그리드
+.positions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: $spacing-md;
+}
+
+// 직책 카드
+.position-card {
+  background: white;
+  border: 1px solid $gray-200;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  cursor: pointer;
+  transition: all $transition-fast;
+
+  &:hover {
+    border-color: $primary-300;
+    box-shadow: $shadow-sm;
+
+    .position-card__actions {
+      opacity: 1;
+    }
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__name {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity $transition-fast;
+    margin: -4px -4px 0 0;
+  }
+
+  &__action {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    color: $gray-400;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $gray-100;
+      color: $gray-600;
+    }
+
+    &--delete:hover {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+  }
+
+  &__count {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: $font-size-xs;
+    color: $gray-500;
+
+    svg {
+      color: $gray-400;
+    }
+  }
+}
+
+// 직책 멤버 관리 모달
+.position-members {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+
+  &__section {
+    h4 {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-semibold;
+      color: $gray-700;
+      margin: 0 0 $spacing-sm 0;
+    }
+  }
+
+  &__empty {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    padding: $spacing-sm 0;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+}
+
+.position-member-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
+  background: $gray-50;
+  border-radius: $radius-md;
+
+  &__avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-full;
+    background: $primary-100;
+    color: $primary-600;
+    @include flex-center;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    flex-shrink: 0;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__name {
+    flex: 1;
+    font-size: $font-size-sm;
+    color: $gray-800;
+  }
+
+  &__remove,
+  &__add {
+    width: 24px;
+    height: 24px;
+    border-radius: $radius-sm;
+    border: none;
+    cursor: pointer;
+    @include flex-center;
+    font-size: $font-size-sm;
+    transition: all $transition-fast;
+  }
+
+  &__remove {
+    background: transparent;
+    color: $gray-400;
+
+    &:hover {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+  }
+
+  &__add {
+    background: $primary-50;
+    color: $primary-600;
+
+    &:hover {
+      background: $primary-100;
+    }
+  }
+}
+

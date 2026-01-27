@@ -1,0 +1,1099 @@
+// 공지사항 탭
+.group-detail__announcements {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+
+  &-header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+
+    h2 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+  }
+}
+
+// 미처리 승인 요청 알림
+.group-detail__pending-alerts {
+  margin-bottom: $spacing-sm;
+}
+
+.pending-alert {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-md $spacing-lg;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 1px solid #f59e0b;
+  border-radius: $radius-lg;
+
+  &__icon {
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  &__content {
+    flex: 1;
+  }
+
+  &__title {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: #92400e;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border-radius: $radius-md;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
+  &__name {
+    font-size: $font-size-sm;
+    color: $gray-700;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+  }
+
+  &__btn {
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
+
+    &--approve {
+      background: $success;
+      color: white;
+
+      &:hover {
+        background: darken($success, 10%);
+      }
+    }
+
+    &--reject {
+      background: $gray-200;
+      color: $gray-700;
+
+      &:hover {
+        background: $gray-300;
+      }
+    }
+  }
+}
+
+.group-detail__announcement-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+// 공지사항 카드
+.announcement-card {
+  padding: $spacing-lg;
+  background: $gray-50;
+  border-radius: $radius-md;
+  border: 1px solid $gray-200;
+  transition: all $transition-fast;
+
+  &:hover {
+    border-color: $gray-300;
+  }
+
+  &--pinned {
+    background: $primary-50;
+    border-color: $primary-200;
+
+    .announcement-card__pin-badge {
+      display: inline-flex;
+    }
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__meta {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__pin-badge {
+    display: none;
+    align-items: center;
+    padding: 2px 8px;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+  }
+
+  &__title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+  }
+
+  &__action {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-base;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: background $transition-fast;
+    line-height: 1;
+
+    &:hover {
+      background: rgba($gray-500, 0.1);
+    }
+
+    &--delete:hover {
+      background: rgba($error, 0.1);
+    }
+  }
+
+  &__content {
+    font-size: $font-size-sm;
+    color: $gray-700;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: $spacing-md;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__author {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+  }
+
+  &__date {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+}
+
+// 공지사항 인라인 작성 모드
+.announcement-write {
+  background: $gray-50;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  border: 1px solid $gray-200;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid $gray-200;
+
+    h3 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+      margin: 0;
+    }
+  }
+
+  &__close {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-lg;
+    color: $gray-400;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
+    line-height: 1;
+
+    &:hover {
+      background: $gray-200;
+      color: $gray-600;
+    }
+  }
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__input {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    background: white;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    background: white;
+    min-height: 150px;
+    resize: vertical;
+    font-family: inherit;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__options {
+    display: flex;
+    align-items: center;
+    gap: $spacing-lg;
+  }
+
+  &__checkbox {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    color: $gray-700;
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: $primary-500;
+      cursor: pointer;
+    }
+
+    span {
+      user-select: none;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__cancel {
+    padding: $spacing-sm $spacing-lg;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $gray-50;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary-500;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: white;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // 최근 공지사항 미리보기
+  &__preview {
+    margin-top: $spacing-xl;
+    padding-top: $spacing-lg;
+    border-top: 1px solid $gray-200;
+
+    h4 {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      color: $gray-500;
+      margin: 0 0 $spacing-md 0;
+    }
+  }
+
+  &__preview-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__preview-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border-radius: $radius-md;
+    border: 1px solid $gray-200;
+
+    &.pinned {
+      background: $primary-50;
+      border-color: $primary-200;
+    }
+
+    .pin-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      background: $primary-500;
+      color: white;
+      border-radius: $radius-sm;
+      flex-shrink: 0;
+    }
+
+    .title {
+      flex: 1;
+      font-size: $font-size-sm;
+      color: $gray-700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .date {
+      font-size: $font-size-xs;
+      color: $gray-400;
+      flex-shrink: 0;
+    }
+  }
+
+  // Quill 에디터 스타일
+  &__editor {
+    .ql-toolbar {
+      border: 1px solid $gray-300;
+      border-bottom: none;
+      border-radius: $radius-md $radius-md 0 0;
+      background: white;
+    }
+
+    .ql-container {
+      border: 1px solid $gray-300;
+      border-radius: 0 0 $radius-md $radius-md;
+      background: white;
+      font-family: inherit;
+      font-size: $font-size-base;
+      min-height: 200px;
+    }
+
+    .ql-editor {
+      min-height: 200px;
+      line-height: 1.6;
+
+      &.ql-blank::before {
+        color: $gray-400;
+        font-style: normal;
+      }
+    }
+
+    .ql-container.ql-snow {
+      &:focus-within {
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+      }
+    }
+  }
+
+  // 파일 첨부 영역
+  &__attachments {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__file-input {
+    display: none;
+  }
+
+  &__file-btn {
+    padding: $spacing-sm $spacing-md;
+    background: white;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary-500;
+      color: $primary-600;
+      background: $primary-50;
+    }
+  }
+
+  &__file-hint {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+
+  &__attachment-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+  }
+}
+
+// 첨부파일 아이템
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: white;
+  border-radius: $radius-md;
+  border: 1px solid $gray-200;
+
+  &__preview {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-sm;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $gray-100;
+    border-radius: $radius-sm;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    display: block;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__size {
+    display: block;
+    font-size: $font-size-xs;
+    color: $gray-400;
+    margin-top: 2px;
+  }
+
+  &__remove {
+    padding: $spacing-xs;
+    background: none;
+    border: none;
+    color: $gray-400;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    transition: color $transition-fast;
+    flex-shrink: 0;
+
+    &:hover {
+      color: $error;
+    }
+  }
+}
+
+// 공지사항 상세보기
+.announcement-detail {
+  background: white;
+  border-radius: $radius-md;
+  border: 1px solid $gray-200;
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $gray-100;
+    background: $gray-50;
+  }
+
+  &__back {
+    padding: $spacing-xs $spacing-sm;
+    background: none;
+    border: none;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    cursor: pointer;
+    transition: color $transition-fast;
+
+    &:hover {
+      color: $primary-600;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__action {
+    padding: $spacing-xs $spacing-md;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary-500;
+      color: $primary-600;
+    }
+
+    &--danger {
+      color: $error;
+
+      &:hover {
+        border-color: $error;
+        background: rgba($error, 0.05);
+      }
+    }
+  }
+
+  &__title-section {
+    padding: $spacing-md;
+    border-bottom: 1px solid $gray-100;
+  }
+
+  &__badges {
+    display: flex;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__badge {
+    padding: 2px 8px;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-full;
+
+    &--pinned {
+      background: $primary-100;
+      color: $primary-700;
+    }
+
+    &--admin {
+      background: #fef3c7;
+      color: #92400e;
+    }
+  }
+
+  &__title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0 0 $spacing-xs 0;
+    line-height: 1.4;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  &__separator {
+    color: $gray-300;
+  }
+
+  &__content {
+    padding: $spacing-md;
+    font-size: $font-size-sm;
+    line-height: 1.7;
+    color: $gray-700;
+
+    // Quill 에디터 콘텐츠 스타일
+    h1, h2, h3 {
+      margin: $spacing-lg 0 $spacing-md 0;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+
+    h1 { font-size: 1.5em; }
+    h2 { font-size: 1.3em; }
+    h3 { font-size: 1.1em; }
+
+    p {
+      margin: 0 0 $spacing-md 0;
+    }
+
+    ul, ol {
+      margin: 0 0 $spacing-md 0;
+      padding-left: $spacing-xl;
+    }
+
+    li {
+      margin-bottom: $spacing-xs;
+    }
+
+    a {
+      color: $primary-600;
+      text-decoration: underline;
+
+      &:hover {
+        color: $primary-700;
+      }
+    }
+
+    strong {
+      font-weight: $font-weight-semibold;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: $radius-md;
+      margin: $spacing-md 0;
+    }
+
+    blockquote {
+      margin: $spacing-md 0;
+      padding: $spacing-md $spacing-lg;
+      background: $gray-50;
+      border-left: 4px solid $primary-500;
+      color: $gray-600;
+    }
+  }
+
+  &__attachments {
+    padding: $spacing-md;
+    border-top: 1px solid $gray-100;
+    background: $gray-50;
+  }
+
+  &__attachments-title {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+    margin: 0 0 $spacing-sm 0;
+  }
+
+  &__attachments-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+
+  &__attachment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    text-decoration: none;
+    transition: all $transition-fast;
+    min-width: 100px;
+
+    &:hover {
+      border-color: $primary-500;
+      box-shadow: 0 2px 8px rgba($primary-500, 0.15);
+    }
+  }
+
+  &__attachment-preview {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: $radius-sm;
+  }
+
+  &__attachment-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $gray-100;
+    border-radius: $radius-sm;
+    font-size: 32px;
+  }
+
+  &__attachment-name {
+    font-size: $font-size-xs;
+    color: $gray-600;
+    text-align: center;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// 공지사항 상세보기 (새 디자인)
+.announcement-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  &__toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: $spacing-sm;
+    margin-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__back {
+    padding: $spacing-xs $spacing-sm;
+    background: none;
+    border: none;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    cursor: pointer;
+
+    &:hover {
+      color: $primary-600;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+  }
+
+  &__btn {
+    padding: $spacing-xs $spacing-sm;
+    background: $gray-100;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    color: $gray-700;
+    cursor: pointer;
+
+    &:hover {
+      background: $gray-200;
+    }
+
+    &--delete {
+      color: $error;
+
+      &:hover {
+        background: rgba($error, 0.1);
+      }
+    }
+  }
+
+  &__article {
+    flex: 1;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    overflow: hidden;
+  }
+
+  &__header {
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $gray-100;
+  }
+
+  &__tags {
+    display: flex;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-xs;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  &__tag {
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-sm;
+
+    &--pin {
+      background: $primary-100;
+      color: $primary-700;
+    }
+
+    &--admin {
+      background: #fef3c7;
+      color: #92400e;
+    }
+  }
+
+  &__title {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0 0 $spacing-xs 0;
+    line-height: 1.4;
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  &__body {
+    padding: $spacing-md;
+    font-size: $font-size-sm;
+    line-height: 1.7;
+    color: $gray-700;
+    min-height: 100px;
+
+    h1, h2, h3 {
+      margin: $spacing-sm 0;
+      font-weight: $font-weight-semibold;
+      color: $gray-900;
+    }
+
+    h1 { font-size: 1.3em; }
+    h2 { font-size: 1.2em; }
+    h3 { font-size: 1.1em; }
+
+    p {
+      margin: 0 0 $spacing-sm 0;
+    }
+
+    ul, ol {
+      margin: 0 0 $spacing-sm 0;
+      padding-left: $spacing-lg;
+    }
+
+    a {
+      color: $primary-600;
+      text-decoration: underline;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: $radius-sm;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border-top: 1px solid $gray-100;
+  }
+
+  &__like-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    background: none;
+    border: none;
+    font-size: $font-size-xs;
+    color: $gray-400;
+    cursor: pointer;
+
+    svg {
+      transition: all 0.15s ease;
+    }
+
+    span {
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+    }
+
+    &:hover {
+      color: $error;
+    }
+
+    &--active {
+      color: $error;
+    }
+  }
+
+  &__files {
+    padding: $spacing-sm $spacing-md;
+    background: $gray-50;
+    border-top: 1px solid $gray-100;
+  }
+
+  &__files-label {
+    display: block;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    color: $gray-500;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__files-grid {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__attachment {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-xs $spacing-sm;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-sm;
+    text-decoration: none;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary-400;
+      background: $primary-50;
+    }
+  }
+
+  &__attachment-img {
+    width: 36px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: $radius-sm;
+    flex-shrink: 0;
+  }
+
+  &__attachment-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $gray-100;
+    border-radius: $radius-sm;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  &__attachment-name {
+    font-size: $font-size-xs;
+    color: $gray-700;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
