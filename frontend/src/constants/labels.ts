@@ -140,3 +140,36 @@ export const REQUEST_STATUS_LABELS: Record<string, string> = {
 export const getPositionLabel = (groupType?: string): string => {
   return groupType === 'religious' ? '직분' : '직책';
 };
+
+/**
+ * 모임 타입별 기본 색상
+ */
+export const GROUP_TYPE_COLORS: Record<GroupType, string> = {
+  education: '#3b82f6',
+  religious: '#8b5cf6',
+  community: '#10b981',
+  company: '#f59e0b',
+  couple: '#ec4899',
+};
+
+/**
+ * 모임 타입별 기본 아이콘 (아이콘명)
+ */
+export const GROUP_TYPE_DEFAULT_ICONS: Record<GroupType, string> = {
+  education: 'book',
+  religious: 'church',
+  community: 'target',
+  company: 'briefcase',
+  couple: 'heart',
+};
+
+/**
+ * 모임 타입별 특징
+ */
+export const GROUP_TYPE_FEATURES: Record<GroupType, string[]> = {
+  education: ['수업 진도 관리', '과제 관리', '보호자 연동', '성적/평가', '출석 관리'],
+  religious: ['주보 관리', '봉사활동 관리', '기도제목 공유', '찬양콘티 관리'],
+  community: ['회비 관리', '정기 모임', '게시판', '투표/설문', '사진 공유'],
+  company: ['프로젝트 관리', '업무 할당', '회의록', '문서 공유', '결재'],
+  couple: ['기념일 관리', 'D-day 카운트', '데이트 일정', '추억 앨범', '위시리스트'],
+};

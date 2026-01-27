@@ -1,0 +1,210 @@
+import type { StateCreator } from 'zustand';
+import { scheduleApi } from '@/api';
+import type { Schedule, ScheduleFormData } from '@/types';
+import type { LocationData } from '@/components';
+
+export interface ScheduleSlice {
+  // State
+  schedules: Schedule[];
+  schedulesLoading: boolean;
+  showScheduleModal: boolean;
+  editingSchedule: Schedule | null;
+  scheduleForm: {
+    title: string;
+    description: string;
+    startDate: string;
+    startTime: string;
+    endDate: string;
+    endTime: string;
+    isAllDay: boolean;
+    locationData: LocationData | null;
+    color: string;
+  };
+  scheduleSaving: boolean;
+
+  // Actions
+  fetchSchedules: (groupId: string) => Promise<void>;
+  openNewScheduleModal: () => void;
+  openEditScheduleModal: (scheduleId: string) => Promise<void>;
+  closeScheduleModal: () => void;
+  setScheduleForm: (form: Partial<ScheduleSlice['scheduleForm']>) => void;
+  saveSchedule: (groupId: string) => Promise<void>;
+  deleteSchedule: (id: string) => Promise<boolean>;
+  resetScheduleState: () => void;
+}
+
+export const initialScheduleForm = {
+  title: '',
+  description: '',
+  startDate: '',
+  startTime: '09:00',
+  endDate: '',
+  endTime: '10:00',
+  isAllDay: false,
+  locationData: null as LocationData | null,
+  color: '#3b82f6',
+};
+
+export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSlice> = (set, get) => ({
+  // Initial State
+  schedules: [],
+  schedulesLoading: false,
+  showScheduleModal: false,
+  editingSchedule: null,
+  scheduleForm: { ...initialScheduleForm },
+  scheduleSaving: false,
+
+  // Actions
+  fetchSchedules: async (groupId) => {
+    set({ schedulesLoading: true });
+    try {
+      const response = await scheduleApi.getByGroup(groupId);
+      set({ schedules: response.data });
+    } catch (error) {
+      console.error('Failed to fetch schedules:', error);
+    } finally {
+      set({ schedulesLoading: false });
+    }
+  },
+
+  openNewScheduleModal: () => {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const roundedMinutes = minutes < 30 ? 30 : 0;
+    const roundedHour = minutes < 30 ? now.getHours() : now.getHours() + 1;
+
+    const startDate = new Date(now);
+    if (roundedHour >= 24) {
+      startDate.setDate(startDate.getDate() + 1);
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      startDate.setHours(roundedHour, roundedMinutes, 0, 0);
+    }
+
+    const endDate = new Date(startDate);
+    endDate.setHours(endDate.getHours() + 1);
+
+    const formatTime = (date: Date) =>
+      `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    const formatDateStr = (date: Date) => date.toISOString().split('T')[0];
+
+    set({
+      showScheduleModal: true,
+      editingSchedule: null,
+      scheduleForm: {
+        title: '',
+        description: '',
+        startDate: formatDateStr(startDate),
+        startTime: formatTime(startDate),
+        endDate: formatDateStr(endDate),
+        endTime: formatTime(endDate),
+        isAllDay: false,
+        locationData: null,
+        color: '#3b82f6',
+      },
+    });
+  },
+
+  openEditScheduleModal: async (scheduleId) => {
+    try {
+      const response = await scheduleApi.getById(scheduleId);
+      const schedule = response.data;
+      set({
+        showScheduleModal: true,
+        editingSchedule: schedule,
+        scheduleForm: {
+          title: schedule.title,
+          description: schedule.description || '',
+          startDate: schedule.startAt.slice(0, 10),
+          startTime: schedule.startAt.slice(11, 16) || '09:00',
+          endDate: schedule.endAt.slice(0, 10),
+          endTime: schedule.endAt.slice(11, 16) || '10:00',
+          isAllDay: schedule.isAllDay,
+          locationData: schedule.locationData || null,
+          color: schedule.color || '#3b82f6',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to load schedule:', error);
+      throw error;
+    }
+  },
+
+  closeScheduleModal: () => {
+    set({
+      showScheduleModal: false,
+      editingSchedule: null,
+      scheduleForm: { ...initialScheduleForm },
+    });
+  },
+
+  setScheduleForm: (form) => {
+    set((state) => ({ scheduleForm: { ...state.scheduleForm, ...form } }));
+  },
+
+  saveSchedule: async (groupId) => {
+    const { scheduleForm, editingSchedule, fetchSchedules, closeScheduleModal } = get();
+    if (!scheduleForm.title.trim() || !scheduleForm.startDate || !scheduleForm.endDate) return;
+
+    set({ scheduleSaving: true });
+    try {
+      const startAt = scheduleForm.isAllDay
+        ? `${scheduleForm.startDate}T00:00`
+        : `${scheduleForm.startDate}T${scheduleForm.startTime}`;
+      const endAt = scheduleForm.isAllDay
+        ? `${scheduleForm.endDate}T23:59`
+        : `${scheduleForm.endDate}T${scheduleForm.endTime}`;
+
+      const locationStr = scheduleForm.locationData
+        ? scheduleForm.locationData.detail
+          ? `${scheduleForm.locationData.name} (${scheduleForm.locationData.detail})`
+          : scheduleForm.locationData.name
+        : undefined;
+
+      const formData: ScheduleFormData = {
+        title: scheduleForm.title,
+        description: scheduleForm.description,
+        startAt,
+        endAt,
+        isAllDay: scheduleForm.isAllDay,
+        location: locationStr,
+        locationData: scheduleForm.locationData || undefined,
+        color: scheduleForm.color,
+      };
+
+      if (editingSchedule) {
+        await scheduleApi.update(editingSchedule.id, formData);
+      } else {
+        await scheduleApi.create(groupId, formData);
+      }
+
+      await fetchSchedules(groupId);
+      closeScheduleModal();
+    } finally {
+      set({ scheduleSaving: false });
+    }
+  },
+
+  deleteSchedule: async (id) => {
+    try {
+      await scheduleApi.delete(id);
+      set((state) => ({
+        schedules: state.schedules.filter((s) => s.id !== id),
+      }));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  resetScheduleState: () => {
+    set({
+      schedules: [],
+      schedulesLoading: false,
+      showScheduleModal: false,
+      editingSchedule: null,
+      scheduleForm: { ...initialScheduleForm },
+      scheduleSaving: false,
+    });
+  },
+});

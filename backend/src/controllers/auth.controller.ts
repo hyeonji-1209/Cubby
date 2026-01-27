@@ -281,7 +281,7 @@ export class AuthController {
   };
 
   // Google OAuth - 콜백 처리
-  googleCallback = async (req: Request, res: Response, next: NextFunction) => {
+  googleCallback = async (req: Request, res: Response, _next: NextFunction) => {
     try {
       const { code } = req.query;
 
@@ -381,7 +381,7 @@ export class AuthController {
   };
 
   // Kakao OAuth - 콜백 처리
-  kakaoCallback = async (req: Request, res: Response, next: NextFunction) => {
+  kakaoCallback = async (req: Request, res: Response, _next: NextFunction) => {
     try {
       const { code } = req.query;
 

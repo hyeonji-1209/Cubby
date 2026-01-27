@@ -21,12 +21,10 @@ const Calendar = ({ schedules, onDateClick, onDateSelect, onScheduleClick, selec
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
-  // 해당 월의 첫 날과 마지막 날
-  const firstDayOfMonth = new Date(year, month, 1);
-  const lastDayOfMonth = new Date(year, month + 1, 0);
-
   // 달력에 표시할 날짜 배열 생성
   const calendarDays = useMemo(() => {
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
     const days: (Date | null)[] = [];
 
     // 첫 주의 빈 날짜

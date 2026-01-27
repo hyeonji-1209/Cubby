@@ -30,23 +30,8 @@ const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }:
   const hasLoadedRef = useRef(false);
   const location = useLocation();
 
-  // 현재 이 그룹 또는 그 소모임이 활성화되어 있으면 자동으로 열고 로드
-  useEffect(() => {
-    const isGroupActive = location.pathname.includes(`/groups/${groupId}`);
-    if (isGroupActive && !isOpen) {
-      setIsOpen(true);
-    }
-  }, [location.pathname, groupId]);
-
-  // 열릴 때만 소모임 로드
-  useEffect(() => {
-    if (isOpen && !hasLoadedRef.current && !isLoading) {
-      loadSubGroups();
-    }
-  }, [isOpen]);
-
   // 소모임 로드
-  const loadSubGroups = async () => {
+  const loadSubGroups = useCallback(async () => {
     if (hasLoadedRef.current || isLoading || !groupId || groupId === 'undefined') return;
 
     setIsLoading(true);
@@ -59,7 +44,23 @@ const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }:
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [groupId, isLoading]);
+
+  // 현재 이 그룹 또는 그 소모임이 활성화되어 있으면 자동으로 열고 로드
+  useEffect(() => {
+    const isGroupActive = location.pathname.includes(`/groups/${groupId}`);
+    if (isGroupActive && !isOpen) {
+      setIsOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, groupId]);
+
+  // 열릴 때만 소모임 로드
+  useEffect(() => {
+    if (isOpen && !hasLoadedRef.current && !isLoading) {
+      loadSubGroups();
+    }
+  }, [isOpen, isLoading, loadSubGroups]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -292,6 +293,7 @@ const Sidebar = () => {
     if (myGroups.length === 0) {
       fetchMyGroups();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -5,7 +5,7 @@ interface UseListManagerOptions {
   minLength?: number;
 }
 
-interface UseListManagerReturn<T> {
+export interface ListManager<T> {
   items: T[];
   setItems: React.Dispatch<React.SetStateAction<T[]>>;
   add: (item: T) => boolean;
@@ -25,7 +25,7 @@ interface UseListManagerReturn<T> {
 export const useListManager = <T>(
   initialItems: T[] = [],
   options: UseListManagerOptions = {}
-): UseListManagerReturn<T> => {
+): ListManager<T> => {
   const { maxLength = 10, minLength = 1 } = options;
   const [items, setItems] = useState<T[]>(initialItems);
 

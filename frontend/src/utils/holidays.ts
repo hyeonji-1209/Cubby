@@ -67,7 +67,7 @@ const LUNAR_HOLIDAYS: Record<number, Record<string, string>> = {
 };
 
 // 캐시
-let holidayCache: Map<number, Map<string, Holiday>> = new Map();
+const holidayCache: Map<number, Map<string, Holiday>> = new Map();
 
 /**
  * 로컬 날짜를 YYYY-MM-DD 형식으로 변환 (타임존 이슈 방지)

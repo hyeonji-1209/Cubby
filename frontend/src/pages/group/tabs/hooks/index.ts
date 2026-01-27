@@ -1,0 +1,1 @@
+export { useSettingsTab } from './useSettingsTab';
