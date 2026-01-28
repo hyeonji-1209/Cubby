@@ -80,12 +80,26 @@ export class Group {
   @Column({ type: 'boolean', default: false })
   allowGuardians: boolean; // 보호자 허용 여부
 
+  @Column({ type: 'boolean', default: false })
+  hasAttendance: boolean; // 출석 기능 사용 여부
+
+  @Column({ type: 'boolean', default: false })
+  hasMultipleInstructors: boolean; // 다중 강사 운영 여부 (강사별 소그룹 사용)
+
   @Column({ type: 'json', nullable: true })
   practiceRoomSettings: {
     openTime: string; // "09:00"
     closeTime: string; // "22:00"
     slotMinutes: number; // 30 or 60
     maxHoursPerDay: number; // 2
+  } | null;
+
+  // 학원 운영시간 (education 타입 전용)
+  @Column({ type: 'json', nullable: true })
+  operatingHours: {
+    openTime: string; // "09:00"
+    closeTime: string; // "22:00"
+    closedDays?: number[]; // 휴무일 요일 (0=일요일, 6=토요일)
   } | null;
 
   @Column({ type: 'uuid' })

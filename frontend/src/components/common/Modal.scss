@@ -31,7 +31,8 @@
   }
 
   &--lg {
-    max-width: 700px;
+    max-width: 900px;
+    min-width: 700px;
   }
 
   &__header {
@@ -353,5 +354,394 @@
     text-align: center;
     padding: $spacing-xl;
     color: $gray-500;
+  }
+
+  // Lesson info section (1:1 education)
+  &__lesson-info {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__lesson-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__add-btn {
+    font-size: $font-xs;
+    color: $primary;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: $spacing-xs;
+    border-radius: $radius-sm;
+
+    &:hover {
+      background: $primary-50;
+    }
+  }
+
+  &__schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__schedule-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-sm;
+    background: $white;
+    border-radius: $radius-md;
+    border: 1px solid $gray-200;
+  }
+
+  &__select--small {
+    width: auto;
+    min-width: 80px;
+    padding: $spacing-xs $spacing-sm;
+    padding-right: $spacing-lg;
+    font-size: $font-sm;
+  }
+
+  &__input--time {
+    width: auto;
+    min-width: 100px;
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-sm;
+  }
+
+  &__time-separator {
+    color: $gray-400;
+    font-size: $font-sm;
+  }
+
+  &__remove-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: $gray-400;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    font-size: 12px;
+    flex-shrink: 0;
+
+    &:hover {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+  }
+
+  &__empty-text {
+    font-size: $font-sm;
+    color: $gray-400;
+    text-align: center;
+    padding: $spacing-md;
+  }
+
+  &__payment-day {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    font-size: $font-sm;
+    color: $gray-700;
+
+    select {
+      width: auto;
+      min-width: 80px;
+    }
+  }
+
+  // Compact schedule tags
+  &__schedule-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__schedule-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: $white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-full;
+    font-size: $font-xs;
+  }
+
+  &__schedule-tag-day {
+    font-weight: 600;
+    color: $primary;
+    background: $primary-50;
+    padding: 2px 6px;
+    border-radius: $radius-sm;
+    margin-right: 2px;
+  }
+
+  &__schedule-tag-time {
+    color: $gray-600;
+  }
+
+  &__schedule-tag-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: none;
+    border: none;
+    color: $gray-400;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 50%;
+    margin-left: 2px;
+
+    &:hover {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+  }
+
+  &__schedule-add-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: none;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-full;
+    font-size: $font-xs;
+    color: $gray-500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: $primary;
+      color: $primary;
+      background: $primary-50;
+    }
+  }
+
+  &__schedule-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-sm;
+    background: $white;
+    border-radius: $radius-md;
+    border: 1px solid $primary-200;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__schedule-add-row {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  &__schedule-add-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    label {
+      font-size: 11px;
+      color: $gray-500;
+      font-weight: 500;
+    }
+  }
+
+  &__schedule-add-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-xs;
+    padding-top: $spacing-xs;
+    border-top: 1px solid $gray-100;
+  }
+
+  &__select--compact,
+  &__input--compact {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: $font-sm;
+    border: 1px solid $gray-200;
+    border-radius: $radius-sm;
+    background: $gray-50;
+
+    &:focus {
+      background: $white;
+      border-color: $primary;
+      outline: none;
+    }
+  }
+
+  &__select--compact {
+    padding-right: 24px;
+    background-position: right 6px center;
+  }
+
+  &__btn-confirm {
+    padding: 4px 10px;
+    background: $primary;
+    color: $white;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    cursor: pointer;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  &__btn-cancel-sm {
+    padding: 4px 10px;
+    background: $gray-100;
+    color: $gray-600;
+    border: none;
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    cursor: pointer;
+
+    &:hover {
+      background: $gray-200;
+    }
+  }
+
+  // Payment due day - compact inline style
+  &__payment-section {
+    margin-top: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__day-calendar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: $spacing-xs;
+  }
+
+  &__day-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-sm;
+    font-size: $font-xs;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      background: $gray-100;
+      border-color: $gray-300;
+    }
+
+    &--selected {
+      background: $primary;
+      color: $white;
+      border-color: $primary;
+      font-weight: 600;
+
+      &:hover {
+        background: $primary-600;
+        border-color: $primary-600;
+      }
+    }
+  }
+
+  &__payment-selected {
+    font-size: $font-xs;
+    color: $primary;
+    margin: $spacing-xs 0 0;
+    font-weight: 500;
+  }
+
+  // Secondary submit button
+  &__submit--secondary {
+    background: $gray-600;
+
+    &:hover:not(:disabled) {
+      background: $gray-700;
+    }
+  }
+
+  // Attendance stats
+  &__attendance-stats {
+    margin-bottom: $spacing-md;
+  }
+
+  &__stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+  }
+
+  &__stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: $spacing-sm;
+    border-radius: $radius-md;
+    background: $gray-50;
+
+    &--present {
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &--late {
+      background: rgba($warning, 0.1);
+      color: $warning;
+    }
+
+    &--absent {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+
+    &--excused {
+      background: rgba($gray-500, 0.1);
+      color: $gray-600;
+    }
+
+    &--early-leave {
+      background: rgba($warning, 0.15);
+      color: darken($warning, 10%);
+    }
+  }
+
+  &__stat-value {
+    font-size: $font-lg;
+    font-weight: 600;
+  }
+
+  &__stat-label {
+    font-size: $font-xs;
+    margin-top: 2px;
+  }
+
+  &__stats-total {
+    font-size: $font-xs;
+    color: $gray-500;
+    text-align: center;
+    margin-top: $spacing-sm;
+    margin-bottom: 0;
   }
 }

@@ -165,6 +165,47 @@
       color: white;
     }
 
+    // 수업 중인 탭 (특별 스타일)
+    &--lesson {
+      background: rgba($success, 0.1);
+      color: $success;
+      position: relative;
+
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: $success;
+        border-radius: 50%;
+        margin-right: $spacing-xs;
+        animation: pulse-dot 2s infinite;
+      }
+
+      &:hover {
+        background: rgba($success, 0.2);
+        color: darken($success, 10%);
+      }
+
+      &.active {
+        background: $success;
+        color: white;
+
+        &::before {
+          background: white;
+        }
+      }
+
+      @keyframes pulse-dot {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+    }
+
     .badge {
       display: inline-flex;
       align-items: center;
@@ -589,6 +630,16 @@
       background: $gray-100;
     }
 
+    // 출석 완료된 일정
+    &.attended {
+      background: rgba($success, 0.05);
+      border-left: 3px solid $success;
+
+      &:hover {
+        background: rgba($success, 0.1);
+      }
+    }
+
     .color {
       width: 4px;
       height: 28px;
@@ -604,6 +655,37 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    // 출석 뱃지
+    .attendance-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: $font-weight-medium;
+      border-radius: $radius-sm;
+      flex-shrink: 0;
+
+      &.badge--present {
+        background: $success-100;
+        color: $success-700;
+      }
+
+      &.badge--late {
+        background: $warning-100;
+        color: $warning-700;
+      }
+
+      &.badge--absent {
+        background: $error-100;
+        color: $error-700;
+      }
+
+      &.badge--excused {
+        background: $gray-100;
+        color: $gray-700;
+      }
     }
 
     .time {
@@ -672,6 +754,94 @@
     }
   }
 
+  // 학생용 수업 기록
+  &__my-lessons {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  &__my-lesson-item {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    border-left: 3px solid $primary-500;
+  }
+
+  &__my-lesson-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-sm;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $gray-200;
+
+    .date {
+      font-weight: $font-weight-semibold;
+      color: $gray-800;
+    }
+
+    .time {
+      font-size: $font-size-sm;
+      color: $gray-500;
+    }
+
+    .attendance-badge {
+      margin-left: auto;
+      padding: 2px 8px;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      border-radius: $radius-full;
+
+      &.badge--present {
+        background: $success-100;
+        color: $success-700;
+      }
+
+      &.badge--late {
+        background: $warning-100;
+        color: $warning-700;
+      }
+
+      &.badge--absent {
+        background: $error-100;
+        color: $error-700;
+      }
+
+      &.badge--excused {
+        background: $gray-100;
+        color: $gray-700;
+      }
+
+      &.badge--early_leave {
+        background: $warning-100;
+        color: $warning-700;
+      }
+    }
+  }
+
+  &__my-lesson-section {
+    margin-top: $spacing-sm;
+
+    strong {
+      display: block;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      color: $gray-600;
+      margin-bottom: 4px;
+    }
+
+    p {
+      font-size: $font-size-sm;
+      color: $gray-700;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      margin: 0;
+    }
+  }
+
   // 멤버 탭
   &__members {
     flex: 1;
@@ -681,15 +851,57 @@
 
   &__members-header {
     display: flex;
-    align-items: center;
-    gap: $spacing-lg;
+    flex-direction: column;
+    gap: $spacing-sm;
     margin-bottom: $spacing-lg;
+
+    @include tablet {
+      flex-direction: row;
+      align-items: center;
+      gap: $spacing-lg;
+    }
+  }
+
+  &__search-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    flex: 1;
+    flex-wrap: wrap;
   }
 
   &__search {
     position: relative;
     flex: 1;
+    min-width: 200px;
     max-width: 400px;
+  }
+
+  &__instructor-filter {
+    padding: $spacing-sm $spacing-md;
+    padding-right: $spacing-xl;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    background: white;
+    cursor: pointer;
+    min-width: 150px;
+    transition: all $transition-fast;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M3 4.5L6 7.5L9 4.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right $spacing-sm center;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+
+    &:hover {
+      border-color: $gray-300;
+    }
   }
 
   &__search-input {
@@ -1295,6 +1507,217 @@
       background: #fef2f2;
       color: $error;
     }
+  }
+
+  // 기능 설정 구분선 및 서브타이틀
+  &__setting-divider {
+    height: 1px;
+    background: $gray-200;
+    margin: $spacing-md 0;
+  }
+
+  &__setting-subtitle {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+    margin-bottom: $spacing-sm;
+  }
+
+  // 기능 설정 토글 표시
+  &__feature-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__feature-toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $gray-200;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      font-size: $font-size-sm;
+      color: $gray-600;
+    }
+  }
+
+  &__toggle-switch {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    background: $gray-300;
+    border: none;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    padding: 0;
+
+    &:hover {
+      background: $gray-400;
+    }
+
+    &.on {
+      background: $success;
+
+      &:hover {
+        background: $success-700;
+      }
+
+      .group-detail__toggle-switch-handle {
+        transform: translateX(22px);
+      }
+    }
+  }
+
+  &__toggle-switch-handle {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+  }
+
+  // 연습실 액션 버튼들
+  &__practice-room-actions {
+    display: flex;
+    gap: $spacing-xs;
+  }
+
+  &__practice-room-qr {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    color: $gray-400;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: all 0.2s;
+
+    &:hover {
+      background: rgba($primary-500, 0.1);
+      color: $primary-500;
+    }
+  }
+
+  // 휴무일 선택 버튼
+  &__closed-days {
+    display: flex;
+    gap: $spacing-xs;
+    flex-wrap: wrap;
+  }
+
+  &__day-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: $gray-100;
+      border-color: $gray-400;
+    }
+
+    &.active {
+      background: $error;
+      border-color: $error;
+      color: white;
+
+      &:hover {
+        background: darken($error, 10%);
+      }
+    }
+  }
+}
+
+// QR 코드 모달
+.qr-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: $spacing-md;
+
+  &__member-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-md;
+  }
+
+  &__member-name {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+  }
+
+  &__schedule-title {
+    font-size: $font-size-sm;
+    color: $primary-600;
+    background: $primary-50;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+  }
+
+  &__code {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: $spacing-md;
+    background: white;
+    border-radius: $radius-lg;
+    border: 1px solid $gray-200;
+    margin-bottom: $spacing-md;
+  }
+
+  &__hint {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    text-align: center;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__loading {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $gray-400;
+    font-size: $font-size-sm;
+  }
+
+  &__expiry {
+    font-size: $font-size-xs;
+    color: $warning;
+    text-align: center;
+    margin-bottom: $spacing-sm;
+    font-weight: $font-weight-medium;
+  }
+
+  &__room-info,
+  &__time-info {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    font-weight: $font-weight-medium;
+    text-align: center;
   }
 }
 

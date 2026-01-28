@@ -16,6 +16,8 @@ const AcademySettings: React.FC<AcademySettingsProps> = ({
     hasClasses,
     hasPracticeRooms,
     allowGuardians,
+    hasAttendance,
+    hasMultipleInstructors,
     practiceRoomOpenTime,
     practiceRoomCloseTime,
     practiceRoomSlotMinutes,
@@ -53,6 +55,62 @@ const AcademySettings: React.FC<AcademySettingsProps> = ({
           </button>
         </div>
       </div>
+
+      {/* 출석 기능 (1:1 수업일 때만 표시) */}
+      {!hasClasses && (
+        <div className="group-create__academy-card">
+          <div className="group-create__academy-card-question">출석 체크 기능을 사용하시겠어요?</div>
+          <div className="group-create__academy-card-toggle">
+            <button
+              type="button"
+              className={`group-create__academy-toggle-btn ${hasAttendance ? 'group-create__academy-toggle-btn--active' : ''}`}
+              onClick={() => updateField('hasAttendance', true)}
+            >
+              사용
+            </button>
+            <button
+              type="button"
+              className={`group-create__academy-toggle-btn ${!hasAttendance ? 'group-create__academy-toggle-btn--active' : ''}`}
+              onClick={() => updateField('hasAttendance', false)}
+            >
+              사용 안 함
+            </button>
+          </div>
+          {hasAttendance && (
+            <div className="group-create__academy-card-note">
+              → QR 코드로 출석 체크를 할 수 있어요
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 다중 강사 모드 (1:1 수업일 때만 표시) */}
+      {!hasClasses && (
+        <div className="group-create__academy-card">
+          <div className="group-create__academy-card-question">강사가 여러 명인가요?</div>
+          <div className="group-create__academy-card-toggle">
+            <button
+              type="button"
+              className={`group-create__academy-toggle-btn ${hasMultipleInstructors ? 'group-create__academy-toggle-btn--active' : ''}`}
+              onClick={() => updateField('hasMultipleInstructors', true)}
+            >
+              네
+            </button>
+            <button
+              type="button"
+              className={`group-create__academy-toggle-btn ${!hasMultipleInstructors ? 'group-create__academy-toggle-btn--active' : ''}`}
+              onClick={() => updateField('hasMultipleInstructors', false)}
+            >
+              아니요
+            </button>
+          </div>
+          {hasMultipleInstructors && (
+            <div className="group-create__academy-card-note">
+              → 강사별로 담당 학생을 배정할 수 있어요
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 연습실/공부방 */}
       <div className="group-create__academy-card">

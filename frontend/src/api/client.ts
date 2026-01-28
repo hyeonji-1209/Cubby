@@ -14,9 +14,18 @@ export const apiClient: AxiosInstance = axios.create({
 // Request interceptor - 토큰 추가
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const tokens = useAuthStore.getState().tokens;
-    if (tokens?.accessToken) {
-      config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+    // 회원가입/비로그인 API는 토큰을 보내지 않음
+    const skipAuthPaths = ['/verification/signup/', '/auth/register', '/auth/login', '/auth/refresh'];
+    const shouldSkipAuth = skipAuthPaths.some((path) => config.url?.includes(path));
+
+    if (shouldSkipAuth) {
+      // 인증 불필요한 요청은 Authorization 헤더 명시적 제거
+      delete config.headers.Authorization;
+    } else {
+      const tokens = useAuthStore.getState().tokens;
+      if (tokens?.accessToken && tokens.accessToken.length > 0) {
+        config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+      }
     }
     return config;
   },
@@ -29,7 +38,11 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 비로그인 API 에러는 토큰 갱신 시도하지 않음
+    const skipRefreshPaths = ['/verification/signup/', '/auth/register', '/auth/login', '/auth/refresh'];
+    const shouldSkipRefresh = skipRefreshPaths.some((path) => originalRequest.url?.includes(path));
+
+    if (error.response?.status === 401 && !originalRequest._retry && !shouldSkipRefresh) {
       originalRequest._retry = true;
 
       const { tokens, _hasHydrated } = useAuthStore.getState();

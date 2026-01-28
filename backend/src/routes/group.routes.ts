@@ -15,6 +15,9 @@ router.use(authMiddleware);
 // 모임 생성
 router.post('/', groupController.create);
 
+// 초대 코드 검증 (가입 전 그룹 정보 확인)
+router.post('/validate-invite', groupController.validateInviteCode);
+
 // 초대 코드로 모임 가입
 router.post('/join', groupController.joinByInviteCode);
 
@@ -53,6 +56,13 @@ router.patch(
   '/:groupId/members/:memberId',
   requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
   groupController.updateMemberRole
+);
+
+// 멤버 수업 정보 업데이트 (운영자, 관리자만 - 1:1 교육용)
+router.patch(
+  '/:groupId/members/:memberId/lesson-info',
+  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  groupController.updateMemberLessonInfo
 );
 
 // 멤버 제거 (운영자, 관리자만)

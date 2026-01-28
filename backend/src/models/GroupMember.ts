@@ -25,6 +25,23 @@ export enum MemberStatus {
   SUSPENDED = 'suspended',
 }
 
+// 보호자의 자녀 정보
+export interface ChildInfo {
+  name: string;           // 자녀 이름
+  birthYear?: number;     // 출생년도
+  gender?: 'male' | 'female' | 'other';
+  note?: string;          // 메모 (알레르기, 특이사항 등)
+}
+
+// 1:1 수업 스케줄 (요일 + 시간 + 레슨실)
+export interface LessonSchedule {
+  dayOfWeek: number;      // 0 = 일요일, 1 = 월요일, ..., 6 = 토요일
+  startTime: string;      // "14:00"
+  endTime: string;        // "15:00"
+  lessonRoomId?: string;  // 배정된 레슨실 ID
+  lessonRoomName?: string; // 레슨실 이름 (표시용, 저장 시점에 캐싱)
+}
+
 @Entity('group_members')
 @Unique(['groupId', 'userId'])
 export class GroupMember {
@@ -48,6 +65,19 @@ export class GroupMember {
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   title: string; // 직책/직분 (본인이 설정)
+
+  @Column({ type: 'uuid', nullable: true })
+  positionId: string; // 선택한 직책 ID (GroupPosition)
+
+  @Column({ type: 'json', nullable: true })
+  childInfo: ChildInfo[]; // 보호자인 경우 자녀 정보 (복수)
+
+  // 1:1 교육 그룹 전용 필드
+  @Column({ type: 'json', nullable: true })
+  lessonSchedule: LessonSchedule[]; // 수업 스케줄 (복수 가능)
+
+  @Column({ type: 'int', nullable: true })
+  paymentDueDay: number; // 수강료 납부일 (1-31)
 
   @Column({ type: 'uuid', nullable: true })
   invitedBy: string;

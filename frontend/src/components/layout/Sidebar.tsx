@@ -142,34 +142,72 @@ interface JoinedGroupInfo {
   id: string;
   name: string;
   type: GroupType;
+  allowGuardians?: boolean;
+  positions?: { id: string; name: string; color?: string }[];
+}
+
+type InviteStep = 'code' | 'guardian' | 'position';
+
+// 자녀 정보 타입
+interface ChildFormData {
+  name: string;
+  birthYear: string;
+  note: string;
 }
 
 const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
-  const [step, setStep] = useState<'code' | 'title'>('code');
+  const [step, setStep] = useState<InviteStep>('code');
   const [inviteCode, setInviteCode] = useState('');
-  const [myTitle, setMyTitle] = useState('');
   const [joinedGroup, setJoinedGroup] = useState<JoinedGroupInfo | null>(null);
   const { loading, withLoading } = useLoading();
   const [error, setError] = useState('');
   const { joinGroup, fetchMyGroups } = useGroupStore();
   const toast = useToast();
 
+  // 보호자 관련 상태
+  const [isGuardian, setIsGuardian] = useState(false);
+  const [children, setChildren] = useState<ChildFormData[]>([{ name: '', birthYear: '', note: '' }]);
+
+  // 직책 관련 상태
+  const [selectedPositionId, setSelectedPositionId] = useState('');
+
   const positionLabel = getPositionLabel(joinedGroup?.type);
+
+  // 자녀 추가
+  const addChild = () => {
+    setChildren([...children, { name: '', birthYear: '', note: '' }]);
+  };
+
+  // 자녀 제거
+  const removeChild = (index: number) => {
+    if (children.length > 1) {
+      setChildren(children.filter((_, i) => i !== index));
+    }
+  };
+
+  // 자녀 정보 업데이트
+  const updateChild = (index: number, field: keyof ChildFormData, value: string) => {
+    const updated = [...children];
+    updated[index] = { ...updated[index], [field]: value };
+    setChildren(updated);
+  };
 
   // 모달 닫을 때 초기화
   const handleClose = useCallback(() => {
     setStep('code');
     setInviteCode('');
-    setMyTitle('');
     setJoinedGroup(null);
     setError('');
+    setIsGuardian(false);
+    setChildren([{ name: '', birthYear: '', note: '' }]);
+    setSelectedPositionId('');
     onClose();
   }, [onClose]);
 
   if (!isOpen) return null;
 
-  // Step 1: 초대 코드로 가입
-  const handleJoin = async () => {
+  // Step 1: 초대 코드 검증만 (가입은 아직 안함)
+  const handleCheckCode = async () => {
     if (!inviteCode.trim()) {
       setError('초대 코드를 입력해주세요');
       return;
@@ -177,25 +215,52 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
 
     setError('');
     await withLoading(async () => {
-      const result = await joinGroup(inviteCode.trim());
+      // 코드만 검증하고 그룹 정보 받기
+      const response = await groupApi.validateInviteCode(inviteCode.trim());
+      const result = response.data;
       setJoinedGroup(result);
 
-      // 연인 타입이면 직책 설정 없이 바로 완료
+      // 연인 타입이면 바로 가입 처리
       if (result.type === 'couple') {
+        await joinGroup(inviteCode.trim());
         toast.success('모임에 가입되었습니다!');
         await fetchMyGroups();
         handleClose();
+        return;
+      }
+
+      // 보호자 허용 그룹이면 보호자 선택 단계로
+      if (result.allowGuardians) {
+        setStep('guardian');
       } else {
-        // 그 외 타입은 직책/직분 설정 단계로
-        setStep('title');
+        // 아니면 바로 직책 선택 단계로
+        setStep('position');
       }
     }).catch(() => setError('유효하지 않은 초대 코드입니다'));
   };
 
-  // Step 2: 직책/직분 설정 후 완료
-  const handleSetTitle = async () => {
-    if (!myTitle.trim()) {
-      setError(`${positionLabel}을 입력해주세요`);
+  // Step 2: 보호자 여부 선택 후 다음
+  const handleGuardianNext = () => {
+    if (isGuardian) {
+      // 적어도 하나의 자녀에 이름이 있어야 함
+      const hasValidChild = children.some(child => child.name.trim());
+      if (!hasValidChild) {
+        setError('자녀 이름을 입력해주세요');
+        return;
+      }
+    }
+    setError('');
+    setStep('position');
+  };
+
+  // Step 3: 직책 설정 후 가입 완료
+  const handleComplete = async () => {
+    const positions = joinedGroup?.positions || [];
+    const hasPositions = positions.length > 0;
+    const selectedPosition = positions.find(p => p.id === selectedPositionId);
+
+    if (hasPositions && !selectedPositionId) {
+      setError(`${positionLabel}을 선택해주세요`);
       return;
     }
 
@@ -203,17 +268,47 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
 
     setError('');
     await withLoading(async () => {
-      await groupApi.updateMyProfile(joinedGroup.id, { title: myTitle.trim() });
+      // 유효한 자녀 정보만 필터링 (이름이 있는 것만)
+      const validChildren = isGuardian
+        ? children
+            .filter(child => child.name.trim())
+            .map(child => ({
+              name: child.name.trim(),
+              birthYear: child.birthYear ? parseInt(child.birthYear) : undefined,
+              note: child.note.trim() || undefined,
+            }))
+        : undefined;
+
+      // 실제 가입 처리 (모든 정보 포함)
+      await joinGroup(inviteCode.trim(), {
+        isGuardian,
+        childInfo: validChildren,
+        positionId: selectedPositionId || undefined,
+      });
+
+      // 직책 title 업데이트
+      if (selectedPosition) {
+        await groupApi.updateMyProfile(joinedGroup.id, {
+          title: selectedPosition.name,
+          positionId: selectedPositionId,
+        });
+      }
+
       toast.success('모임에 가입되었습니다!');
       await fetchMyGroups();
       handleClose();
-    }).catch(() => setError(`${positionLabel} 설정에 실패했습니다`));
+    }).catch(() => setError('가입에 실패했습니다'));
   };
+
+  // 년도 옵션 생성 (현재년도 - 30년 ~ 현재년도)
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 31 }, (_, i) => currentYear - i);
 
   return (
     <div className="sidebar-modal-overlay" onClick={handleClose}>
       <div className="sidebar-modal" onClick={(e) => e.stopPropagation()}>
-        {step === 'code' ? (
+        {/* Step 1: 초대 코드 입력 */}
+        {step === 'code' && (
           <>
             <h3 className="sidebar-modal__title">초대 코드 입력</h3>
             <p className="sidebar-modal__desc">모임 초대 코드를 입력해주세요</p>
@@ -236,31 +331,104 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
               </button>
               <button
                 className="sidebar-modal__btn sidebar-modal__btn--submit"
-                onClick={handleJoin}
+                onClick={handleCheckCode}
                 disabled={loading || !inviteCode.trim()}
               >
                 {loading ? '확인 중...' : '다음'}
               </button>
             </div>
           </>
-        ) : (
+        )}
+
+        {/* Step 2: 보호자 여부 선택 */}
+        {step === 'guardian' && (
           <>
-            <h3 className="sidebar-modal__title">{positionLabel} 설정</h3>
+            <h3 className="sidebar-modal__title">가입 유형 선택</h3>
             <p className="sidebar-modal__desc">
-              <strong>{joinedGroup?.name}</strong> 모임에서 사용할 {positionLabel}을 입력해주세요
+              <strong>{joinedGroup?.name}</strong>에 어떤 자격으로 가입하시나요?
             </p>
 
             {error && <div className="sidebar-modal__error">{error}</div>}
 
-            <input
-              type="text"
-              className="sidebar-modal__input"
-              value={myTitle}
-              onChange={(e) => setMyTitle(e.target.value)}
-              placeholder={joinedGroup?.type === 'religious' ? '예: 성도, 집사, 권사' : '예: 회원, 부원, 팀원'}
-              maxLength={30}
-              autoFocus
-            />
+            <div className="sidebar-modal__radio-group">
+              <label className={`sidebar-modal__radio ${!isGuardian ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="memberType"
+                  checked={!isGuardian}
+                  onChange={() => setIsGuardian(false)}
+                />
+                <span className="sidebar-modal__radio-label">본인 (학생/수강생)</span>
+              </label>
+              <label className={`sidebar-modal__radio ${isGuardian ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="memberType"
+                  checked={isGuardian}
+                  onChange={() => setIsGuardian(true)}
+                />
+                <span className="sidebar-modal__radio-label">보호자</span>
+              </label>
+            </div>
+
+            {isGuardian && (
+              <div className="sidebar-modal__child-info">
+                <div className="sidebar-modal__child-info-header">
+                  <p className="sidebar-modal__child-info-title">자녀 정보</p>
+                  {children.length < 5 && (
+                    <button
+                      type="button"
+                      className="sidebar-modal__add-child-btn"
+                      onClick={addChild}
+                    >
+                      + 자녀 추가
+                    </button>
+                  )}
+                </div>
+                {children.map((child, index) => (
+                  <div key={index} className="sidebar-modal__child-item">
+                    {children.length > 1 && (
+                      <div className="sidebar-modal__child-header">
+                        <span className="sidebar-modal__child-number">자녀 {index + 1}</span>
+                        <button
+                          type="button"
+                          className="sidebar-modal__remove-child-btn"
+                          onClick={() => removeChild(index)}
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      className="sidebar-modal__input"
+                      value={child.name}
+                      onChange={(e) => updateChild(index, 'name', e.target.value)}
+                      placeholder="자녀 이름 *"
+                      maxLength={20}
+                    />
+                    <select
+                      className="sidebar-modal__select"
+                      value={child.birthYear}
+                      onChange={(e) => updateChild(index, 'birthYear', e.target.value)}
+                    >
+                      <option value="">출생년도 (선택)</option>
+                      {yearOptions.map(year => (
+                        <option key={year} value={year}>{year}년</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      className="sidebar-modal__input"
+                      value={child.note}
+                      onChange={(e) => updateChild(index, 'note', e.target.value)}
+                      placeholder="메모 (선택, 예: 알레르기 등)"
+                      maxLength={100}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="sidebar-modal__actions">
               <button
@@ -271,8 +439,53 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
               </button>
               <button
                 className="sidebar-modal__btn sidebar-modal__btn--submit"
-                onClick={handleSetTitle}
-                disabled={loading || !myTitle.trim()}
+                onClick={handleGuardianNext}
+                disabled={loading || (isGuardian && !children.some(c => c.name.trim()))}
+              >
+                다음
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Step 3: 직책 선택 */}
+        {step === 'position' && (
+          <>
+            <h3 className="sidebar-modal__title">{positionLabel} 설정</h3>
+            <p className="sidebar-modal__desc">
+              <strong>{joinedGroup?.name}</strong> 모임에서 사용할 {positionLabel}을 선택해주세요
+            </p>
+
+            {error && <div className="sidebar-modal__error">{error}</div>}
+
+            {joinedGroup?.positions && joinedGroup.positions.length > 0 ? (
+              <select
+                className="sidebar-modal__select"
+                value={selectedPositionId}
+                onChange={(e) => setSelectedPositionId(e.target.value)}
+              >
+                <option value="">{positionLabel} 선택</option>
+                {joinedGroup.positions.map(pos => (
+                  <option key={pos.id} value={pos.id}>{pos.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="sidebar-modal__info">
+                설정된 {positionLabel}이 없습니다. 바로 가입합니다.
+              </p>
+            )}
+
+            <div className="sidebar-modal__actions">
+              <button
+                className="sidebar-modal__btn sidebar-modal__btn--cancel"
+                onClick={() => setStep(joinedGroup?.allowGuardians ? 'guardian' : 'code')}
+              >
+                이전
+              </button>
+              <button
+                className="sidebar-modal__btn sidebar-modal__btn--submit"
+                onClick={handleComplete}
+                disabled={loading || (joinedGroup?.positions && joinedGroup.positions.length > 0 && !selectedPositionId)}
               >
                 {loading ? '가입 중...' : '가입하기'}
               </button>

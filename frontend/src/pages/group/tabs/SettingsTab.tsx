@@ -1,6 +1,8 @@
+import { QRCodeSVG } from 'qrcode.react';
 import { Modal, LocationPicker } from '@/components';
 import { useSettingsTab } from './hooks';
-import { GroupInfoSection, PracticeRoomSection, LocationSection, DangerSection, LeaveSection } from './components';
+import { GroupInfoSection, PracticeRoomSection, OperatingHoursSection, LessonRoomSection, LocationSection, DangerSection, LeaveSection } from './components';
+import { InstructorManagement } from '../components';
 import PositionsTab from '../PositionsTab';
 import type { SettingsTabProps } from './types';
 
@@ -30,6 +32,19 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     handleAddPracticeRoom,
     handleUpdateRoomCapacity,
     handleDeletePracticeRoom,
+    // QR Code
+    showQRModal,
+    selectedRoomForQR,
+    handleShowQRCode,
+    handleCloseQRModal,
+    // Feature toggle
+    handleFeatureToggle,
+    // Operating hours
+    operatingHours,
+    operatingHoursChanged,
+    operatingHoursSaving,
+    updateOperatingHoursSetting,
+    handleSaveOperatingHours,
     // Locations
     favoriteLocations,
     showLocationModal,
@@ -41,6 +56,16 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     setLocationForm,
     handleSaveLocation,
     handleDeleteLocation,
+    // Lesson rooms (1:1 수업용)
+    lessonRooms,
+    lessonRoomsLoading,
+    newLessonRoomName,
+    setNewLessonRoomName,
+    newLessonRoomCapacity,
+    setNewLessonRoomCapacity,
+    handleAddLessonRoom,
+    handleUpdateLessonRoomCapacity,
+    handleDeleteLessonRoom,
   } = useSettingsTab({ groupId, currentGroup });
 
   return (
@@ -48,13 +73,54 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       {isAdmin ? (
         <>
           {/* 모임 정보 섹션 */}
-          <GroupInfoSection currentGroup={currentGroup} isOwner={isOwner} />
+          <GroupInfoSection
+            currentGroup={currentGroup}
+            isOwner={isOwner}
+            isAdmin={isAdmin}
+            onFeatureToggle={handleFeatureToggle}
+          />
+
+          {/* 학원 운영시간 설정 (학원 타입 전용) */}
+          {currentGroup.type === 'education' && (
+            <OperatingHoursSection
+              operatingHours={operatingHours}
+              operatingHoursChanged={operatingHoursChanged}
+              operatingHoursSaving={operatingHoursSaving}
+              onSettingChange={updateOperatingHoursSetting}
+              onSaveSettings={handleSaveOperatingHours}
+            />
+          )}
+
+          {/* 강사 관리 섹션 (1:1 교육 + 다중 강사 모드) */}
+          {currentGroup.type === 'education' && !currentGroup.hasClasses && currentGroup.hasMultipleInstructors && (
+            <div className="group-detail__setting-section">
+              <InstructorManagement
+                groupId={groupId}
+                members={members}
+              />
+            </div>
+          )}
 
           {/* 직책 관리 섹션 */}
           {groupId && (
             <div className="group-detail__setting-section">
               <PositionsTab groupId={groupId} members={members} isAdmin={isAdmin} groupType={currentGroup.type} />
             </div>
+          )}
+
+          {/* 레슨실 관리 섹션 (1:1 수업 전용) */}
+          {currentGroup.type === 'education' && !currentGroup.hasClasses && (
+            <LessonRoomSection
+              lessonRooms={lessonRooms}
+              lessonRoomsLoading={lessonRoomsLoading}
+              newLessonRoomName={newLessonRoomName}
+              setNewLessonRoomName={setNewLessonRoomName}
+              newLessonRoomCapacity={newLessonRoomCapacity}
+              setNewLessonRoomCapacity={setNewLessonRoomCapacity}
+              onAddRoom={handleAddLessonRoom}
+              onUpdateCapacity={handleUpdateLessonRoomCapacity}
+              onDeleteRoom={handleDeleteLessonRoom}
+            />
           )}
 
           {/* 연습실 관리 섹션 (학원 타입 + 연습실 ON) */}
@@ -74,6 +140,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               onAddRoom={handleAddPracticeRoom}
               onUpdateCapacity={handleUpdateRoomCapacity}
               onDeleteRoom={handleDeletePracticeRoom}
+              onShowQRCode={handleShowQRCode}
             />
           )}
 
@@ -127,6 +194,31 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               {locationSaving ? '저장 중...' : editingLocation ? '수정하기' : '추가하기'}
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* 연습실 QR 코드 모달 */}
+      <Modal
+        isOpen={showQRModal}
+        onClose={handleCloseQRModal}
+        title={`${selectedRoomForQR?.name || '연습실'} QR 코드`}
+        size="sm"
+      >
+        <div className="qr-modal">
+          <div className="qr-modal__code">
+            <QRCodeSVG
+              value={`${window.location.origin}/groups/${groupId}/practice-rooms/${selectedRoomForQR?.id}`}
+              size={200}
+              level="M"
+              marginSize={2}
+            />
+          </div>
+          <p className="qr-modal__hint">
+            이 QR 코드를 스캔하면 연습실 예약 페이지로 이동합니다.
+          </p>
+          <p className="qr-modal__room-info">
+            수용 인원: {selectedRoomForQR?.capacity}명
+          </p>
         </div>
       </Modal>
     </div>

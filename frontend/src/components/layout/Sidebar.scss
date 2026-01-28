@@ -473,4 +473,169 @@
       }
     }
   }
+
+  // 라디오 그룹 (보호자 선택)
+  &__radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+  }
+
+  &__radio {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $gray-300;
+      background-color: $gray-50;
+    }
+
+    &.active {
+      border-color: $primary-500;
+      background-color: $primary-50;
+    }
+
+    input[type="radio"] {
+      accent-color: $primary-500;
+    }
+  }
+
+  &__radio-label {
+    font-size: $font-size-sm;
+    color: $gray-700;
+  }
+
+  // 자녀 정보 입력
+  &__child-info {
+    background-color: $gray-50;
+    border-radius: $radius-md;
+    padding: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__child-info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__child-info-title {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    margin: 0;
+  }
+
+  &__add-child-btn {
+    font-size: $font-size-xs;
+    color: $primary-600;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: $spacing-xs;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__child-item {
+    &:not(:last-child) {
+      margin-bottom: $spacing-md;
+      padding-bottom: $spacing-md;
+      border-bottom: 1px solid $gray-200;
+    }
+  }
+
+  &__child-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__child-number {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    font-weight: $font-weight-medium;
+  }
+
+  &__remove-child-btn {
+    font-size: $font-size-xs;
+    color: $error;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: $spacing-xs;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // 안내 메시지
+  &__info {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    text-align: center;
+    padding: $spacing-md;
+    background-color: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-md;
+  }
+
+  // 셀렉트 박스
+  &__select {
+    width: 100%;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    color: $gray-700;
+    background-color: white;
+    margin-bottom: $spacing-md;
+    cursor: pointer;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+    }
+  }
+
+  // 또는 구분선
+  &__or {
+    text-align: center;
+    font-size: $font-size-xs;
+    color: $gray-400;
+    margin-bottom: $spacing-sm;
+    position: relative;
+
+    &::before,
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40%;
+      height: 1px;
+      background-color: $gray-200;
+    }
+
+    &::before {
+      left: 0;
+    }
+
+    &::after {
+      right: 0;
+    }
+  }
 }

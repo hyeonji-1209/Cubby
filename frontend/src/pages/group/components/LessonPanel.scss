@@ -1,0 +1,296 @@
+@use '../../../styles/variables' as *;
+
+.lesson-panel {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+
+  &__loading,
+  &__error,
+  &__empty {
+    padding: $spacing-xl;
+    text-align: center;
+    color: $gray-500;
+  }
+
+  &__error {
+    color: $error;
+  }
+
+  // 탭
+  &__tabs {
+    display: flex;
+    gap: $spacing-xs;
+    padding-bottom: $spacing-md;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__tab {
+    flex: 1;
+    padding: $spacing-sm $spacing-md;
+    background: transparent;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-sm;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      background: $gray-50;
+    }
+
+    &.active {
+      background: $primary;
+      border-color: $primary;
+      color: white;
+    }
+  }
+
+  // 오늘 수업
+  &__today {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__schedule-info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+  }
+
+  &__day {
+    font-weight: 600;
+    color: $gray-700;
+  }
+
+  &__time {
+    color: $gray-500;
+    font-size: $font-sm;
+  }
+
+  &__live {
+    margin-left: auto;
+    padding: 2px $spacing-sm;
+    background: $success;
+    border-radius: $radius-full;
+    font-size: $font-xs;
+    color: white;
+    animation: pulse 2s infinite;
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  // 출석 상태
+  &__attendance {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+  }
+
+  &__status {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-xs $spacing-md;
+    border-radius: $radius-full;
+    font-size: $font-sm;
+    font-weight: 500;
+
+    &--present {
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &--late {
+      background: rgba($warning, 0.1);
+      color: $warning;
+    }
+
+    &--early_leave {
+      background: rgba($warning, 0.15);
+      color: darken($warning, 10%);
+    }
+
+    &--pending {
+      background: $gray-100;
+      color: $gray-500;
+    }
+  }
+
+  &__check-time {
+    font-size: $font-xs;
+    opacity: 0.8;
+  }
+
+  &__early-leave-btn {
+    margin-left: auto;
+    padding: $spacing-xs $spacing-md;
+    background: $warning;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-sm;
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover {
+      background: darken($warning, 10%);
+    }
+  }
+
+  // QR 코드
+  &__qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-lg;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-lg;
+  }
+
+  &__qr-loading {
+    padding: $spacing-xl;
+    color: $gray-500;
+  }
+
+  &__qr-hint {
+    font-size: $font-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__qr-generate {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary;
+    border: none;
+    border-radius: $radius-md;
+    color: white;
+    cursor: pointer;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  // 섹션
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__label {
+    font-size: $font-sm;
+    font-weight: 500;
+    color: $gray-700;
+  }
+
+  &__readonly {
+    padding: $spacing-md;
+    background: $gray-50;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-sm;
+    color: $gray-600;
+    white-space: pre-wrap;
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: $spacing-md;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-sm;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.15s;
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+    }
+  }
+
+  // 저장 버튼
+  &__save-btn {
+    padding: $spacing-md;
+    background: $primary;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-base;
+    font-weight: 500;
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  // 히스토리
+  &__history-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__history-item {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    border-left: 3px solid $primary;
+  }
+
+  &__history-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__history-date {
+    font-weight: 600;
+    color: $gray-800;
+  }
+
+  &__history-time {
+    font-size: $font-sm;
+    color: $gray-500;
+  }
+
+  &__history-content,
+  &__history-homework,
+  &__history-note {
+    font-size: $font-sm;
+    color: $gray-600;
+    margin-top: $spacing-xs;
+
+    strong {
+      color: $gray-700;
+    }
+  }
+}

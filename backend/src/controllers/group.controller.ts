@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { IsNull } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Group, GroupType, GroupStatus } from '../models/Group';
 import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
 import { SubGroup } from '../models/SubGroup';
 import { Announcement } from '../models/Announcement';
 import { Schedule } from '../models/Schedule';
+import { GroupPosition } from '../models/GroupPosition';
 import { generateInviteCode, getInviteCodeExpiryDate, isInviteCodeExpired } from '../utils/inviteCode.util';
 import { AppError } from '../middlewares/error.middleware';
 
@@ -14,6 +16,7 @@ export class GroupController {
   private subGroupRepository = AppDataSource.getRepository(SubGroup); // Used for counting subgroups
   private announcementRepository = AppDataSource.getRepository(Announcement);
   private scheduleRepository = AppDataSource.getRepository(Schedule);
+  private positionRepository = AppDataSource.getRepository(GroupPosition);
 
   // 유니크한 초대 코드 생성 헬퍼
   private generateUniqueInviteCode = async (): Promise<string> => {
@@ -96,7 +99,8 @@ export class GroupController {
     }
   };
 
-  joinByInviteCode = async (req: Request, res: Response, next: NextFunction) => {
+  // 초대 코드 검증 (가입 전 그룹 정보 확인)
+  validateInviteCode = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { inviteCode } = req.body;
 
@@ -118,26 +122,19 @@ export class GroupController {
         where: {
           groupId: group.id,
           userId: req.user!.id,
+          status: MemberStatus.ACTIVE,
         },
       });
 
       if (existingMembership) {
-        if (existingMembership.status === MemberStatus.ACTIVE) {
-          throw new AppError('Already a member of this group', 400);
-        }
-        // 이전에 탈퇴했다면 다시 활성화
-        existingMembership.status = MemberStatus.ACTIVE;
-        await this.memberRepository.save(existingMembership);
-      } else {
-        // 새 멤버로 추가
-        const membership = this.memberRepository.create({
-          groupId: group.id,
-          userId: req.user!.id,
-          role: MemberRole.MEMBER,
-          status: MemberStatus.ACTIVE,
-        });
-        await this.memberRepository.save(membership);
+        throw new AppError('Already a member of this group', 400);
       }
+
+      // 직책 목록 조회 (메인 그룹 직책만)
+      const positions = await this.positionRepository.find({
+        where: { groupId: group.id, isActive: true, subGroupId: IsNull() },
+        order: { sortOrder: 'ASC' },
+      });
 
       res.json({
         success: true,
@@ -145,6 +142,90 @@ export class GroupController {
           id: group.id,
           name: group.name,
           type: group.type,
+          allowGuardians: group.allowGuardians,
+          positions: positions.map((p: GroupPosition) => ({ id: p.id, name: p.name, color: p.color })),
+        },
+        message: 'Invite code is valid',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  joinByInviteCode = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { inviteCode, isGuardian, childInfo, positionId } = req.body;
+
+      const group = await this.groupRepository.findOne({
+        where: { inviteCode, status: GroupStatus.ACTIVE },
+      });
+
+      if (!group) {
+        throw new AppError('Invalid invite code', 400);
+      }
+
+      // 초대 코드 유효기간 확인
+      if (isInviteCodeExpired(group.inviteCodeExpiresAt)) {
+        throw new AppError('Invite code has expired', 400);
+      }
+
+      // 보호자로 가입하려는데 보호자 허용이 안된 그룹인 경우
+      if (isGuardian && !group.allowGuardians) {
+        throw new AppError('This group does not allow guardian membership', 400);
+      }
+
+      // 이미 멤버인지 확인
+      const existingMembership = await this.memberRepository.findOne({
+        where: {
+          groupId: group.id,
+          userId: req.user!.id,
+        },
+      });
+
+      // 멤버 역할 결정
+      const role = isGuardian ? MemberRole.GUARDIAN : MemberRole.MEMBER;
+
+      if (existingMembership) {
+        if (existingMembership.status === MemberStatus.ACTIVE) {
+          throw new AppError('Already a member of this group', 400);
+        }
+        // 이전에 탈퇴했다면 다시 활성화
+        existingMembership.status = MemberStatus.ACTIVE;
+        existingMembership.role = role;
+        if (isGuardian && childInfo) {
+          existingMembership.childInfo = childInfo;
+        }
+        if (positionId) {
+          existingMembership.positionId = positionId;
+        }
+        await this.memberRepository.save(existingMembership);
+      } else {
+        // 새 멤버로 추가
+        const membership = this.memberRepository.create({
+          groupId: group.id,
+          userId: req.user!.id,
+          role,
+          status: MemberStatus.ACTIVE,
+          childInfo: isGuardian ? childInfo : undefined,
+          positionId: positionId || undefined,
+        });
+        await this.memberRepository.save(membership);
+      }
+
+      // 직책 목록 조회 (메인 그룹 직책만, 소모임 직책 제외)
+      const positions = await this.positionRepository.find({
+        where: { groupId: group.id, isActive: true, subGroupId: IsNull() },
+        order: { sortOrder: 'ASC' },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          id: group.id,
+          name: group.name,
+          type: group.type,
+          allowGuardians: group.allowGuardians,
+          positions: positions.map((p: GroupPosition) => ({ id: p.id, name: p.name, color: p.color })),
         },
         message: 'Joined group successfully',
       });
@@ -326,7 +407,9 @@ export class GroupController {
         hasClasses,
         hasPracticeRooms,
         allowGuardians,
+        hasAttendance,
         practiceRoomSettings,
+        operatingHours,
       } = req.body;
 
       const group = await this.groupRepository.findOne({ where: { id: groupId } });
@@ -348,7 +431,9 @@ export class GroupController {
       if (hasClasses !== undefined) group.hasClasses = hasClasses;
       if (hasPracticeRooms !== undefined) group.hasPracticeRooms = hasPracticeRooms;
       if (allowGuardians !== undefined) group.allowGuardians = allowGuardians;
+      if (hasAttendance !== undefined) group.hasAttendance = hasAttendance;
       if (practiceRoomSettings !== undefined) group.practiceRoomSettings = practiceRoomSettings;
+      if (operatingHours !== undefined) group.operatingHours = operatingHours;
 
       await this.groupRepository.save(group);
 
@@ -435,6 +520,10 @@ export class GroupController {
         status: member.status,
         nickname: member.nickname,
         title: member.title,
+        positionId: member.positionId,
+        childInfo: member.childInfo,
+        lessonSchedule: member.lessonSchedule,
+        paymentDueDay: member.paymentDueDay,
         joinedAt: member.joinedAt,
         user: {
           id: member.user.id,
@@ -547,7 +636,7 @@ export class GroupController {
   updateMyProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId } = req.params;
-      const { nickname, title } = req.body;
+      const { nickname, title, positionId } = req.body;
 
       const membership = await this.memberRepository.findOne({
         where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
@@ -559,6 +648,7 @@ export class GroupController {
 
       if (nickname !== undefined) membership.nickname = nickname;
       if (title !== undefined) membership.title = title;
+      if (positionId !== undefined) membership.positionId = positionId;
 
       await this.memberRepository.save(membership);
 
@@ -567,6 +657,53 @@ export class GroupController {
         data: {
           nickname: membership.nickname,
           title: membership.title,
+          positionId: membership.positionId,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 멤버 수업 정보 업데이트 (1:1 교육 그룹용)
+  updateMemberLessonInfo = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId, memberId } = req.params;
+      const { lessonSchedule, paymentDueDay } = req.body;
+
+      // 권한 확인: 관리자만 수정 가능
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
+        throw new AppError('Only admins can update member lesson info', 403);
+      }
+
+      const membership = await this.memberRepository.findOne({
+        where: { id: memberId, groupId },
+        relations: ['user'],
+      });
+
+      if (!membership) {
+        throw new AppError('Member not found', 404);
+      }
+
+      if (lessonSchedule !== undefined) membership.lessonSchedule = lessonSchedule;
+      if (paymentDueDay !== undefined) membership.paymentDueDay = paymentDueDay;
+
+      await this.memberRepository.save(membership);
+
+      res.json({
+        success: true,
+        data: {
+          id: membership.id,
+          lessonSchedule: membership.lessonSchedule,
+          paymentDueDay: membership.paymentDueDay,
+          user: {
+            id: membership.user.id,
+            name: membership.user.name,
+          },
         },
       });
     } catch (error) {

@@ -1,0 +1,337 @@
+@use '../../../styles/variables' as *;
+
+.lesson-tab {
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    color: $gray-900;
+    margin: 0;
+  }
+
+  &__live-badge {
+    padding: $spacing-xs $spacing-sm;
+    background: $success;
+    color: white;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-full;
+    animation: pulse-live 2s infinite;
+
+    @keyframes pulse-live {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  &__loading,
+  &__error,
+  &__empty {
+    padding: $spacing-xl;
+    text-align: center;
+    color: $gray-500;
+  }
+
+  &__error {
+    color: $error;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
+
+  // 탭
+  &__tabs {
+    display: flex;
+    gap: $spacing-xs;
+    border-bottom: 1px solid $gray-200;
+    padding-bottom: $spacing-sm;
+  }
+
+  &__tab {
+    padding: $spacing-sm $spacing-lg;
+    background: transparent;
+    border: none;
+    border-radius: $radius-md $radius-md 0 0;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+
+    &:hover {
+      color: $primary-600;
+    }
+
+    &.active {
+      color: $primary-600;
+      border-bottom-color: $primary-600;
+    }
+  }
+
+  // 오늘 수업
+  &__today {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
+
+  &__columns {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: $spacing-xl;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__left {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__right {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__info-card {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-lg;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__schedule-info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__day {
+    font-weight: $font-weight-semibold;
+    color: $gray-800;
+  }
+
+  &__time {
+    color: $gray-500;
+    font-size: $font-size-sm;
+  }
+
+  // 출석 상태
+  &__attendance {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-md;
+    border-radius: $radius-full;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+
+    &--present {
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &--late {
+      background: rgba($warning, 0.1);
+      color: $warning;
+    }
+
+    &--early_leave {
+      background: rgba($warning, 0.15);
+      color: darken($warning, 10%);
+    }
+
+    &--pending {
+      background: $gray-100;
+      color: $gray-500;
+    }
+  }
+
+  &__check-time {
+    font-size: $font-size-xs;
+    opacity: 0.8;
+  }
+
+  &__early-leave-btn {
+    padding: $spacing-xs $spacing-md;
+    background: $warning;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover {
+      background: darken($warning, 10%);
+    }
+  }
+
+  // QR 코드
+  &__qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-lg;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-lg;
+  }
+
+  &__qr-loading {
+    padding: $spacing-xl;
+    color: $gray-500;
+  }
+
+  &__qr-hint {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0;
+  }
+
+  &__qr-generate {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary;
+    border: none;
+    border-radius: $radius-md;
+    color: white;
+    cursor: pointer;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  // 섹션
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  &__label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+  }
+
+  &__readonly {
+    padding: $spacing-md;
+    background: $gray-50;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-600;
+    white-space: pre-wrap;
+  }
+
+  &__textarea {
+    width: 100%;
+    padding: $spacing-md;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    resize: vertical;
+    min-height: 80px;
+    transition: border-color 0.15s;
+
+    &:focus {
+      outline: none;
+      border-color: $primary;
+    }
+  }
+
+  // 저장 버튼
+  &__save-btn {
+    padding: $spacing-md;
+    background: $primary;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
+    color: white;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  // 히스토리
+  &__history-list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__history-item {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    border-left: 3px solid $primary;
+  }
+
+  &__history-header {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__history-date {
+    font-weight: $font-weight-semibold;
+    color: $gray-800;
+  }
+
+  &__history-time {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  &__history-content,
+  &__history-homework,
+  &__history-note {
+    font-size: $font-size-sm;
+    color: $gray-600;
+    margin-top: $spacing-xs;
+
+    strong {
+      color: $gray-700;
+    }
+  }
+}

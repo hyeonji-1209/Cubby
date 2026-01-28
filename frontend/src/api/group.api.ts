@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiResponse, Group, GroupMember, GroupType, Announcement, Schedule } from '@/types';
+import type { ApiResponse, Group, GroupMember, GroupType, Announcement, Schedule, JoinGroupResponse, ChildInfo, LessonSchedule } from '@/types';
 
 // Overview API 응답 타입
 export interface GroupOverviewResponse {
@@ -27,9 +27,25 @@ export const groupApi = {
     return response.data;
   },
 
+  // 초대 코드 검증 (가입 전 그룹 정보 확인)
+  validateInviteCode: async (inviteCode: string): Promise<ApiResponse<JoinGroupResponse>> => {
+    const response = await apiClient.post('/groups/validate-invite', { inviteCode });
+    return response.data;
+  },
+
   // 초대 코드로 가입
-  joinByInviteCode: async (inviteCode: string): Promise<ApiResponse<{ id: string; name: string; type: GroupType }>> => {
-    const response = await apiClient.post('/groups/join', { inviteCode });
+  joinByInviteCode: async (
+    inviteCode: string,
+    options?: {
+      isGuardian?: boolean;
+      childInfo?: ChildInfo[];
+      positionId?: string;
+    }
+  ): Promise<ApiResponse<JoinGroupResponse>> => {
+    const response = await apiClient.post('/groups/join', {
+      inviteCode,
+      ...options,
+    });
     return response.data;
   },
 
@@ -48,7 +64,7 @@ export const groupApi = {
   // 모임 수정
   update: async (
     groupId: string,
-    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures' | 'practiceRoomSettings' | 'hasPracticeRooms' | 'hasClasses' | 'allowGuardians'>>
+    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures' | 'practiceRoomSettings' | 'hasPracticeRooms' | 'hasClasses' | 'allowGuardians' | 'hasAttendance' | 'operatingHours'>>
   ): Promise<ApiResponse<Group>> => {
     const response = await apiClient.patch(`/groups/${groupId}`, data);
     return response.data;
@@ -93,9 +109,19 @@ export const groupApi = {
   // 본인 프로필 수정 (닉네임, 직책)
   updateMyProfile: async (
     groupId: string,
-    data: { nickname?: string; title?: string }
-  ): Promise<ApiResponse<{ nickname?: string; title?: string }>> => {
+    data: { nickname?: string; title?: string; positionId?: string }
+  ): Promise<ApiResponse<{ nickname?: string; title?: string; positionId?: string }>> => {
     const response = await apiClient.patch(`/groups/${groupId}/my-profile`, data);
+    return response.data;
+  },
+
+  // 멤버 수업 정보 업데이트 (1:1 교육용)
+  updateMemberLessonInfo: async (
+    groupId: string,
+    memberId: string,
+    data: { lessonSchedule?: LessonSchedule[]; paymentDueDay?: number | null }
+  ): Promise<ApiResponse<{ id: string; lessonSchedule?: LessonSchedule[]; paymentDueDay?: number }>> => {
+    const response = await apiClient.patch(`/groups/${groupId}/members/${memberId}/lesson-info`, data);
     return response.data;
   },
 };

@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
-import { scheduleApi } from '@/api';
-import type { Schedule, ScheduleFormData } from '@/types';
+import { scheduleApi, attendanceApi } from '@/api';
+import type { Schedule, ScheduleFormData, AttendanceStatus } from '@/types';
 import type { LocationData } from '@/components';
 
 export interface ScheduleSlice {
@@ -21,9 +21,12 @@ export interface ScheduleSlice {
     color: string;
   };
   scheduleSaving: boolean;
+  // 출석 상태 (scheduleId -> status)
+  myAttendanceMap: Record<string, AttendanceStatus>;
 
   // Actions
   fetchSchedules: (groupId: string) => Promise<void>;
+  fetchMyAttendances: (groupId: string) => Promise<void>;
   openNewScheduleModal: () => void;
   openEditScheduleModal: (scheduleId: string) => Promise<void>;
   closeScheduleModal: () => void;
@@ -53,6 +56,7 @@ export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSl
   editingSchedule: null,
   scheduleForm: { ...initialScheduleForm },
   scheduleSaving: false,
+  myAttendanceMap: {},
 
   // Actions
   fetchSchedules: async (groupId) => {
@@ -64,6 +68,19 @@ export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSl
       console.error('Failed to fetch schedules:', error);
     } finally {
       set({ schedulesLoading: false });
+    }
+  },
+
+  fetchMyAttendances: async (groupId) => {
+    try {
+      const response = await attendanceApi.getMyAllAttendances(groupId);
+      const map: Record<string, AttendanceStatus> = {};
+      response.data.forEach((a) => {
+        map[a.scheduleId] = a.status;
+      });
+      set({ myAttendanceMap: map });
+    } catch (error) {
+      console.error('Failed to fetch my attendances:', error);
     }
   },
 
@@ -205,6 +222,7 @@ export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSl
       editingSchedule: null,
       scheduleForm: { ...initialScheduleForm },
       scheduleSaving: false,
+      myAttendanceMap: {},
     });
   },
 });

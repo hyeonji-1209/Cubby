@@ -5,4 +5,5 @@ export { default as AnnouncementsTab } from './AnnouncementsTab';
 export { default as SchedulesTab } from './SchedulesTab';
 export { default as PracticeRoomsTab } from './PracticeRoomsTab';
 export { default as SettingsTab } from './SettingsTab';
+export { default as LessonTab } from './LessonTab';
 export * from './types';

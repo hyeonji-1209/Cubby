@@ -23,6 +23,13 @@ export interface PracticeRoomSettings {
   maxHoursPerDay: number; // 1-8
 }
 
+// 학원 운영시간
+export interface OperatingHours {
+  openTime: string; // "09:00"
+  closeTime: string; // "22:00"
+  closedDays?: number[]; // 휴무일 요일 (0=일요일, 6=토요일)
+}
+
 export interface PracticeRoom {
   id: string;
   groupId: string;
@@ -68,7 +75,10 @@ export interface Group {
   hasClasses?: boolean; // 반 운영 여부
   hasPracticeRooms?: boolean; // 연습실 운영 여부
   allowGuardians?: boolean; // 보호자 허용 여부
+  hasAttendance?: boolean; // 출석 기능 사용 여부
+  hasMultipleInstructors?: boolean; // 다중 강사 운영 여부
   practiceRoomSettings?: PracticeRoomSettings;
+  operatingHours?: OperatingHours; // 학원 운영시간
   ownerId: string;
   owner?: User;
   memberCount?: number;
@@ -83,6 +93,30 @@ export interface Group {
 export type MemberRole = 'owner' | 'admin' | 'leader' | 'member' | 'guardian';
 export type MemberStatus = 'active' | 'pending' | 'suspended';
 
+// 보호자의 자녀 정보
+export interface ChildInfo {
+  name: string;
+  birthYear?: number;
+  gender?: 'male' | 'female' | 'other';
+  note?: string;
+}
+
+// 1:1 수업 스케줄 (요일 + 시간 + 레슨실)
+export interface LessonSchedule {
+  dayOfWeek: number;      // 0 = 일요일, 1 = 월요일, ..., 6 = 토요일
+  startTime: string;      // "14:00"
+  endTime: string;        // "15:00"
+  lessonRoomId?: string;  // 배정된 레슨실 ID
+  lessonRoomName?: string; // 레슨실 이름 (표시용)
+}
+
+// 반(class) 수업 스케줄 (요일 + 시간)
+export interface ClassSchedule {
+  dayOfWeek: number;      // 0 = 일요일, 1 = 월요일, ..., 6 = 토요일
+  startTime: string;      // "14:00"
+  endTime: string;        // "15:00"
+}
+
 export interface GroupMember {
   id: string;
   groupId: string;
@@ -91,6 +125,10 @@ export interface GroupMember {
   status: MemberStatus;
   nickname?: string;
   title?: string; // 직책/직분 (본인이 설정)
+  positionId?: string; // 선택한 직책 ID
+  childInfo?: ChildInfo[]; // 보호자인 경우 자녀 정보 (복수)
+  lessonSchedule?: LessonSchedule[]; // 1:1 수업 스케줄
+  paymentDueDay?: number; // 수강료 납부일 (1-31)
   joinedAt: string;
   user: {
     id: string;
@@ -100,8 +138,18 @@ export interface GroupMember {
   };
 }
 
+// 그룹 가입 응답
+export interface JoinGroupResponse {
+  id: string;
+  name: string;
+  type: GroupType;
+  allowGuardians?: boolean;
+  positions?: { id: string; name: string; color?: string }[];
+}
+
 // SubGroup
 export type SubGroupStatus = 'active' | 'inactive' | 'pending';
+export type SubGroupType = 'general' | 'class' | 'instructor';
 
 export interface SubGroup {
   id: string;
@@ -113,13 +161,40 @@ export interface SubGroup {
   coverImage?: string;
   leaderId?: string;
   status: SubGroupStatus;
+  type: SubGroupType; // 소그룹 타입: general, class, instructor
+  instructorId?: string; // 강사별 소그룹일 때 담당 강사
+  // 반(class) 전용 필드들
+  classSchedule?: ClassSchedule[]; // 수업 시간표
+  lessonRoomId?: string; // 배정된 레슨실 ID
+  lessonRoom?: {
+    id: string;
+    name: string;
+    capacity: number;
+  };
   childSubGroupCount?: number;
   leader?: {
     id: string;
     name: string;
     profileImage?: string;
   };
+  instructor?: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
   createdAt: string;
+}
+
+// SubGroupMember (소그룹 멤버십)
+export type SubGroupMemberRole = 'leader' | 'member';
+
+export interface SubGroupMember {
+  id: string;
+  subGroupId: string;
+  groupMemberId: string;
+  role: SubGroupMemberRole;
+  joinedAt: string;
+  groupMember?: GroupMember;
 }
 
 // SubGroup Request
@@ -365,4 +440,49 @@ export interface PaginatedResponse<T> {
     page: number;
     limit: number;
   };
+}
+
+// Attendance (출석)
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'early_leave';
+
+export interface Attendance {
+  id: string;
+  scheduleId: string;
+  groupId: string;
+  userId: string;
+  userName?: string;
+  status: AttendanceStatus;
+  checkedAt?: string;
+  leftAt?: string; // 퇴장 시각 (조퇴 시)
+  note?: string;
+}
+
+export interface QRToken {
+  token: string;
+  expiresAt: string;
+  scheduleId: string;
+  scheduleName: string;
+}
+
+// Schedule Change Request (일정 변경 요청)
+export type ScheduleChangeRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ScheduleChangeRequest {
+  id: string;
+  scheduleId: string;
+  scheduleTitle?: string;
+  originalStartAt?: string;
+  originalEndAt?: string;
+  requestedStartAt?: string;
+  requestedEndAt?: string;
+  reason?: string;
+  status: ScheduleChangeRequestStatus;
+  responseNote?: string;
+  requester?: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
+  createdAt: string;
+  respondedAt?: string;
 }

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
+import { QRCodeSVG } from 'qrcode.react';
 import { useGroupDetail } from './hooks';
-import { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal } from './components';
+import { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal, LessonPanel } from './components';
+import { Modal } from '@/components';
 import {
   HomeTab,
   MembersTab,
@@ -10,6 +12,7 @@ import {
   SchedulesTab,
   PracticeRoomsTab,
   SettingsTab,
+  LessonTab,
 } from './tabs';
 import './GroupPages.scss';
 
@@ -60,6 +63,10 @@ const GroupDetailPage = () => {
     memberSearch,
     setMemberSearch,
     filteredMembers,
+    // 강사별 필터링 (다중 강사 모드)
+    instructorFilter,
+    setInstructorFilter,
+    instructorSubGroups,
     // Invite code
     regeneratingCode,
     // Calendar
@@ -68,6 +75,36 @@ const GroupDetailPage = () => {
     selectedDate,
     // Locations
     favoriteLocations,
+    // 1:1 수업 멤버 관리
+    showAttendanceStats,
+    memberAttendanceStats,
+    // 1:1 수업 정보
+    showLessonInfo,
+    lessonSchedule,
+    setLessonSchedule,
+    paymentDueDay,
+    setPaymentDueDay,
+    lessonInfoLoading,
+    handleSaveLessonInfo,
+    // 레슨실 (1:1 교육용)
+    lessonRooms,
+    // 출석 QR
+    showAttendanceQRModal,
+    setShowAttendanceQRModal,
+    attendanceQRMember,
+    attendanceQRSchedule,
+    attendanceQRToken,
+    attendanceQRLoading,
+    openAttendanceQRModal,
+    getMemberNextSchedule,
+    // 수업 패널 (1:1 교육용)
+    showLessonPanel,
+    setShowLessonPanel,
+    lessonPanelMember,
+    openLessonPanel,
+    handleEarlyLeave,
+    isOneOnOneEducation,
+    activeLessonMember,
     // Handlers
     handleLeaveGroup,
     handleDeleteGroup,
@@ -121,10 +158,19 @@ const GroupDetailPage = () => {
         isAdmin={isAdmin}
         membersCount={members.length}
         subGroupsCount={subGroups.length}
+        activeLessonMember={activeLessonMember}
       />
 
       {/* 탭 컨텐츠 */}
       <div className="group-detail__content">
+        {activeTab === 'lesson' && groupId && activeLessonMember && (
+          <LessonTab
+            groupId={groupId}
+            member={activeLessonMember}
+            onEarlyLeave={handleEarlyLeave}
+          />
+        )}
+
         {activeTab === 'home' && groupId && (
           <HomeTab
             groupId={groupId}
@@ -141,6 +187,7 @@ const GroupDetailPage = () => {
             onNavigateToTab={setActiveTab}
             formatExpiryDate={formatExpiryDate}
             isInviteCodeExpired={isInviteCodeExpired}
+            hasAttendance={currentGroup.hasAttendance}
           />
         )}
 
@@ -157,6 +204,15 @@ const GroupDetailPage = () => {
             setMemberSearch={setMemberSearch}
             filteredMembers={filteredMembers}
             onOpenMemberModal={openMemberModal}
+            hasAttendance={currentGroup.hasAttendance}
+            onShowAttendanceQR={openAttendanceQRModal}
+            getMemberNextSchedule={getMemberNextSchedule}
+            isOneOnOneEducation={isOneOnOneEducation}
+            onOpenLessonPanel={openLessonPanel}
+            hasMultipleInstructors={currentGroup.hasMultipleInstructors}
+            instructorSubGroups={instructorSubGroups}
+            instructorFilter={instructorFilter}
+            setInstructorFilter={setInstructorFilter}
           />
         )}
 
@@ -194,6 +250,7 @@ const GroupDetailPage = () => {
             canWriteSchedule={!!canWriteSchedule}
             userId={user?.id}
             favoriteLocations={favoriteLocations}
+            hasAttendance={currentGroup.hasAttendance}
           />
         )}
 
@@ -243,6 +300,16 @@ const GroupDetailPage = () => {
         roleLoading={roleLoading}
         onUpdateRole={handleUpdateRole}
         onRemoveMember={handleRemoveMember}
+        showAttendanceStats={showAttendanceStats}
+        attendanceStats={memberAttendanceStats}
+        showLessonInfo={showLessonInfo}
+        lessonSchedule={lessonSchedule}
+        setLessonSchedule={setLessonSchedule}
+        paymentDueDay={paymentDueDay}
+        setPaymentDueDay={setPaymentDueDay}
+        onSaveLessonInfo={handleSaveLessonInfo}
+        lessonInfoLoading={lessonInfoLoading}
+        lessonRooms={lessonRooms}
       />
 
       <ConfirmModal
@@ -262,6 +329,71 @@ const GroupDetailPage = () => {
         confirmText="삭제"
         onConfirm={handleDeleteGroup}
       />
+
+      {/* 출석 QR 코드 모달 */}
+      <Modal
+        isOpen={showAttendanceQRModal}
+        onClose={() => setShowAttendanceQRModal(false)}
+        title="출석 QR 코드"
+        size="sm"
+      >
+        <div className="qr-modal">
+          {attendanceQRMember && attendanceQRSchedule && (
+            <>
+              <div className="qr-modal__member-info">
+                <span className="qr-modal__member-name">
+                  {attendanceQRMember.nickname || attendanceQRMember.user?.name}
+                </span>
+                <span className="qr-modal__schedule-title">
+                  {attendanceQRSchedule.title}
+                </span>
+              </div>
+              <div className="qr-modal__code">
+                {attendanceQRLoading ? (
+                  <div className="qr-modal__loading">QR 생성 중...</div>
+                ) : attendanceQRToken ? (
+                  <QRCodeSVG
+                    value={`${window.location.origin}/attendance/checkin?token=${attendanceQRToken.token}`}
+                    size={200}
+                    level="M"
+                    marginSize={2}
+                  />
+                ) : (
+                  <QRCodeSVG
+                    value={`${window.location.origin}/groups/${groupId}/attendance/${attendanceQRSchedule.id}?member=${attendanceQRMember.userId || attendanceQRMember.user?.id}`}
+                    size={200}
+                    level="M"
+                    marginSize={2}
+                  />
+                )}
+              </div>
+              <p className="qr-modal__hint">
+                학생이 이 QR 코드를 스캔하여 출석을 체크합니다.
+              </p>
+              {attendanceQRToken && (
+                <p className="qr-modal__expiry">
+                  ⏱️ 수업 종료까지 유효 (스캔 후 무효화)
+                </p>
+              )}
+              <p className="qr-modal__time-info">
+                수업 시간: {new Date(attendanceQRSchedule.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+                {attendanceQRSchedule.endAt && ` ~ ${new Date(attendanceQRSchedule.endAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`}
+              </p>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* 수업 패널 (1:1 교육용) */}
+      {isOneOnOneEducation && groupId && (
+        <LessonPanel
+          isOpen={showLessonPanel}
+          onClose={() => setShowLessonPanel(false)}
+          groupId={groupId}
+          member={lessonPanelMember}
+          onEarlyLeave={handleEarlyLeave}
+        />
+      )}
     </div>
   );
 };

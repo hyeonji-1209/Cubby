@@ -18,6 +18,7 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
   canWriteSchedule,
   userId,
   favoriteLocations,
+  hasAttendance,
 }) => {
   const [calendarDate, setCalendarDate] = useState<Date | null | [Date | null, Date | null]>(new Date());
 
@@ -28,7 +29,9 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
     editingSchedule,
     scheduleForm,
     scheduleSaving,
+    myAttendanceMap,
     fetchSchedules,
+    fetchMyAttendances,
     openNewScheduleModal,
     openEditScheduleModal,
     closeScheduleModal,
@@ -42,6 +45,13 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
       fetchSchedules(groupId);
     }
   }, [groupId, schedules.length, fetchSchedules]);
+
+  // 출석 기능이 활성화된 경우 내 출석 기록 로드
+  useEffect(() => {
+    if (groupId && hasAttendance) {
+      fetchMyAttendances(groupId);
+    }
+  }, [groupId, hasAttendance, fetchMyAttendances]);
 
   const selectedDate = useMemo(() => {
     if (calendarDate instanceof Date) return calendarDate;
@@ -120,6 +130,24 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
     lng: loc.lng,
   }));
 
+  // 출석 상태에 따른 뱃지 표시
+  const getAttendanceBadge = (scheduleId: string) => {
+    if (!hasAttendance) return null;
+    const status = myAttendanceMap[scheduleId];
+    if (!status) return null;
+
+    const badges: Record<string, { text: string; className: string }> = {
+      present: { text: '출석', className: 'schedule-item__badge--present' },
+      late: { text: '지각', className: 'schedule-item__badge--late' },
+      absent: { text: '결석', className: 'schedule-item__badge--absent' },
+      excused: { text: '사유', className: 'schedule-item__badge--excused' },
+    };
+    const badge = badges[status];
+    return badge ? (
+      <span className={`schedule-item__badge ${badge.className}`}>{badge.text}</span>
+    ) : null;
+  };
+
   return (
     <div className="group-detail__schedules">
       <div className="group-detail__schedules-header">
@@ -171,7 +199,7 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
                 {selectedDateSchedules.map((schedule) => (
                   <div
                     key={schedule.id}
-                    className="schedule-item"
+                    className={`schedule-item ${myAttendanceMap[schedule.id] ? 'schedule-item--attended' : ''}`}
                     onClick={() => (isAdmin || schedule.authorId === userId) && handleEditSchedule(schedule.id)}
                   >
                     <span
@@ -179,7 +207,10 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
                       style={{ backgroundColor: schedule.color || '#3b82f6' }}
                     />
                     <div className="schedule-item__info">
-                      <span className="schedule-item__title">{schedule.title}</span>
+                      <div className="schedule-item__title-row">
+                        <span className="schedule-item__title">{schedule.title}</span>
+                        {getAttendanceBadge(schedule.id)}
+                      </div>
                       <span className="schedule-item__time">
                         {schedule.isAllDay
                           ? '종일'

@@ -105,7 +105,7 @@ export class PracticeRoomReservationController {
       // 그룹 확인
       const group = await this.groupRepository.findOne({ where: { id: groupId } });
       if (!group || !group.hasPracticeRooms) {
-        throw new AppError('Practice room feature is not enabled for this group', 400);
+        throw new AppError('연습실 기능이 활성화되지 않은 모임입니다', 400);
       }
 
       // 연습실 확인
@@ -113,25 +113,25 @@ export class PracticeRoomReservationController {
         where: { id: roomId, groupId, isActive: true },
       });
       if (!room) {
-        throw new AppError('Practice room not found or inactive', 404);
+        throw new AppError('연습실을 찾을 수 없거나 비활성 상태입니다', 404);
       }
 
       // 날짜 검증 (과거 날짜 불가)
       const today = getTodayDateString();
       if (date < today) {
-        throw new AppError('Cannot reserve for past dates', 400);
+        throw new AppError('과거 날짜는 예약할 수 없습니다', 400);
       }
 
       // 시간 검증
       if (startTime >= endTime) {
-        throw new AppError('End time must be after start time', 400);
+        throw new AppError('종료 시간은 시작 시간 이후여야 합니다', 400);
       }
 
       // 운영 시간 검증
       if (group.practiceRoomSettings) {
         const { openTime, closeTime, maxHoursPerDay } = group.practiceRoomSettings;
         if (startTime < openTime || endTime > closeTime) {
-          throw new AppError(`Reservation must be within operating hours (${openTime} - ${closeTime})`, 400);
+          throw new AppError(`운영 시간 내에 예약해주세요 (${openTime} - ${closeTime})`, 400);
         }
 
         // 1일 최대 시간 검증
@@ -151,7 +151,7 @@ export class PracticeRoomReservationController {
         totalMinutes += getMinutesDiff(startTime, endTime);
 
         if (totalMinutes > maxHoursPerDay * 60) {
-          throw new AppError(`Cannot exceed ${maxHoursPerDay} hours per day`, 400);
+          throw new AppError(`1일 최대 ${maxHoursPerDay}시간을 초과할 수 없습니다`, 400);
         }
       }
 
@@ -228,14 +228,14 @@ export class PracticeRoomReservationController {
       });
 
       if (!reservation) {
-        throw new AppError('Reservation not found', 404);
+        throw new AppError('예약을 찾을 수 없습니다', 404);
       }
 
       // 본인 예약만 취소 가능 (관리자는 모든 예약 취소 가능)
       const member = await requireActiveMember(this.memberRepository, groupId, req.user!.id);
 
       if (reservation.userId !== req.user!.id && !isAdmin(member)) {
-        throw new AppError('You can only cancel your own reservations', 403);
+        throw new AppError('본인의 예약만 취소할 수 있습니다', 403);
       }
 
       reservation.status = ReservationStatus.CANCELLED;
@@ -243,7 +243,7 @@ export class PracticeRoomReservationController {
 
       res.json({
         success: true,
-        message: 'Reservation cancelled',
+        message: '예약이 취소되었습니다',
       });
     } catch (error) {
       next(error);

@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { Modal } from '@/components';
 import { getIconById } from '@/assets/icons';
 import { GROUP_TYPE_LABELS, ROLE_OPTIONS } from '@/constants/labels';
-import type { Group, GroupMember, User } from '@/types';
+import type { Group, GroupMember, User, LessonSchedule } from '@/types';
+import type { LessonRoom } from '@/api/lessonRoom.api';
 import type { TabType } from '../tabs';
+
+// 요일 짧은 이름
+const SHORT_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
 // 그룹 헤더 컴포넌트
 interface GroupDetailHeaderProps {
@@ -75,6 +80,7 @@ interface GroupDetailTabsProps {
   isAdmin: boolean;
   membersCount: number;
   subGroupsCount: number;
+  activeLessonMember?: GroupMember | null;
 }
 
 export const GroupDetailTabs = ({
@@ -84,8 +90,18 @@ export const GroupDetailTabs = ({
   isAdmin,
   membersCount,
   subGroupsCount,
+  activeLessonMember,
 }: GroupDetailTabsProps) => (
   <div className="group-detail__tabs">
+    {/* 수업 중인 멤버가 있으면 수업 탭 표시 (홈 앞에) */}
+    {activeLessonMember && (
+      <button
+        className={`group-detail__tab group-detail__tab--lesson ${activeTab === 'lesson' ? 'active' : ''}`}
+        onClick={() => setActiveTab('lesson')}
+      >
+        {activeLessonMember.nickname || activeLessonMember.user?.name} 수업
+      </button>
+    )}
     <button
       className={`group-detail__tab ${activeTab === 'home' ? 'active' : ''}`}
       onClick={() => setActiveTab('home')}
@@ -224,6 +240,17 @@ export const SubGroupModal = ({
 };
 
 // 멤버 관리 모달
+interface MemberAttendanceStats {
+  stats: {
+    total: number;
+    present: number;
+    late: number;
+    absent: number;
+    excused: number;
+    earlyLeave: number;
+  };
+}
+
 interface MemberModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -233,6 +260,19 @@ interface MemberModalProps {
   roleLoading: boolean;
   onUpdateRole: () => void;
   onRemoveMember: () => void;
+  // 1:1 수업용 추가 props
+  showAttendanceStats?: boolean;
+  attendanceStats?: MemberAttendanceStats | null;
+  // 1:1 교육 그룹용 수업 정보
+  showLessonInfo?: boolean;
+  lessonSchedule?: LessonSchedule[];
+  setLessonSchedule?: (schedule: LessonSchedule[]) => void;
+  paymentDueDay?: number | null;
+  setPaymentDueDay?: (day: number | null) => void;
+  onSaveLessonInfo?: () => void;
+  lessonInfoLoading?: boolean;
+  // 레슨실 목록 (1:1 수업 전용)
+  lessonRooms?: LessonRoom[];
 }
 
 export const MemberModal = ({
@@ -244,58 +284,286 @@ export const MemberModal = ({
   roleLoading,
   onUpdateRole,
   onRemoveMember,
-}: MemberModalProps) => (
-  <Modal
-    isOpen={isOpen && !!selectedMember}
-    onClose={onClose}
-    title="멤버 관리"
-    actions={
-      <>
-        <button className="modal__cancel" onClick={onClose}>
-          취소
-        </button>
-        <button className="modal__submit modal__submit--danger" onClick={onRemoveMember}>
-          내보내기
-        </button>
-        <button
-          className="modal__submit"
-          onClick={onUpdateRole}
-          disabled={roleLoading || newRole === selectedMember?.role}
-        >
-          {roleLoading ? '저장 중...' : '역할 저장'}
-        </button>
-      </>
+  showAttendanceStats,
+  attendanceStats,
+  showLessonInfo,
+  lessonSchedule,
+  setLessonSchedule,
+  paymentDueDay,
+  setPaymentDueDay,
+  onSaveLessonInfo,
+  lessonInfoLoading,
+  lessonRooms,
+}: MemberModalProps) => {
+  const [addingSchedule, setAddingSchedule] = useState(false);
+  const [newSchedule, setNewSchedule] = useState<LessonSchedule>({
+    dayOfWeek: 1,
+    startTime: '14:00',
+    endTime: '15:00',
+    lessonRoomId: undefined,
+    lessonRoomName: undefined,
+  });
+
+  // 수업 스케줄 추가 확정
+  const handleAddSchedule = () => {
+    if (setLessonSchedule) {
+      setLessonSchedule([...(lessonSchedule || []), newSchedule]);
+      setAddingSchedule(false);
+      setNewSchedule({
+        dayOfWeek: 1,
+        startTime: '14:00',
+        endTime: '15:00',
+        lessonRoomId: undefined,
+        lessonRoomName: undefined,
+      });
     }
-  >
-    {selectedMember && (
-      <>
-        <div className="modal__member-info">
-          <div className="modal__member-avatar">
-            {selectedMember.user?.name?.charAt(0) || '?'}
-          </div>
-          <div>
-            <p className="modal__member-name">{selectedMember.user?.name}</p>
-            <p className="modal__member-email">{selectedMember.user?.email}</p>
-          </div>
-        </div>
-        <div className="modal__field">
-          <label className="modal__label">역할 변경</label>
-          <select
-            className="modal__select"
-            value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
+  };
+
+  // 레슨실 변경 핸들러
+  const handleRoomChange = (roomId: string) => {
+    const selectedRoom = lessonRooms?.find(r => r.id === roomId);
+    setNewSchedule({
+      ...newSchedule,
+      lessonRoomId: roomId || undefined,
+      lessonRoomName: selectedRoom?.name || undefined,
+    });
+  };
+
+  // 수업 스케줄 삭제
+  const handleRemoveSchedule = (index: number) => {
+    if (setLessonSchedule && lessonSchedule) {
+      setLessonSchedule(lessonSchedule.filter((_, i) => i !== index));
+    }
+  };
+
+  // 시간 포맷
+  const formatTime = (time: string) => time.replace(':', ':');
+
+  return (
+    <Modal
+      isOpen={isOpen && !!selectedMember}
+      onClose={onClose}
+      title="멤버 관리"
+      size="lg"
+      actions={
+        <>
+          <button className="modal__submit modal__submit--danger" onClick={onRemoveMember}>
+            내보내기
+          </button>
+          <button
+            className="modal__submit"
+            onClick={() => {
+              onUpdateRole();
+              if (showLessonInfo && onSaveLessonInfo) {
+                onSaveLessonInfo();
+              }
+            }}
+            disabled={roleLoading || lessonInfoLoading}
           >
-            {ROLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </>
-    )}
-  </Modal>
-);
+            {roleLoading || lessonInfoLoading ? '저장 중...' : '저장'}
+          </button>
+        </>
+      }
+    >
+      {selectedMember && (
+        <>
+          <div className="modal__member-info">
+            <div className="modal__member-avatar">
+              {selectedMember.user?.name?.charAt(0) || '?'}
+            </div>
+            <div>
+              <p className="modal__member-name">{selectedMember.user?.name}</p>
+              <p className="modal__member-email">{selectedMember.user?.email}</p>
+            </div>
+          </div>
+
+          {/* 1:1 수업 정보 */}
+          {showLessonInfo && (
+            <div className="modal__lesson-info">
+              <div className="modal__lesson-header">
+                <label className="modal__label">수업 스케줄</label>
+              </div>
+
+              {/* 등록된 스케줄 표시 (컴팩트한 태그 형태) */}
+              <div className="modal__schedule-tags">
+                {lessonSchedule && lessonSchedule.length > 0 ? (
+                  lessonSchedule.map((schedule, index) => (
+                    <div key={index} className="modal__schedule-tag">
+                      <span className="modal__schedule-tag-day">{SHORT_DAYS[schedule.dayOfWeek]}</span>
+                      <span className="modal__schedule-tag-time">
+                        {formatTime(schedule.startTime)}-{formatTime(schedule.endTime)}
+                      </span>
+                      {schedule.lessonRoomName && (
+                        <span className="modal__schedule-tag-room">{schedule.lessonRoomName}</span>
+                      )}
+                      <button
+                        type="button"
+                        className="modal__schedule-tag-remove"
+                        onClick={() => handleRemoveSchedule(index)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <span className="modal__empty-text">등록된 스케줄 없음</span>
+                )}
+                {!addingSchedule && (
+                  <button
+                    type="button"
+                    className="modal__schedule-add-btn"
+                    onClick={() => setAddingSchedule(true)}
+                  >
+                    + 추가
+                  </button>
+                )}
+              </div>
+
+              {/* 새 스케줄 추가 폼 */}
+              {addingSchedule && (
+                <div className="modal__schedule-add-form">
+                  <div className="modal__schedule-add-row">
+                    <div className="modal__schedule-add-field">
+                      <label>요일</label>
+                      <select
+                        className="modal__select modal__select--compact"
+                        value={newSchedule.dayOfWeek}
+                        onChange={(e) => setNewSchedule({ ...newSchedule, dayOfWeek: Number(e.target.value) })}
+                      >
+                        {SHORT_DAYS.map((day, i) => (
+                          <option key={i} value={i}>{day}요일</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="modal__schedule-add-field">
+                      <label>시작</label>
+                      <input
+                        type="time"
+                        className="modal__input modal__input--compact"
+                        value={newSchedule.startTime}
+                        onChange={(e) => setNewSchedule({ ...newSchedule, startTime: e.target.value })}
+                      />
+                    </div>
+                    <div className="modal__schedule-add-field">
+                      <label>종료</label>
+                      <input
+                        type="time"
+                        className="modal__input modal__input--compact"
+                        value={newSchedule.endTime}
+                        onChange={(e) => setNewSchedule({ ...newSchedule, endTime: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  {/* 레슨실 선택 */}
+                  {lessonRooms && lessonRooms.length > 0 && (
+                    <div className="modal__schedule-add-row">
+                      <div className="modal__schedule-add-field modal__schedule-add-field--full">
+                        <label>레슨실</label>
+                        <select
+                          className="modal__select modal__select--compact"
+                          value={newSchedule.lessonRoomId || ''}
+                          onChange={(e) => handleRoomChange(e.target.value)}
+                        >
+                          <option value="">레슨실 선택 (선택사항)</option>
+                          {lessonRooms.map((room) => (
+                            <option key={room.id} value={room.id}>
+                              {room.name} (수용: {room.capacity}명)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  <div className="modal__schedule-add-actions">
+                    <button
+                      type="button"
+                      className="modal__btn-cancel-sm"
+                      onClick={() => setAddingSchedule(false)}
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      className="modal__btn-confirm"
+                      onClick={handleAddSchedule}
+                    >
+                      추가
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 수강료 납부일 - 달력 형태 */}
+              <div className="modal__payment-section">
+                <label className="modal__label">수강료 납부일 (매월)</label>
+                <div className="modal__day-calendar">
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      className={`modal__day-btn ${paymentDueDay === day ? 'modal__day-btn--selected' : ''}`}
+                      onClick={() => setPaymentDueDay?.(paymentDueDay === day ? null : day)}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                {paymentDueDay && (
+                  <p className="modal__payment-selected">선택: 매월 {paymentDueDay}일</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 1:1 수업 출석 통계 */}
+          {showAttendanceStats && attendanceStats && (
+            <div className="modal__attendance-stats">
+              <label className="modal__label">출석 현황</label>
+              <div className="modal__stats-grid">
+                <div className="modal__stat-item modal__stat-item--present">
+                  <span className="modal__stat-value">{attendanceStats.stats.present}</span>
+                  <span className="modal__stat-label">출석</span>
+                </div>
+                <div className="modal__stat-item modal__stat-item--late">
+                  <span className="modal__stat-value">{attendanceStats.stats.late}</span>
+                  <span className="modal__stat-label">지각</span>
+                </div>
+                <div className="modal__stat-item modal__stat-item--absent">
+                  <span className="modal__stat-value">{attendanceStats.stats.absent}</span>
+                  <span className="modal__stat-label">결석</span>
+                </div>
+                <div className="modal__stat-item modal__stat-item--excused">
+                  <span className="modal__stat-value">{attendanceStats.stats.excused}</span>
+                  <span className="modal__stat-label">사유</span>
+                </div>
+                <div className="modal__stat-item modal__stat-item--early-leave">
+                  <span className="modal__stat-value">{attendanceStats.stats.earlyLeave}</span>
+                  <span className="modal__stat-label">조퇴</span>
+                </div>
+              </div>
+              <p className="modal__stats-total">총 {attendanceStats.stats.total}회 수업</p>
+            </div>
+          )}
+
+          <div className="modal__field">
+            <label className="modal__label">역할 변경</label>
+            <select
+              className="modal__select"
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+            >
+              {ROLE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+};
 
 // 모임 나가기/삭제 모달
 interface ConfirmModalProps {

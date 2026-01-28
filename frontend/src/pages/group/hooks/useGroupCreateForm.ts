@@ -35,6 +35,8 @@ export interface GroupCreateFormState {
   hasClasses: boolean;
   hasPracticeRooms: boolean;
   allowGuardians: boolean;
+  hasAttendance: boolean;
+  hasMultipleInstructors: boolean; // 다중 강사 모드
 
   // 연습실 설정
   practiceRoomOpenTime: string;
@@ -59,6 +61,8 @@ const initialState: GroupCreateFormState = {
   hasClasses: false,
   hasPracticeRooms: false,
   allowGuardians: false,
+  hasAttendance: false,
+  hasMultipleInstructors: false,
   practiceRoomOpenTime: '09:00',
   practiceRoomCloseTime: '22:00',
   practiceRoomSlotMinutes: 60,
@@ -166,7 +170,7 @@ export const useGroupCreateForm = () => {
 
     const {
       type, name, description, icon, color, logoImage,
-      hasClasses, hasPracticeRooms, allowGuardians,
+      hasClasses, hasPracticeRooms, allowGuardians, hasAttendance, hasMultipleInstructors,
       practiceRoomOpenTime, practiceRoomCloseTime, practiceRoomSlotMinutes, practiceRoomMaxHours,
       myTitle, myRank, companyPositionMode,
     } = formState;
@@ -185,6 +189,11 @@ export const useGroupCreateForm = () => {
         groupData.hasClasses = hasClasses;
         groupData.hasPracticeRooms = hasPracticeRooms;
         groupData.allowGuardians = allowGuardians;
+        // 1:1 수업일 때만 출석 기능과 다중 강사 모드 설정
+        if (!hasClasses) {
+          groupData.hasAttendance = hasAttendance;
+          groupData.hasMultipleInstructors = hasMultipleInstructors;
+        }
         if (hasPracticeRooms) {
           groupData.practiceRoomSettings = {
             openTime: practiceRoomOpenTime,

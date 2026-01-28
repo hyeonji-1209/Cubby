@@ -1,7 +1,7 @@
 import type { Group, GroupMember, SubGroup, SubGroupRequest } from '@/types';
-import type { FavoriteLocation } from '@/api';
+import type { FavoriteLocation, InstructorSubGroup } from '@/api';
 
-export type TabType = 'home' | 'members' | 'subgroups' | 'practicerooms' | 'announcements' | 'schedules' | 'settings';
+export type TabType = 'lesson' | 'home' | 'members' | 'subgroups' | 'practicerooms' | 'announcements' | 'schedules' | 'settings';
 
 export interface BaseTabProps {
   groupId: string;
@@ -22,6 +22,7 @@ export interface HomeTabProps extends BaseTabProps {
   onNavigateToTab: (tab: TabType) => void;
   formatExpiryDate: (dateStr?: string) => string;
   isInviteCodeExpired: () => boolean;
+  hasAttendance?: boolean; // 출석 기능 활성화 여부
 }
 
 // MembersTab - minimal props (members are fetched externally)
@@ -32,6 +33,18 @@ export interface MembersTabProps extends BaseTabProps {
   setMemberSearch: (search: string) => void;
   filteredMembers: GroupMember[];
   onOpenMemberModal: (member: GroupMember) => void;
+  // 출석 QR 관련
+  hasAttendance?: boolean;
+  onShowAttendanceQR?: (member: GroupMember) => void;
+  getMemberNextSchedule?: (memberId: string) => { id: string; title: string; startAt: Date; endAt: Date } | null;
+  // 1:1 수업 관련
+  isOneOnOneEducation?: boolean;
+  onOpenLessonPanel?: (member: GroupMember) => void;
+  // 다중 강사 모드 필터링
+  hasMultipleInstructors?: boolean;
+  instructorSubGroups?: InstructorSubGroup[];
+  instructorFilter?: string; // 'all' | 'unassigned' | subGroupId
+  setInstructorFilter?: (filter: string) => void;
 }
 
 // SubGroupsTab - minimal props
@@ -61,6 +74,7 @@ export interface SchedulesTabProps {
   canWriteSchedule: boolean;
   userId?: string;
   favoriteLocations: FavoriteLocation[];
+  hasAttendance?: boolean; // 출석 기능 활성화 여부
 }
 
 // PracticeRoomsTab - uses groupDetailStore
@@ -76,6 +90,13 @@ export interface SettingsTabProps extends BaseTabProps {
   memberCount: number;
   onShowLeaveModal: () => void;
   onShowDeleteModal: () => void;
+}
+
+// LessonTab - for 1:1 education active lesson
+export interface LessonTabProps {
+  groupId: string;
+  member: GroupMember;
+  onEarlyLeave?: (attendanceId: string) => Promise<void>;
 }
 
 // Legacy interfaces for backward compatibility during refactoring

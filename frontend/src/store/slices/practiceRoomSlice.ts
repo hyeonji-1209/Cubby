@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import { practiceRoomApi, practiceRoomReservationApi } from '@/api';
+import { formatDateInput } from '@/utils/dateFormat';
 import type { PracticeRoom, PracticeRoomReservation } from '@/types';
 
 export interface PracticeRoomSlice {
@@ -51,7 +52,7 @@ export const createPracticeRoomSlice: StateCreator<PracticeRoomSlice, [], [], Pr
   fetchReservations: async (groupId, date) => {
     set({ reservationsLoading: true });
     try {
-      const dateStr = date.toISOString().split('T')[0];
+      const dateStr = formatDateInput(date);
       const response = await practiceRoomReservationApi.getByDate(groupId, dateStr);
       set({ reservations: response.data });
     } catch (error) {
@@ -85,7 +86,7 @@ export const createPracticeRoomSlice: StateCreator<PracticeRoomSlice, [], [], Pr
     }
 
     try {
-      const dateStr = reservationDate.toISOString().split('T')[0];
+      const dateStr = formatDateInput(reservationDate);
       await practiceRoomReservationApi.create(groupId, {
         roomId,
         date: dateStr,

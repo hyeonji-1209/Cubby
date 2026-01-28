@@ -2,7 +2,7 @@
  * 공통 레이블 상수
  */
 
-import type { GroupType, MemberRole, NotificationType } from '@/types';
+import type { GroupType, MemberRole, NotificationType, AttendanceStatus } from '@/types';
 
 /**
  * 모임 타입 레이블
@@ -106,6 +106,28 @@ export const SUBSCRIPTION_LIMITS: Record<string, { groups: number | string; memb
   basic: { groups: 1, members: 10, subgroups: 2 },
   standard: { groups: 3, members: 50, subgroups: 10 },
   premium: { groups: '무제한', members: '무제한', subgroups: '무제한' },
+};
+
+/**
+ * 출석 상태 레이블
+ */
+export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
+  present: '출석',
+  absent: '결석',
+  late: '지각',
+  excused: '사유 결석',
+  early_leave: '조퇴',
+};
+
+/**
+ * 출석 상태 색상
+ */
+export const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, string> = {
+  present: '#22c55e',   // green
+  absent: '#ef4444',    // red
+  late: '#f97316',      // orange
+  excused: '#6b7280',   // gray
+  early_leave: '#eab308', // yellow
 };
 
 /**

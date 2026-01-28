@@ -301,11 +301,19 @@
     .react-calendar__tile--active {
       background: $primary-500;
       border-radius: $radius-md;
+      color: white;
     }
 
     .react-calendar__tile--now {
-      background: $primary-50;
+      background: $primary-100;
       border-radius: $radius-md;
+      color: $primary-700;
+      font-weight: $font-weight-bold;
+
+      &.react-calendar__tile--active {
+        background: $primary-500;
+        color: white;
+      }
     }
   }
 

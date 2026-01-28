@@ -319,6 +319,77 @@
     }
   }
 
+  // QR 버튼 (출석용)
+  &__qr-btn {
+    padding: $spacing-xs;
+    background: $gray-100;
+    border: none;
+    color: $gray-400;
+    cursor: not-allowed;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &.active {
+      background: $primary-100;
+      color: $primary-600;
+      cursor: pointer;
+
+      &:hover {
+        background: $primary-500;
+        color: white;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  // 수업 버튼 (1:1 교육용)
+  &__lesson-btn {
+    padding: $spacing-xs $spacing-sm;
+    background: $gray-100;
+    border: none;
+    color: $gray-600;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $primary-100;
+      color: $primary-600;
+    }
+
+    &--live {
+      background: $success;
+      color: white;
+      animation: pulse-live 2s infinite;
+
+      &:hover {
+        background: darken($success, 10%);
+      }
+    }
+
+    @keyframes pulse-live {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba($success, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 0 4px rgba($success, 0);
+      }
+    }
+  }
+
   // 반응형
   @include mobile {
     display: block;

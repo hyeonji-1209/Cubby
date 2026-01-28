@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { groupApi, subGroupApi, userApi } from '@/api';
-import type { Group, SubGroup, SubGroupRequest, GroupMember, GroupType } from '@/types';
+import type { Group, SubGroup, SubGroupRequest, GroupMember, GroupType, JoinGroupResponse, ChildInfo } from '@/types';
 
 interface GroupState {
   // 내 모임 목록
@@ -36,6 +36,8 @@ interface GroupState {
     hasClasses?: boolean;
     hasPracticeRooms?: boolean;
     allowGuardians?: boolean;
+    hasAttendance?: boolean; // 출석 기능 사용 여부
+    hasMultipleInstructors?: boolean; // 다중 강사 모드
     practiceRoomSettings?: {
       openTime: string;
       closeTime: string;
@@ -43,7 +45,10 @@ interface GroupState {
       maxHoursPerDay: number;
     };
   }) => Promise<Group>;
-  joinGroup: (inviteCode: string) => Promise<{ id: string; name: string; type: GroupType }>;
+  joinGroup: (
+    inviteCode: string,
+    options?: { isGuardian?: boolean; childInfo?: ChildInfo[]; positionId?: string }
+  ) => Promise<JoinGroupResponse>;
   leaveGroup: (groupId: string) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
 
@@ -103,8 +108,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     return newGroup;
   },
 
-  joinGroup: async (inviteCode: string) => {
-    const response = await groupApi.joinByInviteCode(inviteCode);
+  joinGroup: async (inviteCode, options) => {
+    const response = await groupApi.joinByInviteCode(inviteCode, options);
     // fetchMyGroups는 InviteModal에서 처리
     return response.data;
   },

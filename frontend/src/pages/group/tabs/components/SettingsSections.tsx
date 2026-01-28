@@ -1,14 +1,16 @@
-import { GROUP_TYPE_LABELS } from '@/constants/labels';
-import type { Group, PracticeRoom } from '@/types';
-import type { FavoriteLocation } from '@/api';
+import { GROUP_TYPE_LABELS, DAYS_OF_WEEK } from '@/constants/labels';
+import type { Group, PracticeRoom, OperatingHours } from '@/types';
+import type { FavoriteLocation, LessonRoom } from '@/api';
 
 // 모임 정보 섹션
 interface GroupInfoSectionProps {
   currentGroup: Group;
   isOwner: boolean;
+  isAdmin: boolean;
+  onFeatureToggle?: (feature: 'hasClasses' | 'hasPracticeRooms' | 'hasAttendance' | 'allowGuardians', value: boolean) => void;
 }
 
-export const GroupInfoSection = ({ currentGroup, isOwner }: GroupInfoSectionProps) => (
+export const GroupInfoSection = ({ currentGroup, isOwner, isAdmin, onFeatureToggle }: GroupInfoSectionProps) => (
   <div className="group-detail__setting-section">
     <h3>모임 정보</h3>
     <div className="group-detail__setting-item">
@@ -24,6 +26,56 @@ export const GroupInfoSection = ({ currentGroup, isOwner }: GroupInfoSectionProp
         <span className="label">초대 코드</span>
         <span className="value code">{currentGroup.inviteCode}</span>
       </div>
+    )}
+
+    {/* 학원 타입 기능 설정 표시 */}
+    {currentGroup.type === 'education' && isAdmin && (
+      <>
+        <div className="group-detail__setting-divider" />
+        <h4 className="group-detail__setting-subtitle">기능 설정</h4>
+        <div className="group-detail__feature-toggles">
+          <div className="group-detail__feature-toggle-item">
+            <span className="label">반 운영</span>
+            <button
+              type="button"
+              className={`group-detail__toggle-switch ${currentGroup.hasClasses ? 'on' : ''}`}
+              onClick={() => onFeatureToggle?.('hasClasses', !currentGroup.hasClasses)}
+            >
+              <div className="group-detail__toggle-switch-handle" />
+            </button>
+          </div>
+          <div className="group-detail__feature-toggle-item">
+            <span className="label">연습실</span>
+            <button
+              type="button"
+              className={`group-detail__toggle-switch ${currentGroup.hasPracticeRooms ? 'on' : ''}`}
+              onClick={() => onFeatureToggle?.('hasPracticeRooms', !currentGroup.hasPracticeRooms)}
+            >
+              <div className="group-detail__toggle-switch-handle" />
+            </button>
+          </div>
+          <div className="group-detail__feature-toggle-item">
+            <span className="label">출석체크</span>
+            <button
+              type="button"
+              className={`group-detail__toggle-switch ${currentGroup.hasAttendance ? 'on' : ''}`}
+              onClick={() => onFeatureToggle?.('hasAttendance', !currentGroup.hasAttendance)}
+            >
+              <div className="group-detail__toggle-switch-handle" />
+            </button>
+          </div>
+          <div className="group-detail__feature-toggle-item">
+            <span className="label">보호자 허용</span>
+            <button
+              type="button"
+              className={`group-detail__toggle-switch ${currentGroup.allowGuardians ? 'on' : ''}`}
+              onClick={() => onFeatureToggle?.('allowGuardians', !currentGroup.allowGuardians)}
+            >
+              <div className="group-detail__toggle-switch-handle" />
+            </button>
+          </div>
+        </div>
+      </>
     )}
   </div>
 );
@@ -52,6 +104,7 @@ interface PracticeRoomSectionProps {
   onAddRoom: () => void;
   onUpdateCapacity: (roomId: string, capacity: number) => void;
   onDeleteRoom: (room: PracticeRoom) => void;
+  onShowQRCode?: (room: PracticeRoom) => void;
 }
 
 export const PracticeRoomSection = ({
@@ -69,6 +122,7 @@ export const PracticeRoomSection = ({
   onAddRoom,
   onUpdateCapacity,
   onDeleteRoom,
+  onShowQRCode,
 }: PracticeRoomSectionProps) => (
   <div className="group-detail__setting-section">
     <div className="group-detail__setting-header">
@@ -180,6 +234,7 @@ export const PracticeRoomSection = ({
               room={room}
               onUpdateCapacity={onUpdateCapacity}
               onDelete={onDeleteRoom}
+              onShowQRCode={onShowQRCode}
             />
           ))}
         </div>
@@ -193,9 +248,10 @@ interface PracticeRoomItemProps {
   room: PracticeRoom;
   onUpdateCapacity: (roomId: string, capacity: number) => void;
   onDelete: (room: PracticeRoom) => void;
+  onShowQRCode?: (room: PracticeRoom) => void;
 }
 
-const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete }: PracticeRoomItemProps) => (
+const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete, onShowQRCode }: PracticeRoomItemProps) => (
   <div className="group-detail__practice-room-item">
     <span className="group-detail__practice-room-name">{room.name}</span>
     <div className="group-detail__practice-room-capacity">
@@ -213,6 +269,128 @@ const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete }: PracticeRoomItem
         +
       </button>
     </div>
+    <div className="group-detail__practice-room-actions">
+      {onShowQRCode && (
+        <button
+          className="group-detail__practice-room-qr"
+          onClick={() => onShowQRCode(room)}
+          title="QR 코드 생성"
+        >
+          <QRIcon />
+        </button>
+      )}
+      <button
+        className="group-detail__practice-room-delete"
+        onClick={() => onDelete(room)}
+        title="삭제"
+      >
+        <TrashIcon />
+      </button>
+    </div>
+  </div>
+);
+
+// 레슨실 관리 섹션 (1:1 수업용)
+interface LessonRoomSectionProps {
+  lessonRooms: LessonRoom[];
+  lessonRoomsLoading: boolean;
+  newLessonRoomName: string;
+  setNewLessonRoomName: (name: string) => void;
+  newLessonRoomCapacity: number;
+  setNewLessonRoomCapacity: (fn: (c: number) => number) => void;
+  onAddRoom: () => void;
+  onUpdateCapacity: (roomId: string, capacity: number) => void;
+  onDeleteRoom: (room: LessonRoom) => void;
+}
+
+export const LessonRoomSection = ({
+  lessonRooms,
+  lessonRoomsLoading,
+  newLessonRoomName,
+  setNewLessonRoomName,
+  newLessonRoomCapacity,
+  setNewLessonRoomCapacity,
+  onAddRoom,
+  onUpdateCapacity,
+  onDeleteRoom,
+}: LessonRoomSectionProps) => (
+  <div className="group-detail__setting-section">
+    <div className="group-detail__setting-header">
+      <h3>레슨실 관리</h3>
+    </div>
+    <p className="group-detail__setting-hint" style={{ marginTop: 0, marginBottom: '1rem' }}>
+      1:1 수업이 진행되는 레슨실을 등록하세요. 학생 수업 배정 시 레슨실을 선택할 수 있습니다.
+    </p>
+
+    {/* 레슨실 추가 */}
+    <div className="group-detail__practice-room-add">
+      <input
+        type="text"
+        placeholder="레슨실 이름 (예: A실, 1번 레슨실)"
+        value={newLessonRoomName}
+        onChange={(e) => setNewLessonRoomName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+            onAddRoom();
+          }
+        }}
+      />
+      <div className="group-detail__practice-room-capacity-input">
+        <span>수용</span>
+        <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.max(1, c - 1))}>-</button>
+        <span>{newLessonRoomCapacity}명</span>
+        <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.min(10, c + 1))}>+</button>
+      </div>
+      <button type="button" onClick={onAddRoom} disabled={!newLessonRoomName.trim()}>
+        추가
+      </button>
+    </div>
+
+    {/* 레슨실 목록 */}
+    {lessonRoomsLoading ? (
+      <p className="group-detail__setting-hint">불러오는 중...</p>
+    ) : lessonRooms.length === 0 ? (
+      <p className="group-detail__setting-empty">등록된 레슨실이 없습니다</p>
+    ) : (
+      <div className="group-detail__practice-room-items">
+        {lessonRooms.map((room) => (
+          <LessonRoomItem
+            key={room.id}
+            room={room}
+            onUpdateCapacity={onUpdateCapacity}
+            onDelete={onDeleteRoom}
+          />
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+// 레슨실 아이템
+interface LessonRoomItemProps {
+  room: LessonRoom;
+  onUpdateCapacity: (roomId: string, capacity: number) => void;
+  onDelete: (room: LessonRoom) => void;
+}
+
+const LessonRoomItem = ({ room, onUpdateCapacity, onDelete }: LessonRoomItemProps) => (
+  <div className="group-detail__practice-room-item">
+    <span className="group-detail__practice-room-name">{room.name}</span>
+    <div className="group-detail__practice-room-capacity">
+      <button
+        type="button"
+        onClick={() => onUpdateCapacity(room.id, Math.max(1, room.capacity - 1))}
+      >
+        -
+      </button>
+      <span>{room.capacity}명</span>
+      <button
+        type="button"
+        onClick={() => onUpdateCapacity(room.id, Math.min(10, room.capacity + 1))}
+      >
+        +
+      </button>
+    </div>
     <button
       className="group-detail__practice-room-delete"
       onClick={() => onDelete(room)}
@@ -222,6 +400,84 @@ const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete }: PracticeRoomItem
     </button>
   </div>
 );
+
+// 학원 운영시간 설정 섹션
+interface OperatingHoursSectionProps {
+  operatingHours: OperatingHours;
+  operatingHoursChanged: boolean;
+  operatingHoursSaving: boolean;
+  onSettingChange: <K extends keyof OperatingHours>(key: K, value: OperatingHours[K]) => void;
+  onSaveSettings: () => void;
+}
+
+export const OperatingHoursSection = ({
+  operatingHours,
+  operatingHoursChanged,
+  operatingHoursSaving,
+  onSettingChange,
+  onSaveSettings,
+}: OperatingHoursSectionProps) => {
+  const toggleClosedDay = (day: number) => {
+    const currentClosedDays = operatingHours.closedDays || [];
+    if (currentClosedDays.includes(day)) {
+      onSettingChange('closedDays', currentClosedDays.filter(d => d !== day));
+    } else {
+      onSettingChange('closedDays', [...currentClosedDays, day].sort());
+    }
+  };
+
+  return (
+    <div className="group-detail__setting-section">
+      <div className="group-detail__setting-header">
+        <h3>학원 운영시간</h3>
+        {operatingHoursChanged && (
+          <button
+            className="group-detail__setting-save-btn"
+            disabled={operatingHoursSaving}
+            onClick={onSaveSettings}
+          >
+            {operatingHoursSaving ? '저장 중...' : '저장'}
+          </button>
+        )}
+      </div>
+
+      {/* 운영 시간 */}
+      <div className="group-detail__setting-item">
+        <span className="label">운영 시간</span>
+        <div className="group-detail__practice-room-time">
+          <input
+            type="time"
+            value={operatingHours.openTime || '09:00'}
+            onChange={(e) => onSettingChange('openTime', e.target.value)}
+          />
+          <span>~</span>
+          <input
+            type="time"
+            value={operatingHours.closeTime || '22:00'}
+            onChange={(e) => onSettingChange('closeTime', e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* 휴무일 */}
+      <div className="group-detail__setting-item">
+        <span className="label">휴무일</span>
+        <div className="group-detail__closed-days">
+          {DAYS_OF_WEEK.map((day, index) => (
+            <button
+              key={index}
+              type="button"
+              className={`group-detail__day-btn ${operatingHours.closedDays?.includes(index) ? 'active' : ''}`}
+              onClick={() => toggleClosedDay(index)}
+            >
+              {day}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // 모임 장소 섹션
 interface LocationSectionProps {
@@ -324,5 +580,17 @@ const EditIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+
+const QRIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <rect x="14" y="14" width="3" height="3" />
+    <rect x="18" y="14" width="3" height="3" />
+    <rect x="14" y="18" width="3" height="3" />
+    <rect x="18" y="18" width="3" height="3" />
   </svg>
 );

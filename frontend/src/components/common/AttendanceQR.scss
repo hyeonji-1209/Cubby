@@ -1,0 +1,354 @@
+@import '../../styles/variables';
+
+// QR 생성 컴포넌트
+.attendance-qr {
+  padding: $spacing-lg;
+
+  &__header {
+    text-align: center;
+    margin-bottom: $spacing-lg;
+
+    h3 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-bold;
+      color: $gray-900;
+      margin-bottom: $spacing-xs;
+    }
+  }
+
+  &__schedule-name {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+  }
+
+  &__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-xl;
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid $gray-200;
+      border-top-color: $primary-500;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    p {
+      color: $gray-500;
+      font-size: $font-size-sm;
+    }
+  }
+
+  &__code {
+    padding: $spacing-md;
+    background: white;
+    border-radius: $radius-lg;
+    box-shadow: $shadow-md;
+  }
+
+  &__timer {
+    span {
+      font-size: $font-size-xl;
+      font-weight: $font-weight-bold;
+      color: $primary-600;
+
+      &.warning {
+        color: $error;
+        animation: pulse 1s infinite;
+      }
+    }
+  }
+
+  &__hint {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    text-align: center;
+  }
+
+  &__expired {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-xl;
+
+    p {
+      color: $gray-500;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+  }
+
+  &__refresh-btn {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary-500;
+    color: white;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  &__close-btn {
+    padding: $spacing-sm $spacing-lg;
+    background: $gray-100;
+    color: $gray-700;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: $gray-200;
+    }
+  }
+}
+
+// 출석 체크인 컴포넌트
+.attendance-checkin {
+  padding: $spacing-lg;
+
+  &__header {
+    text-align: center;
+    margin-bottom: $spacing-lg;
+
+    h3 {
+      font-size: $font-size-lg;
+      font-weight: $font-weight-bold;
+      color: $gray-900;
+    }
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
+
+  &__hint {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    text-align: center;
+  }
+
+  &__input {
+    width: 100%;
+    padding: $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    text-align: center;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+  }
+
+  &__submit-btn {
+    padding: $spacing-md;
+    background: $primary-500;
+    color: white;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
+    }
+  }
+
+  &__close-btn {
+    padding: $spacing-md;
+    background: transparent;
+    color: $gray-500;
+    border: none;
+    font-size: $font-size-sm;
+    cursor: pointer;
+
+    &:hover {
+      color: $gray-700;
+    }
+  }
+}
+
+// 출석 목록 컴포넌트
+.attendance-list {
+  &__loading {
+    padding: $spacing-lg;
+    text-align: center;
+    color: $gray-500;
+  }
+
+  &__empty {
+    padding: $spacing-lg;
+    text-align: center;
+    color: $gray-400;
+    font-size: $font-size-sm;
+  }
+
+  &__items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-sm $spacing-md;
+    border-bottom: 1px solid $gray-100;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__name {
+    flex: 1;
+    font-size: $font-size-sm;
+    color: $gray-900;
+  }
+
+  &__status {
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+
+    &.attendance-status--present {
+      background: rgba($success, 0.1);
+      color: $success;
+    }
+
+    &.attendance-status--late {
+      background: rgba($warning, 0.1);
+      color: darken($warning, 20%);
+    }
+
+    &.attendance-status--absent {
+      background: rgba($error, 0.1);
+      color: $error;
+    }
+
+    &.attendance-status--excused {
+      background: rgba($gray-500, 0.1);
+      color: $gray-600;
+    }
+  }
+
+  &__time {
+    font-size: $font-size-xs;
+    color: $gray-400;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-xs;
+  }
+
+  &__btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-bold;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &--present {
+      background: rgba($success, 0.1);
+      color: $success;
+
+      &:hover {
+        background: $success;
+        color: white;
+      }
+    }
+
+    &--absent {
+      background: rgba($error, 0.1);
+      color: $error;
+
+      &:hover {
+        background: $error;
+        color: white;
+      }
+    }
+  }
+
+  &__unrecorded {
+    margin-top: $spacing-md;
+    padding-top: $spacing-md;
+    border-top: 1px dashed $gray-200;
+
+    h4 {
+      font-size: $font-size-xs;
+      color: $gray-400;
+      margin-bottom: $spacing-sm;
+      text-transform: uppercase;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

@@ -1,14 +1,18 @@
+import axios from 'axios';
 import { apiClient } from './client';
 import type { ApiResponse } from '@/types';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
 export const verificationApi = {
-  // ============ 회원가입용 (비로그인) ============
+  // ============ 회원가입용 (비로그인 - 직접 axios 호출) ============
 
   // 회원가입용 이메일 인증 코드 발송
   sendEmailCodeForSignup: async (
     email: string
   ): Promise<ApiResponse<{ code?: string }>> => {
-    const response = await apiClient.post('/verification/signup/email/send', { email });
+    // 인증 없이 직접 호출 (apiClient 인터셉터 우회)
+    const response = await axios.post(`${API_BASE_URL}/verification/signup/email/send`, { email });
     return response.data;
   },
 
@@ -17,7 +21,8 @@ export const verificationApi = {
     email: string,
     code: string
   ): Promise<ApiResponse<{ email: string; verificationToken: string }>> => {
-    const response = await apiClient.post('/verification/signup/email/verify', {
+    // 인증 없이 직접 호출 (apiClient 인터셉터 우회)
+    const response = await axios.post(`${API_BASE_URL}/verification/signup/email/verify`, {
       email,
       code,
     });
