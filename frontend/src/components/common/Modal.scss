@@ -48,6 +48,15 @@
     font-weight: 600;
     color: $gray-900;
     margin: 0;
+    padding: 0;
+    line-height: 1.4;
+
+    // h2 태그의 브라우저 기본 스타일 확실히 제거
+    &:is(h1, h2, h3, h4, h5, h6) {
+      margin: 0;
+      margin-block-start: 0;
+      margin-block-end: 0;
+    }
   }
 
   &__close {
@@ -247,29 +256,38 @@
 
   // Button styles inside modal
   &__cancel {
-    padding: $spacing-sm $spacing-lg;
+    padding: 10px 20px;
     border: 1px solid $gray-300;
     border-radius: $radius-md;
     background: $white;
-    color: $gray-700;
+    color: $gray-600;
     font-size: $font-sm;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: $gray-50;
+      border-color: $gray-400;
+      color: $gray-700;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 
   &__submit {
-    padding: $spacing-sm $spacing-lg;
+    padding: 10px 20px;
     border: none;
     border-radius: $radius-md;
     background: $primary;
     color: $white;
     font-size: $font-sm;
+    font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 
     &:hover:not(:disabled) {
       background: $primary-600;

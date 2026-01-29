@@ -150,6 +150,7 @@ export interface Group {
   memberCount?: number;
   subGroupCount?: number;
   myRole?: MemberRole;
+  myStatus?: MemberStatus;
   myMembershipId?: string;
   joinedAt?: string;
   createdAt: string;
@@ -236,6 +237,7 @@ export interface JoinGroupResponse {
   allowGuardians?: boolean;
   requiresApproval?: boolean;
   isPending?: boolean; // 승인 대기 중인지 여부
+  alreadyPending?: boolean; // 이미 대기 중인 멤버십이 있는지 여부
   positions?: { id: string; name: string; color?: string }[];
 }
 

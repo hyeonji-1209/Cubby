@@ -198,9 +198,12 @@
       }
 
       @keyframes pulse-dot {
-        0%, 100% {
+
+        0%,
+        100% {
           opacity: 1;
         }
+
         50% {
           opacity: 0.5;
         }
@@ -852,21 +855,26 @@
 
   // 가입 대기 멤버 섹션
   &__pending-section {
-    background: $warning-100;
-    border: 1px solid rgba($warning, 0.3);
+    background: white;
+    border: 1px solid $gray-200;
     border-radius: $radius-lg;
-    padding: $spacing-md;
     margin-bottom: $spacing-lg;
+    overflow: hidden;
   }
 
   &__pending-header {
-    margin-bottom: $spacing-md;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md $spacing-lg;
+    background: linear-gradient(135deg, $primary-50, $primary-100);
+    border-bottom: 1px solid $primary-200;
   }
 
   &__pending-title {
     font-size: $font-size-base;
     font-weight: $font-weight-semibold;
-    color: $warning-700;
+    color: $primary-700;
     margin: 0;
     display: flex;
     align-items: center;
@@ -877,45 +885,53 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 $spacing-xs;
-    background: $warning;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 $spacing-sm;
+    background: $primary-500;
     color: white;
     font-size: $font-size-xs;
-    font-weight: $font-weight-semibold;
+    font-weight: $font-weight-bold;
     border-radius: $radius-full;
   }
 
   &__pending-list {
     display: flex;
     flex-direction: column;
-    gap: $spacing-sm;
   }
 
   &__pending-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: $spacing-sm $spacing-md;
+    padding: $spacing-md $spacing-lg;
     background: white;
-    border-radius: $radius-md;
-    border: 1px solid rgba($warning, 0.3);
+    border-bottom: 1px solid $gray-100;
+    transition: background-color 0.15s ease;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: $gray-50;
+    }
   }
 
   &__pending-user {
     display: flex;
     align-items: center;
-    gap: $spacing-sm;
+    gap: $spacing-md;
   }
 
   &__pending-avatar {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: $radius-full;
-    background: $gray-100;
-    color: $gray-600;
+    background: linear-gradient(135deg, $primary-100, $primary-200);
+    color: $primary-600;
     @include flex-center;
+    font-size: $font-size-base;
     font-weight: $font-weight-semibold;
     overflow: hidden;
     flex-shrink: 0;
@@ -930,12 +946,12 @@
   &__pending-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
   }
 
   &__pending-name {
     font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
+    font-weight: $font-weight-semibold;
     color: $gray-900;
   }
 
@@ -946,24 +962,30 @@
 
   &__pending-actions {
     display: flex;
-    gap: $spacing-xs;
+    gap: $spacing-sm;
   }
 
   &__pending-btn {
-    padding: $spacing-xs $spacing-md;
+    padding: $spacing-sm $spacing-lg;
     font-size: $font-size-sm;
     font-weight: $font-weight-medium;
     border-radius: $radius-md;
     cursor: pointer;
-    transition: all $transition-fast;
+    transition: all 0.15s ease;
 
     &--approve {
-      background: $success;
+      background: $primary-500;
       color: white;
       border: none;
+      box-shadow: 0 2px 4px rgba($primary-500, 0.2);
 
       &:hover {
-        background: color.adjust($success, $lightness: -5%);
+        background: $primary-600;
+        box-shadow: 0 4px 8px rgba($primary-500, 0.3);
+      }
+
+      &:active {
+        transform: translateY(0);
       }
     }
 
@@ -973,9 +995,9 @@
       border: 1px solid $gray-300;
 
       &:hover {
-        background: $gray-50;
-        border-color: $gray-400;
-        color: $gray-700;
+        background: $error-50;
+        border-color: $error;
+        color: $error-700;
       }
     }
   }
@@ -2150,7 +2172,7 @@
       align-items: flex-end;
       gap: $spacing-sm;
 
-      > div {
+      >div {
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -2331,4 +2353,3 @@
     }
   }
 }
-

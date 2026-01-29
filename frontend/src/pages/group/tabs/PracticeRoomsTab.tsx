@@ -23,8 +23,10 @@ const PracticeRoomsTab: React.FC<PracticeRoomsTabProps> = ({
     reservationDate,
     selectedStartTime,
     selectedEndTime,
+    lessonsByDate,
     fetchPracticeRooms,
     fetchReservations,
+    fetchLessonsByDate,
     fetchMyReservations,
     setReservationDate,
     setSelectedTime,
@@ -42,8 +44,9 @@ const PracticeRoomsTab: React.FC<PracticeRoomsTabProps> = ({
   useEffect(() => {
     if (groupId && reservationDate) {
       fetchReservations(groupId, reservationDate);
+      fetchLessonsByDate(groupId, reservationDate);
     }
-  }, [groupId, reservationDate, fetchReservations]);
+  }, [groupId, reservationDate, fetchReservations, fetchLessonsByDate]);
 
   // 시간에 분 추가하는 헬퍼 함수
   const addMinutes = (time: string, minutes: number): string => {
@@ -93,6 +96,14 @@ const PracticeRoomsTab: React.FC<PracticeRoomsTabProps> = ({
         r.startTime < selectedEndTime &&
         r.endTime > selectedStartTime
     );
+  };
+
+  // 특정 시간에 수업이 있는 학생 이름 가져오기
+  const getLessonAtTime = (time: string): string | null => {
+    const lesson = lessonsByDate.find((l) => {
+      return l.startTime <= time && l.endTime > time;
+    });
+    return lesson ? lesson.memberName : null;
   };
 
   const handleCreateReservation = async (roomId: string) => {
@@ -222,14 +233,17 @@ const PracticeRoomsTab: React.FC<PracticeRoomsTabProps> = ({
                 const isEnd = selectedEndTime === time;
                 const isInRange = selectedStartTime && selectedEndTime && time > selectedStartTime && time < selectedEndTime;
                 const isDisabled = !!(selectedStartTime && !selectedEndTime && time > selectedStartTime && isEndTimeExceedingMax(time));
+                const lessonStudent = getLessonAtTime(time);
                 return (
                   <button
                     key={time}
-                    className={`time-btn ${isStart ? 'start' : ''} ${isEnd ? 'end' : ''} ${isInRange ? 'in-range' : ''}`}
+                    className={`time-btn ${isStart ? 'start' : ''} ${isEnd ? 'end' : ''} ${isInRange ? 'in-range' : ''} ${lessonStudent ? 'has-lesson' : ''}`}
                     disabled={isDisabled}
                     onClick={() => handleTimeClick(time)}
+                    title={lessonStudent ? `${lessonStudent} 수업` : undefined}
                   >
-                    {time}
+                    <span className="time-btn__time">{time}</span>
+                    {lessonStudent && <span className="time-btn__student">{lessonStudent}</span>}
                   </button>
                 );
               })}

@@ -22,6 +22,14 @@ export const groupApi = {
     hasClasses?: boolean;
     hasPracticeRooms?: boolean;
     allowGuardians?: boolean;
+    hasAttendance?: boolean;
+    hasMultipleInstructors?: boolean;
+    practiceRoomSettings?: {
+      openTime: string;
+      closeTime: string;
+      slotMinutes: 30 | 60;
+      maxHoursPerDay: number;
+    };
   }): Promise<ApiResponse<Group>> => {
     const response = await apiClient.post('/groups', data);
     return response.data;

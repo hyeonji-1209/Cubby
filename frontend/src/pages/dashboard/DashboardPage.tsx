@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import { usersIcon, calendarIcon, bellIcon } from '@/assets';
@@ -35,6 +36,12 @@ const DashboardPage = () => {
     getScheduleColor,
     navigateToGroup,
   } = useDashboard();
+
+  // 승인된 그룹만 필터링 (대기 중인 그룹 제외)
+  const activeGroups = useMemo(
+    () => myGroups.filter(group => group.myStatus !== 'pending'),
+    [myGroups]
+  );
 
   // 캘린더 타일에 일정 표시
   const tileContent = ({ date, view }: { date: Date; view: string }) => {
@@ -97,7 +104,7 @@ const DashboardPage = () => {
           onTabChange={setActiveTab}
           schedulesCount={allSchedules.length}
           schedulesLoading={schedulesLoading}
-          groupsCount={myGroups.length}
+          groupsCount={activeGroups.length}
           groupsLoading={myGroupsLoading}
           unreadCount={unreadCount}
         />
@@ -118,7 +125,7 @@ const DashboardPage = () => {
           {activeTab === 'group' && (
             <div className="panel-content">
               <GroupPanel
-                groups={myGroups}
+                groups={activeGroups}
                 loading={myGroupsLoading}
                 onDeleteClick={openDeleteModal}
               />

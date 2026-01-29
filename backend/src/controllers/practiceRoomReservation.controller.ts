@@ -3,7 +3,7 @@ import { AppDataSource } from '../config/database';
 import { PracticeRoomReservation, ReservationStatus } from '../models/PracticeRoomReservation';
 import { PracticeRoom } from '../models/PracticeRoom';
 import { Group } from '../models/Group';
-import { GroupMember } from '../models/GroupMember';
+import { GroupMember, LessonSchedule } from '../models/GroupMember';
 import { AppError } from '../middlewares/error.middleware';
 import { MoreThanOrEqual, Not } from 'typeorm';
 import { requireActiveMember, isAdmin } from '../utils/membership';
@@ -244,6 +244,62 @@ export class PracticeRoomReservationController {
       res.json({
         success: true,
         message: '예약이 취소되었습니다',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 특정 날짜의 수업 목록 조회 (연습실 예약 시 참고용)
+  getLessonsByDate = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId, date } = req.params;
+
+      // 멤버 확인
+      await requireActiveMember(this.memberRepository, groupId, req.user!.id);
+
+      // 날짜에서 요일 추출 (0 = 일요일, 6 = 토요일)
+      const targetDate = new Date(date);
+      const dayOfWeek = targetDate.getDay();
+
+      // 해당 그룹의 모든 멤버 조회
+      const members = await this.memberRepository.find({
+        where: { groupId },
+        relations: ['user'],
+      });
+
+      // 해당 요일에 수업이 있는 멤버 필터링
+      const lessons: {
+        memberId: string;
+        memberName: string;
+        startTime: string;
+        endTime: string;
+        lessonRoomName?: string;
+      }[] = [];
+
+      for (const member of members) {
+        const lessonSchedule = member.lessonSchedule as LessonSchedule[] | null;
+        if (lessonSchedule && Array.isArray(lessonSchedule)) {
+          for (const schedule of lessonSchedule) {
+            if (schedule.dayOfWeek === dayOfWeek) {
+              lessons.push({
+                memberId: member.id,
+                memberName: member.nickname || member.user?.name || '알 수 없음',
+                startTime: schedule.startTime,
+                endTime: schedule.endTime,
+                lessonRoomName: schedule.lessonRoomName,
+              });
+            }
+          }
+        }
+      }
+
+      // 시간순 정렬
+      lessons.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      res.json({
+        success: true,
+        data: lessons,
       });
     } catch (error) {
       next(error);

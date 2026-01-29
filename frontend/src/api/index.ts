@@ -13,6 +13,7 @@ export { uploadApi } from './upload.api';
 export { locationApi } from './location.api';
 export { practiceRoomApi } from './practiceRoom.api';
 export { practiceRoomReservationApi } from './practiceRoomReservation.api';
+export type { LessonByDate } from './practiceRoomReservation.api';
 export { attendanceApi } from './attendance.api';
 export { scheduleChangeRequestApi } from './scheduleChangeRequest.api';
 export { lessonRecordApi } from './lessonRecord.api';

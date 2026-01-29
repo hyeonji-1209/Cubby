@@ -137,19 +137,31 @@ export class UserController {
   getMyGroups = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const memberships = await this.memberRepository.find({
-        where: {
-          userId: req.user!.id,
-          status: MemberStatus.ACTIVE,
-        },
+        where: [
+          { userId: req.user!.id, status: MemberStatus.ACTIVE },
+          { userId: req.user!.id, status: MemberStatus.PENDING },
+        ],
         relations: ['group'],
         order: {
           joinedAt: 'DESC',
         },
       });
 
-      const groups = memberships.map((membership) => ({
+      // 그룹 ID 기준 중복 제거 (ACTIVE 상태 우선)
+      const groupMap = new Map<string, typeof memberships[0]>();
+      for (const membership of memberships) {
+        if (!membership.group) continue;
+        const existing = groupMap.get(membership.group.id);
+        // ACTIVE 상태 우선, 없으면 첫 번째 것 사용
+        if (!existing || (existing.status !== MemberStatus.ACTIVE && membership.status === MemberStatus.ACTIVE)) {
+          groupMap.set(membership.group.id, membership);
+        }
+      }
+
+      const groups = Array.from(groupMap.values()).map((membership) => ({
         ...membership.group,
         myRole: membership.role,
+        myStatus: membership.status,
         joinedAt: membership.joinedAt,
       }));
 

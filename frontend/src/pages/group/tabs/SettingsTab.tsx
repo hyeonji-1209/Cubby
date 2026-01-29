@@ -165,7 +165,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           )}
         </>
       ) : (
-        <LeaveSection onShowLeaveModal={onShowLeaveModal} />
+        // 교육/학원 타입은 학생이 직접 나가기 불가
+        currentGroup.type !== 'education' && (
+          <LeaveSection onShowLeaveModal={onShowLeaveModal} />
+        )
       )}
 
       {/* 장소 추가/수정 모달 */}

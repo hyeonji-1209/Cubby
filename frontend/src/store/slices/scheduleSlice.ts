@@ -19,6 +19,7 @@ export interface ScheduleSlice {
     isAllDay: boolean;
     locationData: LocationData | null;
     color: string;
+    requiresMakeup: boolean; // 보강 필요 여부
   };
   scheduleSaving: boolean;
   // 출석 상태 (scheduleId -> status)
@@ -27,7 +28,7 @@ export interface ScheduleSlice {
   // Actions
   fetchSchedules: (groupId: string) => Promise<void>;
   fetchMyAttendances: (groupId: string) => Promise<void>;
-  openNewScheduleModal: () => void;
+  openNewScheduleModal: (date?: Date) => void;
   openEditScheduleModal: (scheduleId: string) => Promise<void>;
   closeScheduleModal: () => void;
   setScheduleForm: (form: Partial<ScheduleSlice['scheduleForm']>) => void;
@@ -46,6 +47,7 @@ export const initialScheduleForm = {
   isAllDay: false,
   locationData: null as LocationData | null,
   color: '#3b82f6',
+  requiresMakeup: false,
 };
 
 export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSlice> = (set, get) => ({
@@ -84,14 +86,20 @@ export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSl
     }
   },
 
-  openNewScheduleModal: () => {
+  openNewScheduleModal: (selectedDate?: Date) => {
     const now = new Date();
+    const baseDate = selectedDate || now;
+
+    // 시간 계산 (30분 단위로 반올림)
     const minutes = now.getMinutes();
     const roundedMinutes = minutes < 30 ? 30 : 0;
     const roundedHour = minutes < 30 ? now.getHours() : now.getHours() + 1;
 
-    const startDate = new Date(now);
-    if (roundedHour >= 24) {
+    const startDate = new Date(baseDate);
+    if (selectedDate) {
+      // 특정 날짜가 선택된 경우 해당 날짜의 09:00으로 설정
+      startDate.setHours(9, 0, 0, 0);
+    } else if (roundedHour >= 24) {
       startDate.setDate(startDate.getDate() + 1);
       startDate.setHours(0, 0, 0, 0);
     } else {
@@ -118,6 +126,7 @@ export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSl
         isAllDay: false,
         locationData: null,
         color: '#3b82f6',
+        requiresMakeup: false,
       },
     });
   },
@@ -139,6 +148,7 @@ export const createScheduleSlice: StateCreator<ScheduleSlice, [], [], ScheduleSl
           isAllDay: schedule.isAllDay,
           locationData: schedule.locationData || null,
           color: schedule.color || '#3b82f6',
+          requiresMakeup: (schedule as Schedule & { requiresMakeup?: boolean }).requiresMakeup || false,
         },
       });
     } catch (error) {

@@ -15,6 +15,12 @@
     }
   }
 
+  &-hint {
+    font-size: $font-size-sm;
+    color: $gray-400;
+    font-weight: $font-weight-normal;
+  }
+
   &-title-row {
     @include flex-between;
     margin-bottom: $spacing-lg;
@@ -516,6 +522,20 @@
     opacity: 1;
   }
 
+  &__action-btn {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba($gray-500, 0.1);
+    }
+  }
+
   &__attendance-btn {
     padding: $spacing-xs;
     background: transparent;
@@ -625,6 +645,151 @@
 
     span {
       user-select: none;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-md;
+
+    label {
+      font-size: $font-size-sm;
+      font-weight: $font-weight-medium;
+      color: $gray-700;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="time"],
+    textarea {
+      width: 100%;
+      padding: $spacing-sm $spacing-md;
+      border: 1px solid $gray-300;
+      border-radius: $radius-md;
+      font-size: $font-size-sm;
+      font-family: inherit;
+      transition: all 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+      }
+
+      &::placeholder {
+        color: $gray-400;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+  }
+
+  &__checkbox {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    color: $gray-700;
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: $primary;
+    }
+
+    span {
+      user-select: none;
+    }
+  }
+
+  &__checkbox-group {
+    display: flex;
+    flex-direction: row !important;
+    gap: $spacing-lg;
+    flex-wrap: wrap;
+    margin-bottom: $spacing-md;
+  }
+
+  &__colors {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  &__color {
+    width: 28px;
+    height: 28px;
+    border-radius: $radius-full;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &.active {
+      border-color: $gray-900;
+      box-shadow: 0 0 0 2px white inset;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+    padding-top: $spacing-md;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__cancel {
+    padding: $spacing-sm $spacing-lg;
+    background: $white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $gray-50;
+      border-color: $gray-400;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $white;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
     }
   }
 }

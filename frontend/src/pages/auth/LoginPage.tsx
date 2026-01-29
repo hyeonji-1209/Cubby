@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store';
+import { useToast } from '@/components';
 import './AuthPages.scss';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/v1';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const { login, isLoading, clearError } = useAuthStore();
+  const toast = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +30,7 @@ const LoginPage = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch {
-      // Error is handled by store
+      toast.error('아이디 또는 비밀번호가 맞지 않습니다.');
     }
   };
 
@@ -42,8 +44,6 @@ const LoginPage = () => {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <h2 className="auth-form__title">로그인</h2>
-
-          {error && <div className="auth-form__error">{error}</div>}
 
           <div className="auth-form__field">
             <label className="auth-form__label">이메일</label>

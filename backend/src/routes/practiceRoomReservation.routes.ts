@@ -11,6 +11,9 @@ router.use(authMiddleware);
 // 특정 날짜의 예약 목록 조회
 router.get('/groups/:groupId/practice-room-reservations/date/:date', controller.getByDate);
 
+// 특정 날짜의 수업 목록 조회 (연습실 예약 시 참고용)
+router.get('/groups/:groupId/practice-room-reservations/lessons/:date', controller.getLessonsByDate);
+
 // 내 예약 목록 조회
 router.get('/groups/:groupId/practice-room-reservations/my', controller.getMyReservations);
 

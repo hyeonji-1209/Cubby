@@ -236,7 +236,19 @@ export class GroupController {
           throw new AppError('Already a member of this group', 400);
         }
         if (existingMembership.status === MemberStatus.PENDING) {
-          throw new AppError('Membership is pending approval', 400);
+          // 이미 대기 중인 경우 에러 대신 정보 반환
+          return res.json({
+            success: true,
+            data: {
+              id: group.id,
+              name: group.name,
+              type: group.type,
+              allowGuardians: group.allowGuardians,
+              requiresApproval: group.requiresApproval,
+              isPending: true,
+              alreadyPending: true,
+            },
+          });
         }
         // 이전에 탈퇴했다면 다시 활성화/대기
         existingMembership.status = memberStatus;
@@ -332,10 +344,11 @@ export class GroupController {
         where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
       });
 
+      // toJSON()을 명시적으로 호출하여 getter 값(hasClasses, operatingHours 등)을 포함
       res.json({
         success: true,
         data: {
-          ...group,
+          ...group.toJSON(),
           memberCount,
           subGroupCount,
           myRole: currentMembership?.role,
@@ -410,11 +423,12 @@ export class GroupController {
         .orderBy('schedule.startAt', 'ASC')
         .getMany();
 
+      // toJSON()을 명시적으로 호출하여 getter 값(hasClasses, operatingHours 등)을 포함
       res.json({
         success: true,
         data: {
           group: {
-            ...group,
+            ...group.toJSON(),
             memberCount,
             subGroupCount,
             myRole: currentMembership?.role,
@@ -526,9 +540,10 @@ export class GroupController {
 
       await this.groupRepository.save(group);
 
+      // toJSON()을 명시적으로 호출하여 getter 값 포함
       res.json({
         success: true,
-        data: group,
+        data: group.toJSON(),
       });
     } catch (error) {
       next(error);
@@ -755,6 +770,12 @@ export class GroupController {
       // 운영자는 나가기 불가 (소유권 이전 필요)
       if (membership.role === MemberRole.OWNER) {
         throw new AppError('Owner cannot leave. Transfer ownership first.', 400);
+      }
+
+      // 교육 타입 그룹에서 일반 멤버는 직접 나가기 불가
+      const group = await this.groupRepository.findOne({ where: { id: groupId } });
+      if (group?.type === GroupType.EDUCATION && membership.role === MemberRole.MEMBER) {
+        throw new AppError('학생은 직접 모임을 나갈 수 없습니다. 관리자에게 문의해주세요.', 400);
       }
 
       await this.memberRepository.delete(membership.id);

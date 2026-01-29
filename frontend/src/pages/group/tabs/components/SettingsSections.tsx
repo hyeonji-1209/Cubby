@@ -499,7 +499,7 @@ export const LessonRoomSection = ({
         <span>수용</span>
         <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.max(1, c - 1))}>-</button>
         <span>{newLessonRoomCapacity}명</span>
-        <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.min(50, c + 1))}>+</button>
+        <button type="button" onClick={() => setNewLessonRoomCapacity((c) => c + 1)}>+</button>
       </div>
       <button type="button" onClick={onAddRoom} disabled={!newLessonRoomName.trim()}>
         추가
@@ -546,7 +546,7 @@ const LessonRoomItem = ({ room, onUpdateCapacity, onDelete }: LessonRoomItemProp
       <span>{room.capacity}명</span>
       <button
         type="button"
-        onClick={() => onUpdateCapacity(room.id, Math.min(50, room.capacity + 1))}
+        onClick={() => onUpdateCapacity(room.id, room.capacity + 1)}
       >
         +
       </button>

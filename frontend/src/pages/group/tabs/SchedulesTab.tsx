@@ -8,10 +8,6 @@ import type { SchedulesTabProps } from './types';
 import type { Schedule } from '@/types';
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
-const COLOR_OPTIONS = [
-  '#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1',
-];
 
 const SchedulesTab: React.FC<SchedulesTabProps> = ({
   groupId,
@@ -157,19 +153,12 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
     <div className="group-detail__schedules">
       <div className="group-detail__schedules-header">
         <h2>일정</h2>
-        {canWriteSchedule && (
-          <button
-            className="group-detail__add-btn"
-            onClick={openNewScheduleModal}
-          >
-            + 일정 추가
-          </button>
-        )}
+        <span className="group-detail__schedules-hint">날짜를 클릭하여 일정을 추가하세요</span>
       </div>
 
       {/* 휴일 관리 섹션 (학원 타입 전용) */}
       {groupType === 'education' && (
-        <HolidaySection groupId={groupId} isAdmin={isAdmin} />
+        <HolidaySection groupId={groupId} isAdmin={isAdmin} hideAddButton />
       )}
 
       {schedulesLoading ? (
@@ -181,6 +170,7 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
             <ReactCalendar
               onChange={setCalendarDate}
               value={calendarDate}
+              onClickDay={(date) => canWriteSchedule && openNewScheduleModal(date)}
               tileContent={homeTileContent}
               tileClassName={tileClassName}
               locale="ko-KR"
@@ -330,49 +320,67 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
             />
           </div>
 
-          <div className="schedule-form__row">
-            <div className="schedule-form__field">
-              <label>시작일 *</label>
-              <input
-                type="date"
-                value={scheduleForm.startDate}
-                onChange={(e) => setScheduleForm({ startDate: e.target.value })}
-              />
-            </div>
-            {!scheduleForm.isAllDay && (
+          {scheduleForm.isAllDay ? (
+            <div className="schedule-form__row">
               <div className="schedule-form__field">
-                <label>시작 시간</label>
+                <label>시작일 *</label>
                 <input
-                  type="time"
-                  value={scheduleForm.startTime}
-                  onChange={(e) => setScheduleForm({ startTime: e.target.value })}
+                  type="date"
+                  value={scheduleForm.startDate}
+                  onChange={(e) => setScheduleForm({ startDate: e.target.value })}
                 />
               </div>
-            )}
-          </div>
-
-          <div className="schedule-form__row">
-            <div className="schedule-form__field">
-              <label>종료일 *</label>
-              <input
-                type="date"
-                value={scheduleForm.endDate}
-                onChange={(e) => setScheduleForm({ endDate: e.target.value })}
-              />
-            </div>
-            {!scheduleForm.isAllDay && (
               <div className="schedule-form__field">
-                <label>종료 시간</label>
+                <label>종료일 *</label>
                 <input
-                  type="time"
-                  value={scheduleForm.endTime}
-                  onChange={(e) => setScheduleForm({ endTime: e.target.value })}
+                  type="date"
+                  value={scheduleForm.endDate}
+                  onChange={(e) => setScheduleForm({ endDate: e.target.value })}
                 />
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <>
+              <div className="schedule-form__row">
+                <div className="schedule-form__field">
+                  <label>시작일 *</label>
+                  <input
+                    type="date"
+                    value={scheduleForm.startDate}
+                    onChange={(e) => setScheduleForm({ startDate: e.target.value })}
+                  />
+                </div>
+                <div className="schedule-form__field">
+                  <label>시작 시간</label>
+                  <input
+                    type="time"
+                    value={scheduleForm.startTime}
+                    onChange={(e) => setScheduleForm({ startTime: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="schedule-form__row">
+                <div className="schedule-form__field">
+                  <label>종료일 *</label>
+                  <input
+                    type="date"
+                    value={scheduleForm.endDate}
+                    onChange={(e) => setScheduleForm({ endDate: e.target.value })}
+                  />
+                </div>
+                <div className="schedule-form__field">
+                  <label>종료 시간</label>
+                  <input
+                    type="time"
+                    value={scheduleForm.endTime}
+                    onChange={(e) => setScheduleForm({ endTime: e.target.value })}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
-          <div className="schedule-form__field">
+          <div className="schedule-form__field schedule-form__checkbox-group">
             <label className="schedule-form__checkbox">
               <input
                 type="checkbox"
@@ -380,6 +388,14 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
                 onChange={(e) => setScheduleForm({ isAllDay: e.target.checked })}
               />
               <span>종일 일정</span>
+            </label>
+            <label className="schedule-form__checkbox">
+              <input
+                type="checkbox"
+                checked={scheduleForm.requiresMakeup}
+                onChange={(e) => setScheduleForm({ requiresMakeup: e.target.checked })}
+              />
+              <span>보강 필요</span>
             </label>
           </div>
 
@@ -401,21 +417,6 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
               placeholder="일정에 대한 설명을 입력하세요"
               rows={3}
             />
-          </div>
-
-          <div className="schedule-form__field">
-            <label>색상</label>
-            <div className="schedule-form__colors">
-              {COLOR_OPTIONS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`schedule-form__color ${scheduleForm.color === color ? 'active' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => setScheduleForm({ color })}
-                />
-              ))}
-            </div>
           </div>
 
           <div className="schedule-form__actions">

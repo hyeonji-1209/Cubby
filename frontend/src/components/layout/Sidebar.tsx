@@ -21,9 +21,10 @@ interface GroupMenuItemProps {
   color?: string;
   logoImage?: string;
   isActive: boolean;
+  isPending?: boolean;
 }
 
-const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }: GroupMenuItemProps) => {
+const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive, isPending }: GroupMenuItemProps) => {
   const [isOpen, setIsOpen] = useState(false); // 기본 닫힘
   const [subGroups, setSubGroups] = useState<SubGroup[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,44 +70,65 @@ const GroupMenuItem = ({ groupId, groupName, icon, color, logoImage, isActive }:
   };
 
   return (
-    <div className="sidebar__group">
+    <div className={`sidebar__group ${isPending ? 'sidebar__group--pending' : ''}`}>
       <div className="sidebar__group-header">
-        <NavLink
-          to={`/groups/${groupId}`}
-          className={({ isActive: linkActive }) =>
-            `sidebar__group-link ${linkActive || isActive ? 'sidebar__group-link--active' : ''}`
-          }
-        >
-          <span
-            className="sidebar__group-avatar"
-            style={color && color !== 'transparent' ? { background: color } : undefined}
+        {isPending ? (
+          <div className="sidebar__group-link sidebar__group-link--pending">
+            <span
+              className="sidebar__group-avatar sidebar__group-avatar--pending"
+              style={color && color !== 'transparent' ? { background: color } : undefined}
+            >
+              {logoImage ? (
+                <img src={logoImage} alt={groupName} className="sidebar__group-logo" />
+              ) : icon && getIconById(icon) ? (
+                <img src={getIconById(icon)} alt="" className="sidebar__group-icon" />
+              ) : (
+                groupName?.charAt(0) || '?'
+              )}
+            </span>
+            <span className="sidebar__group-name">{groupName || '이름 없음'}</span>
+            <span className="sidebar__pending-badge">승인 대기</span>
+          </div>
+        ) : (
+          <NavLink
+            to={`/groups/${groupId}`}
+            className={({ isActive: linkActive }) =>
+              `sidebar__group-link ${linkActive || isActive ? 'sidebar__group-link--active' : ''}`
+            }
           >
-            {logoImage ? (
-              <img src={logoImage} alt={groupName} className="sidebar__group-logo" />
-            ) : icon && getIconById(icon) ? (
-              <img src={getIconById(icon)} alt="" className="sidebar__group-icon" />
-            ) : (
-              groupName?.charAt(0) || '?'
-            )}
-          </span>
-          <span className="sidebar__group-name">{groupName || '이름 없음'}</span>
-        </NavLink>
-        <button
-          className="sidebar__toggle-btn"
-          onClick={handleToggle}
-          aria-label={isOpen ? '소모임 접기' : '소모임 펼치기'}
-        >
-          <img
-            src={chevronRightIcon}
-            alt=""
-            className={`sidebar__chevron ${isOpen ? 'sidebar__chevron--open' : ''}`}
-            width="16"
-            height="16"
-          />
-        </button>
+            <span
+              className="sidebar__group-avatar"
+              style={color && color !== 'transparent' ? { background: color } : undefined}
+            >
+              {logoImage ? (
+                <img src={logoImage} alt={groupName} className="sidebar__group-logo" />
+              ) : icon && getIconById(icon) ? (
+                <img src={getIconById(icon)} alt="" className="sidebar__group-icon" />
+              ) : (
+                groupName?.charAt(0) || '?'
+              )}
+            </span>
+            <span className="sidebar__group-name">{groupName || '이름 없음'}</span>
+          </NavLink>
+        )}
+        {!isPending && (
+          <button
+            className="sidebar__toggle-btn"
+            onClick={handleToggle}
+            aria-label={isOpen ? '소모임 접기' : '소모임 펼치기'}
+          >
+            <img
+              src={chevronRightIcon}
+              alt=""
+              className={`sidebar__chevron ${isOpen ? 'sidebar__chevron--open' : ''}`}
+              width="16"
+              height="16"
+            />
+          </button>
+        )}
       </div>
 
-      {isOpen && (
+      {isOpen && !isPending && (
         <div className="sidebar__subgroups">
           {isLoading ? (
             <div className="sidebar__loading">로딩 중...</div>
@@ -164,8 +186,8 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
   const { joinGroup, fetchMyGroups } = useGroupStore();
   const toast = useToast();
 
-  // 보호자 관련 상태
-  const [isGuardian, setIsGuardian] = useState(false);
+  // 가입 유형 상태 ('self' | 'guardian' | 'other')
+  const [memberType, setMemberType] = useState<'self' | 'guardian' | 'other'>('self');
   const [children, setChildren] = useState<ChildFormData[]>([{ name: '', birthYear: '', note: '' }]);
 
   // 직책 관련 상태
@@ -198,7 +220,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
     setInviteCode('');
     setJoinedGroup(null);
     setError('');
-    setIsGuardian(false);
+    setMemberType('self');
     setChildren([{ name: '', birthYear: '', note: '' }]);
     setSelectedPositionId('');
     onClose();
@@ -239,9 +261,9 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
     }).catch(() => setError('유효하지 않은 초대 코드입니다'));
   };
 
-  // Step 2: 보호자 여부 선택 후 다음
+  // Step 2: 가입 유형 선택 후 다음
   const handleGuardianNext = () => {
-    if (isGuardian) {
+    if (memberType === 'guardian') {
       // 적어도 하나의 자녀에 이름이 있어야 함
       const hasValidChild = children.some(child => child.name.trim());
       if (!hasValidChild) {
@@ -267,6 +289,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
     if (!joinedGroup) return;
 
     setError('');
+    const isGuardian = memberType === 'guardian';
     await withLoading(async () => {
       // 유효한 자녀 정보만 필터링 (이름이 있는 것만)
       const validChildren = isGuardian
@@ -280,22 +303,22 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
         : undefined;
 
       // 실제 가입 처리 (모든 정보 포함)
-      await joinGroup(inviteCode.trim(), {
+      // positionId는 joinByInviteCode에서 직접 설정됨
+      const result = await joinGroup(inviteCode.trim(), {
         isGuardian,
         childInfo: validChildren,
         positionId: selectedPositionId || undefined,
       });
 
-      // 직책 title 업데이트
-      if (selectedPosition) {
-        await groupApi.updateMyProfile(joinedGroup.id, {
-          title: selectedPosition.name,
-          positionId: selectedPositionId,
-        });
+      // 이미 대기 중인 경우
+      if (result.alreadyPending) {
+        toast.info('이미 가입 승인 대기 중입니다. 관리자의 승인을 기다려주세요.');
+      } else if (result.isPending) {
+        toast.info('가입 신청이 완료되었습니다. 관리자의 승인을 기다려주세요.');
+      } else {
+        toast.success('모임에 가입되었습니다!');
+        await fetchMyGroups();
       }
-
-      toast.success('모임에 가입되었습니다!');
-      await fetchMyGroups();
       handleClose();
     }).catch(() => setError('가입에 실패했습니다'));
   };
@@ -340,7 +363,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
           </>
         )}
 
-        {/* Step 2: 보호자 여부 선택 */}
+        {/* Step 2: 가입 유형 선택 */}
         {step === 'guardian' && (
           <>
             <h3 className="sidebar-modal__title">가입 유형 선택</h3>
@@ -351,27 +374,36 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
             {error && <div className="sidebar-modal__error">{error}</div>}
 
             <div className="sidebar-modal__radio-group">
-              <label className={`sidebar-modal__radio ${!isGuardian ? 'active' : ''}`}>
+              <label className={`sidebar-modal__radio ${memberType === 'self' ? 'active' : ''}`}>
                 <input
                   type="radio"
                   name="memberType"
-                  checked={!isGuardian}
-                  onChange={() => setIsGuardian(false)}
+                  checked={memberType === 'self'}
+                  onChange={() => setMemberType('self')}
                 />
                 <span className="sidebar-modal__radio-label">본인 (학생/수강생)</span>
               </label>
-              <label className={`sidebar-modal__radio ${isGuardian ? 'active' : ''}`}>
+              <label className={`sidebar-modal__radio ${memberType === 'guardian' ? 'active' : ''}`}>
                 <input
                   type="radio"
                   name="memberType"
-                  checked={isGuardian}
-                  onChange={() => setIsGuardian(true)}
+                  checked={memberType === 'guardian'}
+                  onChange={() => setMemberType('guardian')}
                 />
                 <span className="sidebar-modal__radio-label">보호자</span>
               </label>
+              <label className={`sidebar-modal__radio ${memberType === 'other' ? 'active' : ''}`}>
+                <input
+                  type="radio"
+                  name="memberType"
+                  checked={memberType === 'other'}
+                  onChange={() => setMemberType('other')}
+                />
+                <span className="sidebar-modal__radio-label">기타</span>
+              </label>
             </div>
 
-            {isGuardian && (
+            {memberType === 'guardian' && (
               <div className="sidebar-modal__child-info">
                 <div className="sidebar-modal__child-info-header">
                   <p className="sidebar-modal__child-info-title">자녀 정보</p>
@@ -440,7 +472,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
               <button
                 className="sidebar-modal__btn sidebar-modal__btn--submit"
                 onClick={handleGuardianNext}
-                disabled={loading || (isGuardian && !children.some(c => c.name.trim()))}
+                disabled={loading || (memberType === 'guardian' && !children.some(c => c.name.trim()))}
               >
                 다음
               </button>
@@ -459,16 +491,19 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
             {error && <div className="sidebar-modal__error">{error}</div>}
 
             {joinedGroup?.positions && joinedGroup.positions.length > 0 ? (
-              <select
-                className="sidebar-modal__select"
-                value={selectedPositionId}
-                onChange={(e) => setSelectedPositionId(e.target.value)}
-              >
-                <option value="">{positionLabel} 선택</option>
+              <div className="sidebar-modal__radio-group">
                 {joinedGroup.positions.map(pos => (
-                  <option key={pos.id} value={pos.id}>{pos.name}</option>
+                  <label key={pos.id} className={`sidebar-modal__radio ${selectedPositionId === pos.id ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="position"
+                      checked={selectedPositionId === pos.id}
+                      onChange={() => setSelectedPositionId(pos.id)}
+                    />
+                    <span className="sidebar-modal__radio-label">{pos.name}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             ) : (
               <p className="sidebar-modal__info">
                 설정된 {positionLabel}이 없습니다. 바로 가입합니다.
@@ -564,6 +599,7 @@ const Sidebar = () => {
                 color={group.color}
                 logoImage={group.logoImage}
                 isActive={location.pathname.includes(`/groups/${group.id}`)}
+                isPending={group.myStatus === 'pending'}
               />
             ))
         )}

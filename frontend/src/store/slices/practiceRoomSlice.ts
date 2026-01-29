@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
 import { practiceRoomApi, practiceRoomReservationApi } from '@/api';
+import type { LessonByDate } from '@/api';
 import { formatDateInput } from '@/utils/dateFormat';
 import type { PracticeRoom, PracticeRoomReservation } from '@/types';
 
@@ -13,10 +14,12 @@ export interface PracticeRoomSlice {
   reservationDate: Date;
   selectedStartTime: string;
   selectedEndTime: string;
+  lessonsByDate: LessonByDate[];
 
   // Actions
   fetchPracticeRooms: (groupId: string) => Promise<void>;
   fetchReservations: (groupId: string, date: Date) => Promise<void>;
+  fetchLessonsByDate: (groupId: string, date: Date) => Promise<void>;
   fetchMyReservations: (groupId: string) => Promise<void>;
   setReservationDate: (date: Date) => void;
   setSelectedTime: (start: string, end: string) => void;
@@ -35,6 +38,7 @@ export const createPracticeRoomSlice: StateCreator<PracticeRoomSlice, [], [], Pr
   reservationDate: new Date(),
   selectedStartTime: '',
   selectedEndTime: '',
+  lessonsByDate: [],
 
   // Actions
   fetchPracticeRooms: async (groupId) => {
@@ -59,6 +63,16 @@ export const createPracticeRoomSlice: StateCreator<PracticeRoomSlice, [], [], Pr
       console.error('Failed to fetch reservations:', error);
     } finally {
       set({ reservationsLoading: false });
+    }
+  },
+
+  fetchLessonsByDate: async (groupId, date) => {
+    try {
+      const dateStr = formatDateInput(date);
+      const response = await practiceRoomReservationApi.getLessonsByDate(groupId, dateStr);
+      set({ lessonsByDate: response.data });
+    } catch (error) {
+      console.error('Failed to fetch lessons by date:', error);
     }
   },
 
@@ -125,6 +139,7 @@ export const createPracticeRoomSlice: StateCreator<PracticeRoomSlice, [], [], Pr
       reservationDate: new Date(),
       selectedStartTime: '',
       selectedEndTime: '',
+      lessonsByDate: [],
     });
   },
 });

@@ -6,6 +6,7 @@ import type { Holiday, CreateHolidayRequest, HolidayType } from '@/api';
 interface HolidaySectionProps {
   groupId: string;
   isAdmin?: boolean;
+  hideAddButton?: boolean;
 }
 
 const HOLIDAY_TYPE_LABELS: Record<Exclude<HolidayType, 'regular'>, string> = {
@@ -13,7 +14,7 @@ const HOLIDAY_TYPE_LABELS: Record<Exclude<HolidayType, 'regular'>, string> = {
   range: '기간',
 };
 
-export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId, isAdmin = false }) => {
+export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId, isAdmin = false, hideAddButton = false }) => {
   const toast = useToast();
 
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -139,7 +140,7 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId, isAdmin
     <div className="group-detail__setting-section">
       <div className="group-detail__setting-header">
         <h3>휴일 관리</h3>
-        {isAdmin && (
+        {isAdmin && !hideAddButton && (
           <button
             type="button"
             className="group-detail__setting-add-btn"
@@ -149,7 +150,7 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId, isAdmin
           </button>
         )}
       </div>
-      {isAdmin && (
+      {isAdmin && !hideAddButton && (
         <p className="group-detail__setting-description">
           학원 휴일을 등록하면 1주일 전 해당 날짜에 수업이 있는 학생/강사에게 알림이 발송됩니다.
         </p>
