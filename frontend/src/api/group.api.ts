@@ -64,7 +64,7 @@ export const groupApi = {
   // 모임 수정
   update: async (
     groupId: string,
-    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures' | 'practiceRoomSettings' | 'hasPracticeRooms' | 'hasClasses' | 'allowGuardians' | 'hasAttendance' | 'operatingHours'>>
+    data: Partial<Pick<Group, 'name' | 'description' | 'icon' | 'color' | 'logoImage' | 'coverImage' | 'settings' | 'enabledFeatures' | 'practiceRoomSettings' | 'hasPracticeRooms' | 'hasClasses' | 'allowGuardians' | 'hasAttendance' | 'hasMultipleInstructors' | 'requiresApproval' | 'operatingHours' | 'allowSameDayChange'>>
   ): Promise<ApiResponse<Group>> => {
     const response = await apiClient.patch(`/groups/${groupId}`, data);
     return response.data;
@@ -119,9 +119,37 @@ export const groupApi = {
   updateMemberLessonInfo: async (
     groupId: string,
     memberId: string,
-    data: { lessonSchedule?: LessonSchedule[]; paymentDueDay?: number | null }
-  ): Promise<ApiResponse<{ id: string; lessonSchedule?: LessonSchedule[]; paymentDueDay?: number }>> => {
+    data: { lessonSchedule?: LessonSchedule[]; paymentDueDay?: number | null; instructorId?: string | null }
+  ): Promise<ApiResponse<{ id: string; lessonSchedule?: LessonSchedule[]; paymentDueDay?: number; instructorId?: string }>> => {
     const response = await apiClient.patch(`/groups/${groupId}/members/${memberId}/lesson-info`, data);
+    return response.data;
+  },
+
+  // 강사 목록 조회 (다중 강사 모드용)
+  getInstructors: async (groupId: string): Promise<ApiResponse<GroupMember[]>> => {
+    const response = await apiClient.get(`/groups/${groupId}/instructors`);
+    return response.data;
+  },
+
+  // 가입 대기 멤버 목록 조회
+  getPendingMembers: async (groupId: string): Promise<ApiResponse<GroupMember[]>> => {
+    const response = await apiClient.get(`/groups/${groupId}/pending-members`);
+    return response.data;
+  },
+
+  // 멤버 승인 (1:1 교육 그룹용)
+  approveMember: async (
+    groupId: string,
+    memberId: string,
+    data?: { instructorId?: string; lessonSchedule?: LessonSchedule[]; paymentDueDay?: number }
+  ): Promise<ApiResponse<GroupMember>> => {
+    const response = await apiClient.post(`/groups/${groupId}/members/${memberId}/approve`, data || {});
+    return response.data;
+  },
+
+  // 멤버 거부
+  rejectMember: async (groupId: string, memberId: string): Promise<ApiResponse<null>> => {
+    const response = await apiClient.post(`/groups/${groupId}/members/${memberId}/reject`);
     return response.data;
   },
 };

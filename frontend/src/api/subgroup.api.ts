@@ -33,7 +33,7 @@ export const subGroupApi = {
   update: async (
     groupId: string,
     subGroupId: string,
-    data: Partial<Pick<SubGroup, 'name' | 'description' | 'coverImage' | 'leaderId'>>
+    data: Partial<Pick<SubGroup, 'name' | 'description' | 'coverImage' | 'leaderId' | 'classSchedule' | 'lessonRoomId'>>
   ): Promise<ApiResponse<SubGroup>> => {
     const response = await apiClient.patch(`/groups/${groupId}/subgroups/${subGroupId}`, data);
     return response.data;

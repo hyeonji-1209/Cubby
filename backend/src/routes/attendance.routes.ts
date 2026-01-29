@@ -23,6 +23,9 @@ router.post('/groups/:groupId/schedules/:scheduleId/attendance', controller.chec
 // 일정별 출석 목록
 router.get('/groups/:groupId/schedules/:scheduleId/attendance', controller.getBySchedule);
 
+// 일정별 전체 멤버 출석 현황 (관리자) - 미출석 멤버 포함
+router.get('/groups/:groupId/schedules/:scheduleId/attendance/members', controller.getScheduleMembers);
+
 // 내 출석 상태 확인 (특정 일정)
 router.get('/groups/:groupId/schedules/:scheduleId/attendance/me', controller.getMyAttendance);
 

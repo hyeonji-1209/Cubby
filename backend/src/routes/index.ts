@@ -16,6 +16,9 @@ import scheduleChangeRequestRoutes from './scheduleChangeRequest.routes';
 import lessonRecordRoutes from './lessonRecord.routes';
 import subgroupMemberRoutes from './subgroupMember.routes';
 import lessonRoomRoutes from './lessonRoom.routes';
+import absenceRequestRoutes from './absenceRequest.routes';
+import holidayRoutes from './holiday.routes';
+import cronRoutes from './cron.routes';
 
 const router = Router();
 
@@ -42,5 +45,8 @@ router.use('/', scheduleChangeRequestRoutes); // /groups/:groupId/schedule-chang
 router.use('/', lessonRecordRoutes); // /groups/:groupId/members/:memberId/lessons
 router.use('/', subgroupMemberRoutes); // /groups/:groupId/instructor-subgroups
 router.use('/', lessonRoomRoutes); // /groups/:groupId/lesson-rooms
+router.use('/', absenceRequestRoutes); // /groups/:groupId/absence-requests
+router.use('/', holidayRoutes); // /groups/:groupId/holidays
+router.use('/cron', cronRoutes); // /cron/payment-reminders
 
 export default router;

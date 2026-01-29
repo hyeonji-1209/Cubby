@@ -379,10 +379,11 @@ export class SubGroupController {
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { subGroupId } = req.params;
-      const { name, description, coverImage, leaderId, settings } = req.body;
+      const { name, description, coverImage, leaderId, settings, classSchedule, lessonRoomId } = req.body;
 
       const subGroup = await this.subGroupRepository.findOne({
         where: { id: subGroupId },
+        relations: ['lessonRoom'],
       });
 
       if (!subGroup) {
@@ -394,12 +395,21 @@ export class SubGroupController {
       if (coverImage !== undefined) subGroup.coverImage = coverImage;
       if (leaderId !== undefined) subGroup.leaderId = leaderId;
       if (settings !== undefined) subGroup.settings = settings;
+      // 반(CLASS) 또는 강사(INSTRUCTOR) 소그룹용 필드
+      if (classSchedule !== undefined) subGroup.classSchedule = classSchedule;
+      if (lessonRoomId !== undefined) subGroup.lessonRoomId = lessonRoomId || null;
 
       await this.subGroupRepository.save(subGroup);
 
+      // 수업실 정보 포함하여 반환
+      const updatedSubGroup = await this.subGroupRepository.findOne({
+        where: { id: subGroupId },
+        relations: ['lessonRoom', 'leader'],
+      });
+
       res.json({
         success: true,
-        data: subGroup,
+        data: updatedSubGroup,
       });
     } catch (error) {
       next(error);

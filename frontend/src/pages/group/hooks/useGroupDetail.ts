@@ -89,7 +89,7 @@ export const useGroupDetail = () => {
   const [showLessonPanel, setShowLessonPanel] = useState(false);
   const [lessonPanelMember, setLessonPanelMember] = useState<GroupMember | null>(null);
 
-  // 레슨실 목록 (1:1 교육용)
+  // 수업실 목록 (1:1 교육용)
   const [lessonRooms, setLessonRooms] = useState<LessonRoom[]>([]);
 
   // 오늘의 일정 목록 (멤버별 다음 수업 조회용)
@@ -106,7 +106,18 @@ export const useGroupDetail = () => {
     favoriteLocations: false,
     instructorSubGroups: false,
     lessonRooms: false,
+    pendingMembers: false,
   });
+
+  // 가입 대기 멤버
+  const [pendingMembers, setPendingMembers] = useState<GroupMember[]>([]);
+  const [pendingMembersLoading, setPendingMembersLoading] = useState(false);
+
+  // 승인 모달 상태 (1:1 교육용)
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalMember, setApprovalMember] = useState<GroupMember | null>(null);
+  const [instructors, setInstructors] = useState<{ id: string; userId: string; name: string }[]>([]);
+  const { loading: approvalLoading, withLoading: withApprovalLoading } = useLoading();
 
   // 선택된 날짜
   const selectedDate = homeCalendarDate instanceof Date ? homeCalendarDate : null;
@@ -121,6 +132,104 @@ export const useGroupDetail = () => {
   // 공지/일정 작성 권한
   const canWriteAnnouncement = isAdmin || (currentGroup?.settings?.announcementWritePermission ?? 'admin') === 'all';
   const canWriteSchedule = isAdmin || (currentGroup?.settings?.scheduleWritePermission ?? 'admin') === 'all';
+
+  // 강사 목록 조회 (다중 강사 모드용)
+  const fetchInstructors = useCallback(async () => {
+    if (!groupId) return;
+    try {
+      const response = await groupApi.getInstructors(groupId);
+      // GroupMember[]를 { id, userId, name } 형태로 변환
+      const instructorList = (response.data || []).map((member) => ({
+        id: member.id,
+        userId: member.userId,
+        name: member.user?.name || member.nickname || '이름 없음',
+      }));
+      setInstructors(instructorList);
+    } catch (error) {
+      console.error('Failed to fetch instructors:', error);
+    }
+  }, [groupId]);
+
+  // 가입 대기 멤버 조회
+  const fetchPendingMembers = useCallback(async () => {
+    if (!groupId || !isAdmin) return;
+    setPendingMembersLoading(true);
+    try {
+      const response = await groupApi.getPendingMembers(groupId);
+      setPendingMembers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch pending members:', error);
+    } finally {
+      setPendingMembersLoading(false);
+    }
+  }, [groupId, isAdmin]);
+
+  // 멤버 승인 모달 열기 (1:1 교육 그룹의 경우)
+  const openApprovalModal = useCallback(async (member: GroupMember) => {
+    setApprovalMember(member);
+    setShowApprovalModal(true);
+    // 다중 강사 모드인 경우 강사 목록 조회
+    if (currentGroup?.hasMultipleInstructors) {
+      await fetchInstructors();
+    }
+  }, [currentGroup?.hasMultipleInstructors, fetchInstructors]);
+
+  // 멤버 승인 (모달 없이 바로 승인 - 1:1 교육이 아닌 경우)
+  const handleApproveMemberDirect = useCallback(async (member: GroupMember) => {
+    if (!groupId) return;
+    try {
+      await groupApi.approveMember(groupId, member.id);
+      toast.success(`${member.user?.name}님의 가입을 승인했습니다.`);
+      setPendingMembers((prev) => prev.filter((m) => m.id !== member.id));
+      fetchMembers(groupId);
+    } catch (error) {
+      toast.error('승인에 실패했습니다.');
+      console.error('Failed to approve member:', error);
+    }
+  }, [groupId, toast, fetchMembers]);
+
+  // 멤버 승인 핸들러 (1:1 교육이면 모달, 아니면 바로 승인)
+  const handleApproveMember = useCallback(async (member: GroupMember) => {
+    // 1:1 교육 그룹인 경우 모달 열기
+    if (currentGroup?.type === 'education' && !currentGroup?.hasClasses) {
+      openApprovalModal(member);
+    } else {
+      // 그 외의 경우 바로 승인
+      handleApproveMemberDirect(member);
+    }
+  }, [currentGroup?.type, currentGroup?.hasClasses, openApprovalModal, handleApproveMemberDirect]);
+
+  // 승인 모달에서 승인 제출
+  const handleApprovalSubmit = useCallback(async (data: {
+    instructorId?: string;
+    lessonSchedule?: LessonSchedule[];
+    paymentDueDay?: number;
+  }) => {
+    if (!groupId || !approvalMember) return;
+
+    await withApprovalLoading(async () => {
+      await groupApi.approveMember(groupId, approvalMember.id, data);
+      toast.success(`${approvalMember.user?.name}님의 가입을 승인했습니다.`);
+      setPendingMembers((prev) => prev.filter((m) => m.id !== approvalMember.id));
+      fetchMembers(groupId);
+      setShowApprovalModal(false);
+      setApprovalMember(null);
+    }).catch(() => toast.error('승인에 실패했습니다.'));
+  }, [groupId, approvalMember, toast, fetchMembers, withApprovalLoading]);
+
+  // 멤버 거부
+  const handleRejectMember = useCallback(async (member: GroupMember) => {
+    if (!groupId) return;
+    try {
+      await groupApi.rejectMember(groupId, member.id);
+      toast.success(`${member.user?.name}님의 가입을 거부했습니다.`);
+      // 가입 대기 목록에서 제거
+      setPendingMembers((prev) => prev.filter((m) => m.id !== member.id));
+    } catch (error) {
+      toast.error('거부에 실패했습니다.');
+      console.error('Failed to reject member:', error);
+    }
+  }, [groupId, toast]);
 
   // 강사 소그룹 조회
   const fetchInstructorSubGroups = useCallback(async () => {
@@ -193,7 +302,7 @@ export const useGroupDetail = () => {
     }
   }, [groupId]);
 
-  // 레슨실 조회 (1:1 교육용)
+  // 수업실 조회 (1:1 교육용)
   const fetchLessonRooms = useCallback(async () => {
     if (!groupId) return;
     try {
@@ -231,7 +340,7 @@ export const useGroupDetail = () => {
             loadedRef.current.instructorSubGroups = true;
             await fetchInstructorSubGroups();
           }
-          // 1:1 교육 그룹인 경우 레슨실 목록 조회
+          // 1:1 교육 그룹인 경우 수업실 목록 조회
           if (currentGroup.type === 'education' && !currentGroup.hasClasses && !loadedRef.current.lessonRooms) {
             loadedRef.current.lessonRooms = true;
             await fetchLessonRooms();
@@ -522,17 +631,22 @@ export const useGroupDetail = () => {
         setAttendanceQRSchedule({
           id: nextSchedule.id,
           groupId: groupId,
+          authorId: user?.id || '',
           title: nextSchedule.title,
           startAt: nextSchedule.startAt.toISOString(),
           endAt: nextSchedule.endAt.toISOString(),
-        } as any);
+          isAllDay: false,
+          author: { id: user?.id || '', name: user?.name || '', profileImage: user?.profileImage },
+          createdAt: new Date().toISOString(),
+        });
         setShowAttendanceQRModal(true);
 
         try {
           const response = await attendanceApi.generateLessonQRToken(groupId, memberId);
           setAttendanceQRToken(response.data);
-        } catch (error: any) {
-          toast.error(error.response?.data?.message || 'QR 토큰 생성에 실패했습니다.');
+        } catch (error) {
+          const err = error as { response?: { data?: { message?: string } } };
+          toast.error(err.response?.data?.message || 'QR 토큰 생성에 실패했습니다.');
         } finally {
           setAttendanceQRLoading(false);
         }
@@ -547,7 +661,7 @@ export const useGroupDetail = () => {
         setShowAttendanceQRModal(true);
       }
     },
-    [getMemberNextSchedule, currentGroup?.type, currentGroup?.hasClasses, groupId, todaySchedules, toast]
+    [getMemberNextSchedule, currentGroup?.type, currentGroup?.hasClasses, groupId, todaySchedules, toast, user?.id, user?.name, user?.profileImage]
   );
 
   // 1:1 교육 그룹 여부
@@ -564,6 +678,20 @@ export const useGroupDetail = () => {
       fetchTodaySchedules();
     }
   }, [activeTab, groupId, currentGroup?.type, currentGroup?.hasAttendance, fetchTodaySchedules]);
+
+  // 멤버 탭에서 가입 승인이 필요한 그룹이면 가입 대기 멤버 조회
+  useEffect(() => {
+    if (
+      activeTab === 'members' &&
+      groupId &&
+      isAdmin &&
+      currentGroup?.requiresApproval &&
+      !loadedRef.current.pendingMembers
+    ) {
+      loadedRef.current.pendingMembers = true;
+      fetchPendingMembers();
+    }
+  }, [activeTab, groupId, isAdmin, currentGroup?.requiresApproval, fetchPendingMembers]);
 
   // 1:1 교육 그룹에서 수업 탭 표시를 위해 멤버 데이터 미리 로드
   useEffect(() => {
@@ -596,8 +724,9 @@ export const useGroupDetail = () => {
     try {
       await attendanceApi.markEarlyLeave(groupId, attendanceId);
       toast.success('조퇴 처리되었습니다.');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || '조퇴 처리에 실패했습니다.');
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || '조퇴 처리에 실패했습니다.');
     }
   }, [groupId, toast]);
 
@@ -681,6 +810,18 @@ export const useGroupDetail = () => {
     memberSearch,
     setMemberSearch,
     filteredMembers,
+    // 가입 대기 멤버 (승인 시스템)
+    pendingMembers,
+    pendingMembersLoading,
+    handleApproveMember,
+    handleRejectMember,
+    // 승인 모달 (1:1 교육용)
+    showApprovalModal,
+    setShowApprovalModal,
+    approvalMember,
+    instructors,
+    approvalLoading,
+    handleApprovalSubmit,
     // 강사별 필터링 (다중 강사 모드)
     instructorFilter,
     setInstructorFilter,
@@ -704,7 +845,7 @@ export const useGroupDetail = () => {
     setPaymentDueDay,
     lessonInfoLoading,
     handleSaveLessonInfo,
-    // 레슨실 (1:1 교육용)
+    // 수업실 (1:1 교육용)
     lessonRooms,
     // 출석 QR
     showAttendanceQRModal,

@@ -3,17 +3,20 @@ import { IsNull } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Group, GroupType, GroupStatus } from '../models/Group';
 import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
-import { SubGroup } from '../models/SubGroup';
+import { SubGroup, SubGroupType, SubGroupStatus } from '../models/SubGroup';
+import { SubGroupMember, SubGroupMemberRole } from '../models/SubGroupMember';
 import { Announcement } from '../models/Announcement';
 import { Schedule } from '../models/Schedule';
 import { GroupPosition } from '../models/GroupPosition';
 import { generateInviteCode, getInviteCodeExpiryDate, isInviteCodeExpired } from '../utils/inviteCode.util';
 import { AppError } from '../middlewares/error.middleware';
+import { notificationService } from '../services/notification.service';
 
 export class GroupController {
   private groupRepository = AppDataSource.getRepository(Group);
   private memberRepository = AppDataSource.getRepository(GroupMember);
   private subGroupRepository = AppDataSource.getRepository(SubGroup); // Used for counting subgroups
+  private subGroupMemberRepository = AppDataSource.getRepository(SubGroupMember);
   private announcementRepository = AppDataSource.getRepository(Announcement);
   private scheduleRepository = AppDataSource.getRepository(Schedule);
   private positionRepository = AppDataSource.getRepository(GroupPosition);
@@ -45,6 +48,8 @@ export class GroupController {
         hasClasses,
         hasPracticeRooms,
         allowGuardians,
+        hasAttendance,
+        hasMultipleInstructors,
         practiceRoomSettings,
       } = req.body;
 
@@ -53,6 +58,9 @@ export class GroupController {
       }
 
       const inviteCode = await this.generateUniqueInviteCode();
+
+      // education 타입의 1:1 수업인 경우 가입 승인 필요
+      const isEducation1on1 = type === GroupType.EDUCATION && !hasClasses;
 
       const group = this.groupRepository.create({
         name,
@@ -71,6 +79,9 @@ export class GroupController {
         hasClasses: type === GroupType.EDUCATION ? hasClasses ?? false : false,
         hasPracticeRooms: type === GroupType.EDUCATION ? hasPracticeRooms ?? false : false,
         allowGuardians: type === GroupType.EDUCATION ? allowGuardians ?? false : false,
+        hasAttendance: type === GroupType.EDUCATION ? hasAttendance ?? false : false,
+        hasMultipleInstructors: type === GroupType.EDUCATION ? hasMultipleInstructors ?? false : false,
+        requiresApproval: isEducation1on1, // 1:1 수업은 승인 필요
         ...(type === GroupType.EDUCATION && hasPracticeRooms && practiceRoomSettings
           ? { practiceRoomSettings }
           : {}),
@@ -185,12 +196,21 @@ export class GroupController {
       // 멤버 역할 결정
       const role = isGuardian ? MemberRole.GUARDIAN : MemberRole.MEMBER;
 
+      // 가입 승인 필요 여부 확인 (보호자는 승인 불필요)
+      const needsApproval = group.requiresApproval && !isGuardian;
+      const memberStatus = needsApproval ? MemberStatus.PENDING : MemberStatus.ACTIVE;
+
+      let savedMembership: GroupMember;
+
       if (existingMembership) {
         if (existingMembership.status === MemberStatus.ACTIVE) {
           throw new AppError('Already a member of this group', 400);
         }
-        // 이전에 탈퇴했다면 다시 활성화
-        existingMembership.status = MemberStatus.ACTIVE;
+        if (existingMembership.status === MemberStatus.PENDING) {
+          throw new AppError('Membership is pending approval', 400);
+        }
+        // 이전에 탈퇴했다면 다시 활성화/대기
+        existingMembership.status = memberStatus;
         existingMembership.role = role;
         if (isGuardian && childInfo) {
           existingMembership.childInfo = childInfo;
@@ -198,18 +218,37 @@ export class GroupController {
         if (positionId) {
           existingMembership.positionId = positionId;
         }
-        await this.memberRepository.save(existingMembership);
+        savedMembership = await this.memberRepository.save(existingMembership);
       } else {
         // 새 멤버로 추가
         const membership = this.memberRepository.create({
           groupId: group.id,
           userId: req.user!.id,
           role,
-          status: MemberStatus.ACTIVE,
+          status: memberStatus,
           childInfo: isGuardian ? childInfo : undefined,
           positionId: positionId || undefined,
         });
-        await this.memberRepository.save(membership);
+        savedMembership = await this.memberRepository.save(membership);
+      }
+
+      // 가입 신청 알림 (승인 대기 상태인 경우 관리자에게 알림)
+      if (needsApproval) {
+        await notificationService.notifyMemberJoinRequest({
+          groupId: group.id,
+          groupName: group.name,
+          requesterName: req.user!.name,
+          requesterId: req.user!.id,
+          memberId: savedMembership.id,
+        });
+      } else {
+        // 바로 가입인 경우 관리자에게 알림
+        await notificationService.notifyMemberJoined({
+          groupId: group.id,
+          groupName: group.name,
+          memberName: req.user!.name,
+          memberId: savedMembership.id,
+        });
       }
 
       // 직책 목록 조회 (메인 그룹 직책만, 소모임 직책 제외)
@@ -225,9 +264,11 @@ export class GroupController {
           name: group.name,
           type: group.type,
           allowGuardians: group.allowGuardians,
+          requiresApproval: group.requiresApproval,
+          isPending: needsApproval,
           positions: positions.map((p: GroupPosition) => ({ id: p.id, name: p.name, color: p.color })),
         },
-        message: 'Joined group successfully',
+        message: needsApproval ? 'Join request submitted. Waiting for approval.' : 'Joined group successfully',
       });
     } catch (error) {
       next(error);
@@ -408,6 +449,8 @@ export class GroupController {
         hasPracticeRooms,
         allowGuardians,
         hasAttendance,
+        hasMultipleInstructors,
+        requiresApproval,
         practiceRoomSettings,
         operatingHours,
       } = req.body;
@@ -432,6 +475,8 @@ export class GroupController {
       if (hasPracticeRooms !== undefined) group.hasPracticeRooms = hasPracticeRooms;
       if (allowGuardians !== undefined) group.allowGuardians = allowGuardians;
       if (hasAttendance !== undefined) group.hasAttendance = hasAttendance;
+      if (hasMultipleInstructors !== undefined) group.hasMultipleInstructors = hasMultipleInstructors;
+      if (requiresApproval !== undefined) group.requiresApproval = requiresApproval;
       if (practiceRoomSettings !== undefined) group.practiceRoomSettings = practiceRoomSettings;
       if (operatingHours !== undefined) group.operatingHours = operatingHours;
 
@@ -549,6 +594,7 @@ export class GroupController {
 
       const membership = await this.memberRepository.findOne({
         where: { id: memberId, groupId },
+        relations: ['user'],
       });
 
       if (!membership) {
@@ -564,8 +610,54 @@ export class GroupController {
         throw new AppError('Invalid role', 400);
       }
 
+      const previousRole = membership.role;
       membership.role = role;
       await this.memberRepository.save(membership);
+
+      // 그룹 수업 모드에서 LEADER(강사)로 역할 변경 시 자동으로 강사별 소그룹 생성
+      const group = await this.groupRepository.findOne({ where: { id: groupId } });
+      if (
+        group &&
+        group.type === GroupType.EDUCATION &&
+        group.hasClasses === true &&
+        role === MemberRole.LEADER &&
+        previousRole !== MemberRole.LEADER
+      ) {
+        // 이미 해당 강사의 소그룹이 있는지 확인
+        const existingInstructorSubGroup = await this.subGroupRepository.findOne({
+          where: {
+            parentGroupId: groupId,
+            type: SubGroupType.INSTRUCTOR,
+            instructorId: membership.userId,
+          },
+        });
+
+        if (!existingInstructorSubGroup) {
+          // 강사별 소그룹 자동 생성
+          const instructorName = membership.user?.name || membership.nickname || '강사';
+          const instructorSubGroup = this.subGroupRepository.create({
+            parentGroupId: groupId,
+            name: `${instructorName} 반`,
+            description: `${instructorName} 강사의 수업`,
+            leaderId: membership.userId,
+            instructorId: membership.userId,
+            type: SubGroupType.INSTRUCTOR,
+            status: SubGroupStatus.ACTIVE,
+            depth: 0,
+            createdById: req.user!.id,
+          });
+
+          const savedSubGroup = await this.subGroupRepository.save(instructorSubGroup);
+
+          // 강사를 소그룹의 리더로 자동 추가
+          const subGroupMember = this.subGroupMemberRepository.create({
+            subGroupId: savedSubGroup.id,
+            groupMemberId: membership.id,
+            role: SubGroupMemberRole.LEADER,
+          });
+          await this.subGroupMemberRepository.save(subGroupMember);
+        }
+      }
 
       res.json({
         success: true,
@@ -669,7 +761,7 @@ export class GroupController {
   updateMemberLessonInfo = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId, memberId } = req.params;
-      const { lessonSchedule, paymentDueDay } = req.body;
+      const { lessonSchedule, paymentDueDay, instructorId } = req.body;
 
       // 권한 확인: 관리자만 수정 가능
       const currentMembership = await this.memberRepository.findOne({
@@ -691,6 +783,7 @@ export class GroupController {
 
       if (lessonSchedule !== undefined) membership.lessonSchedule = lessonSchedule;
       if (paymentDueDay !== undefined) membership.paymentDueDay = paymentDueDay;
+      if (instructorId !== undefined) membership.instructorId = instructorId;
 
       await this.memberRepository.save(membership);
 
@@ -700,11 +793,217 @@ export class GroupController {
           id: membership.id,
           lessonSchedule: membership.lessonSchedule,
           paymentDueDay: membership.paymentDueDay,
+          instructorId: membership.instructorId,
           user: {
             id: membership.user.id,
             name: membership.user.name,
           },
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 가입 대기 멤버 목록 조회
+  getPendingMembers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId } = req.params;
+
+      // 권한 확인: 관리자만 조회 가능
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
+        throw new AppError('Only admins can view pending members', 403);
+      }
+
+      const pendingMembers = await this.memberRepository.find({
+        where: { groupId, status: MemberStatus.PENDING },
+        relations: ['user'],
+        order: { joinedAt: 'ASC' },
+      });
+
+      const result = pendingMembers.map((member) => ({
+        id: member.id,
+        role: member.role,
+        status: member.status,
+        positionId: member.positionId,
+        joinedAt: member.joinedAt,
+        user: {
+          id: member.user.id,
+          name: member.user.name,
+          email: member.user.email,
+          profileImage: member.user.profileImage,
+        },
+      }));
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 멤버 승인 (1:1 교육 그룹용 - 강사/레슨시간/납부일 설정 포함)
+  approveMember = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId, memberId } = req.params;
+      const { instructorId, lessonSchedule, paymentDueDay } = req.body;
+
+      // 권한 확인: 관리자만 승인 가능
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
+        throw new AppError('Only admins can approve members', 403);
+      }
+
+      const membership = await this.memberRepository.findOne({
+        where: { id: memberId, groupId, status: MemberStatus.PENDING },
+        relations: ['user'],
+      });
+
+      if (!membership) {
+        throw new AppError('Pending member not found', 404);
+      }
+
+      // 그룹 정보 조회 (1:1 수업인지 확인)
+      const group = await this.groupRepository.findOne({ where: { id: groupId } });
+
+      // 승인 처리
+      membership.status = MemberStatus.ACTIVE;
+
+      // 1:1 교육 그룹인 경우 추가 정보 설정
+      if (group && group.type === 'education' && !group.hasClasses) {
+        if (instructorId) membership.instructorId = instructorId;
+        if (lessonSchedule) membership.lessonSchedule = lessonSchedule;
+        if (paymentDueDay) membership.paymentDueDay = paymentDueDay;
+
+        // 강사가 지정되지 않으면 owner가 강사
+        if (!instructorId && group.hasMultipleInstructors === false) {
+          membership.instructorId = group.ownerId;
+        }
+      }
+
+      await this.memberRepository.save(membership);
+
+      // 승인 알림 전송
+      await notificationService.notifyMemberApproved({
+        userId: membership.userId,
+        groupId: group!.id,
+        groupName: group!.name,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          id: membership.id,
+          status: membership.status,
+          instructorId: membership.instructorId,
+          lessonSchedule: membership.lessonSchedule,
+          paymentDueDay: membership.paymentDueDay,
+          user: {
+            id: membership.user.id,
+            name: membership.user.name,
+          },
+        },
+        message: 'Member approved successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 멤버 거부/삭제
+  rejectMember = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId, memberId } = req.params;
+      const { reason } = req.body;
+
+      // 권한 확인: 관리자만 거부 가능
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
+        throw new AppError('Only admins can reject members', 403);
+      }
+
+      const membership = await this.memberRepository.findOne({
+        where: { id: memberId, groupId, status: MemberStatus.PENDING },
+      });
+
+      if (!membership) {
+        throw new AppError('Pending member not found', 404);
+      }
+
+      // 그룹 정보 조회
+      const group = await this.groupRepository.findOne({ where: { id: groupId } });
+
+      // 거절 알림 전송
+      await notificationService.notifyMemberRejected({
+        userId: membership.userId,
+        groupId,
+        groupName: group?.name || '모임',
+        reason,
+      });
+
+      await this.memberRepository.delete(memberId);
+
+      res.json({
+        success: true,
+        message: 'Member rejected successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 강사 목록 조회 (다중 강사 모드용)
+  getInstructors = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId } = req.params;
+
+      // 그룹 멤버인지 확인
+      const currentMembership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!currentMembership) {
+        throw new AppError('Not a member of this group', 403);
+      }
+
+      // 강사 (OWNER, ADMIN, LEADER) 목록 조회
+      const instructors = await this.memberRepository.find({
+        where: [
+          { groupId, status: MemberStatus.ACTIVE, role: MemberRole.OWNER },
+          { groupId, status: MemberStatus.ACTIVE, role: MemberRole.ADMIN },
+          { groupId, status: MemberStatus.ACTIVE, role: MemberRole.LEADER },
+        ],
+        relations: ['user'],
+        order: { role: 'ASC', joinedAt: 'ASC' },
+      });
+
+      const result = instructors.map((member) => ({
+        id: member.id,
+        role: member.role,
+        nickname: member.nickname,
+        title: member.title,
+        user: {
+          id: member.user.id,
+          name: member.user.name,
+          profileImage: member.user.profileImage,
+        },
+      }));
+
+      res.json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

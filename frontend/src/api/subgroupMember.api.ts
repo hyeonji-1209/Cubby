@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiResponse, SubGroup } from '@/types';
+import type { ApiResponse, SubGroup, ClassSchedule } from '@/types';
 
 export interface InstructorSubGroup {
   id: string;
@@ -13,6 +13,43 @@ export interface InstructorSubGroup {
   } | null;
   memberCount: number;
   createdAt: string;
+}
+
+export interface ClassSubGroup {
+  id: string;
+  name: string;
+  description?: string;
+  instructorId?: string;
+  instructor: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  } | null;
+  classSchedule?: ClassSchedule[];
+  lessonRoomId?: string;
+  lessonRoom: {
+    id: string;
+    name: string;
+    capacity: number;
+  } | null;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface CreateClassSubGroupDto {
+  name?: string;
+  description?: string;
+  instructorId?: string;
+  classSchedule?: ClassSchedule[];
+  lessonRoomId?: string;
+}
+
+export interface UpdateClassSubGroupDto {
+  name?: string;
+  description?: string;
+  instructorId?: string;
+  classSchedule?: ClassSchedule[];
+  lessonRoomId?: string;
 }
 
 export interface SubGroupMemberInfo {
@@ -133,6 +170,33 @@ export const subgroupMemberApi = {
     const response = await apiClient.get(
       `/groups/${groupId}/members/${memberId}/instructor-subgroup`
     );
+    return response.data;
+  },
+
+  // ===== 반(CLASS) 소그룹 관리 (그룹 수업용) =====
+
+  // 반 생성
+  createClassSubGroup: async (
+    groupId: string,
+    data: CreateClassSubGroupDto
+  ): Promise<ApiResponse<SubGroup>> => {
+    const response = await apiClient.post(`/groups/${groupId}/class-subgroups`, data);
+    return response.data;
+  },
+
+  // 반 목록 조회
+  getClassSubGroups: async (groupId: string): Promise<ApiResponse<ClassSubGroup[]>> => {
+    const response = await apiClient.get(`/groups/${groupId}/class-subgroups`);
+    return response.data;
+  },
+
+  // 반 수정
+  updateClassSubGroup: async (
+    groupId: string,
+    subGroupId: string,
+    data: UpdateClassSubGroupDto
+  ): Promise<ApiResponse<SubGroup>> => {
+    const response = await apiClient.put(`/groups/${groupId}/class-subgroups/${subGroupId}`, data);
     return response.data;
   },
 };

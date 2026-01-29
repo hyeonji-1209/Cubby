@@ -18,7 +18,7 @@ export class LessonRoom {
   groupId: string;
 
   @Column({ type: 'varchar', length: 50 })
-  name: string; // 레슨실 이름 (예: A실, B실, 1번방)
+  name: string; // 수업실 이름 (예: A실, B실, 1번방)
 
   @Column({ type: 'int', default: 0 })
   order: number; // 정렬 순서

@@ -69,6 +69,16 @@ const initialState: GroupCreateFormState = {
   practiceRoomMaxHours: 2,
 };
 
+// 교육 타입 생성 단계 (5단계)
+export type EducationStep = 1 | 2 | 3 | 4 | 5;
+export const EDUCATION_STEPS = {
+  1: '기본 정보',
+  2: '수업 방식',
+  3: '추가 설정',
+  4: '연습실',
+  5: '직책 설정',
+} as const;
+
 export const useGroupCreateForm = () => {
   const navigate = useNavigate();
   const toast = useToast();
@@ -77,6 +87,9 @@ export const useGroupCreateForm = () => {
 
   // 기본 폼 상태
   const [formState, setFormState] = useState<GroupCreateFormState>(initialState);
+
+  // 교육 타입 단계 관리
+  const [educationStep, setEducationStep] = useState<EducationStep>(1);
 
   // 리스트 관리 (직책, 직위, 연습실)
   const positionList = useListManager<string>([''], { maxLength: 10, minLength: 1 });
@@ -99,7 +112,46 @@ export const useGroupCreateForm = () => {
       icon: GROUP_TYPE_DEFAULT_ICONS[selectedType],
       color: GROUP_TYPE_COLORS[selectedType],
     }));
+    // 교육 타입 선택 시 step 1로 시작
+    if (selectedType === 'education') {
+      setEducationStep(1);
+    }
   }, []);
+
+  // 교육 타입 단계별 유효성 검사
+  const canGoNextStep = useCallback((): boolean => {
+    const { name } = formState;
+    switch (educationStep) {
+      case 1: // 기본 정보: 이름 필수
+        return !!name.trim();
+      case 2: // 수업 방식: 항상 가능 (기본값 있음)
+        return true;
+      case 3: // 추가 설정: 항상 가능
+        return true;
+      case 4: // 연습실: 항상 가능
+        return true;
+      case 5: { // 직책 설정: 직책 1개 이상 + 본인 직책 설정
+        const validPositions = positionList.items.filter((p) => p.trim());
+        return validPositions.length > 0 && !!formState.myTitle.trim();
+      }
+      default:
+        return false;
+    }
+  }, [educationStep, formState, positionList.items]);
+
+  // 다음 단계로
+  const goNextStep = useCallback(() => {
+    if (educationStep < 5 && canGoNextStep()) {
+      setEducationStep((prev) => (prev + 1) as EducationStep);
+    }
+  }, [educationStep, canGoNextStep]);
+
+  // 이전 단계로
+  const goPrevStep = useCallback(() => {
+    if (educationStep > 1) {
+      setEducationStep((prev) => (prev - 1) as EducationStep);
+    }
+  }, [educationStep]);
 
   // 폼 초기화
   const handleReset = useCallback(() => {
@@ -107,6 +159,7 @@ export const useGroupCreateForm = () => {
     positionList.reset(['']);
     rankList.reset(['']);
     practiceRoomList.reset(['']);
+    setEducationStep(1);
   }, [positionList, rankList, practiceRoomList]);
 
   // 유효성 검사
@@ -272,6 +325,12 @@ export const useGroupCreateForm = () => {
     positionList,
     rankList,
     practiceRoomList,
+    // 교육 타입 단계 관리
+    educationStep,
+    setEducationStep,
+    canGoNextStep,
+    goNextStep,
+    goPrevStep,
   };
 };
 

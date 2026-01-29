@@ -937,5 +937,469 @@
     font-size: $font-size-xs;
     color: $gray-500;
   }
+
+  // =============================================
+  // 교육 타입 슬라이드 UI
+  // =============================================
+
+  // 진행 표시 바
+  &__progress {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-md;
+    margin-bottom: $spacing-xl;
+    padding-bottom: $spacing-lg;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: $spacing-xs;
+
+    &--active {
+      .group-create__progress-number {
+        background: $primary-500;
+        color: white;
+        border-color: $primary-500;
+      }
+
+      .group-create__progress-label {
+        color: $primary-600;
+        font-weight: $font-weight-semibold;
+      }
+    }
+
+    &--done {
+      .group-create__progress-number {
+        background: $success;
+        color: white;
+        border-color: $success;
+      }
+
+      .group-create__progress-label {
+        color: $gray-500;
+      }
+    }
+  }
+
+  &__progress-number {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-full;
+    border: 2px solid $gray-300;
+    background: white;
+    color: $gray-400;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    @include flex-center;
+    transition: all $transition-fast;
+  }
+
+  &__progress-label {
+    font-size: $font-size-xs;
+    color: $gray-400;
+    white-space: nowrap;
+    transition: all $transition-fast;
+  }
+
+  // 슬라이드 콘텐츠
+  &__slide {
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  &__slide-title {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-bold;
+    color: $gray-900;
+    margin: 0 0 $spacing-xs 0;
+    text-align: center;
+  }
+
+  &__slide-desc {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin: 0 0 $spacing-xl 0;
+    text-align: center;
+  }
+
+  &__slide-content {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  &__row--center {
+    justify-content: center;
+    align-items: center;
+
+    @include mobile {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  // 옵션 카드 (1:1 vs 그룹 수업)
+  &__option-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-md;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__option-card {
+    position: relative;
+    display: block;
+    cursor: pointer;
+
+    input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    &-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: $spacing-sm;
+      padding: $spacing-lg;
+      background: white;
+      border: 2px solid $gray-200;
+      border-radius: $radius-lg;
+      transition: all $transition-fast;
+    }
+
+    &:hover &-content {
+      border-color: $primary-300;
+      background: $gray-50;
+    }
+
+    &--selected &-content {
+      border-color: $primary-500;
+      background: $primary-50;
+    }
+
+    &-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: $radius-lg;
+      background: $gray-100;
+      @include flex-center;
+      font-size: $font-size-lg;
+      font-weight: $font-weight-bold;
+      color: $gray-500;
+      transition: all $transition-fast;
+    }
+
+    &--selected &-icon {
+      background: $primary-500;
+      color: white;
+    }
+
+    &-title {
+      font-size: $font-size-base;
+      font-weight: $font-weight-semibold;
+      color: $gray-800;
+    }
+
+    &-desc {
+      font-size: $font-size-xs;
+      color: $gray-500;
+      text-align: center;
+      line-height: 1.4;
+    }
+  }
+
+  // 토글 행
+  &__toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: $spacing-md;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-md;
+  }
+
+  &__toggle-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__toggle-label {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-800;
+  }
+
+  &__toggle-desc {
+    font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  // 토글 스위치
+  &__toggle {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    flex-shrink: 0;
+
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    input:checked + .group-create__toggle-slider {
+      background-color: $primary-500;
+    }
+
+    input:checked + .group-create__toggle-slider::before {
+      transform: translateX(22px);
+    }
+  }
+
+  &__toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: $gray-300;
+    transition: all $transition-fast;
+    border-radius: $radius-full;
+
+    &::before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: all $transition-fast;
+      border-radius: $radius-full;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  // 정보 박스
+  &__info-box {
+    padding: $spacing-md;
+    background: $primary-50;
+    border: 1px solid $primary-200;
+    border-radius: $radius-md;
+    margin-top: $spacing-md;
+
+    p {
+      margin: 0;
+      font-size: $font-size-sm;
+      color: $primary-700;
+      line-height: 1.5;
+    }
+  }
+
+  // 연습실 설정
+  &__practice-settings {
+    margin-top: $spacing-md;
+    padding: $spacing-lg;
+    background: $gray-50;
+    border-radius: $radius-lg;
+  }
+
+  &__time-row {
+    display: flex;
+    align-items: flex-end;
+    gap: $spacing-sm;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__time-field {
+    flex: 1;
+
+    label {
+      display: block;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-medium;
+      color: $gray-600;
+      margin-bottom: $spacing-xs;
+    }
+
+    input[type="time"] {
+      width: 100%;
+      padding: $spacing-sm;
+      border: 1px solid $gray-300;
+      border-radius: $radius-md;
+      font-size: $font-size-sm;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+      }
+    }
+  }
+
+  &__time-separator {
+    padding-bottom: $spacing-sm;
+    color: $gray-500;
+    font-size: $font-size-lg;
+  }
+
+  // 라디오 그룹
+  &__radio-group {
+    display: flex;
+    gap: $spacing-md;
+  }
+
+  &__radio {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    cursor: pointer;
+
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: $primary-500;
+    }
+
+    span {
+      font-size: $font-size-sm;
+      color: $gray-700;
+    }
+  }
+
+  // 리스트 (연습실 목록)
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+  }
+
+  &__list-item {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__list-remove {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    color: $gray-400;
+    font-size: $font-size-lg;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $error;
+      color: $error;
+      background: rgba($error, 0.05);
+    }
+  }
+
+  &__list-add {
+    width: 100%;
+    padding: $spacing-sm;
+    background: white;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-500;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      border-color: $primary-500;
+      color: $primary-500;
+    }
+  }
+
+  // 네비게이션 버튼
+  &__nav {
+    display: flex;
+    justify-content: space-between;
+    margin-top: $spacing-xl;
+    padding-top: $spacing-lg;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__nav-btn {
+    padding: $spacing-sm $spacing-xl;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &--prev {
+      background: white;
+      border: 1px solid $gray-300;
+      color: $gray-700;
+
+      &:hover:not(:disabled) {
+        background: $gray-50;
+        border-color: $gray-400;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &--next {
+      background: $primary-500;
+      border: none;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: $primary-600;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    &--submit {
+      background: $success;
+      border: none;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: darken($success, 5%);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
 }
 

@@ -7,5 +7,5 @@ export { default as Header } from './layout/Header';
 export { default as Sidebar } from './layout/Sidebar';
 
 // Common
-export { Button, Input, Card, Modal, EmptyState, Calendar, IconPicker, Dropdown, ToastProvider, useToast, CommentSection, LocationPicker, ConfirmDialog, SidePanel } from './common';
+export { Button, Input, Card, Modal, EmptyState, Calendar, IconPicker, Dropdown, ToastProvider, useToast, CommentSection, LocationPicker, ConfirmDialog, SidePanel, ScheduleAttendanceModal, ScheduleChangeRequestModal, AbsenceRequestModal } from './common';
 export type { DropdownOption, LocationData } from './common';

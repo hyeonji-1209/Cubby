@@ -1,84 +1,243 @@
+import { useState } from 'react';
 import { GROUP_TYPE_LABELS, DAYS_OF_WEEK } from '@/constants/labels';
+import { IconPicker } from '@/components';
 import type { Group, PracticeRoom, OperatingHours } from '@/types';
 import type { FavoriteLocation, LessonRoom } from '@/api';
+
+// 기본 정보 편집 인터페이스
+interface GroupBasicInfo {
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  logoImage?: string;
+}
 
 // 모임 정보 섹션
 interface GroupInfoSectionProps {
   currentGroup: Group;
   isOwner: boolean;
   isAdmin: boolean;
-  onFeatureToggle?: (feature: 'hasClasses' | 'hasPracticeRooms' | 'hasAttendance' | 'allowGuardians', value: boolean) => void;
+  onFeatureToggle?: (feature: 'hasClasses' | 'hasPracticeRooms' | 'hasAttendance' | 'allowGuardians' | 'hasMultipleInstructors' | 'requiresApproval', value: boolean) => void;
+  onUpdateBasicInfo?: (info: GroupBasicInfo) => Promise<void>;
+  basicInfoSaving?: boolean;
 }
 
-export const GroupInfoSection = ({ currentGroup, isOwner, isAdmin, onFeatureToggle }: GroupInfoSectionProps) => (
-  <div className="group-detail__setting-section">
-    <h3>모임 정보</h3>
-    <div className="group-detail__setting-item">
-      <span className="label">모임 이름</span>
-      <span className="value">{currentGroup.name}</span>
-    </div>
-    <div className="group-detail__setting-item">
-      <span className="label">타입</span>
-      <span className="value">{GROUP_TYPE_LABELS[currentGroup.type]}</span>
-    </div>
-    {isOwner && (
-      <div className="group-detail__setting-item">
-        <span className="label">초대 코드</span>
-        <span className="value code">{currentGroup.inviteCode}</span>
-      </div>
-    )}
+export const GroupInfoSection = ({ currentGroup, isOwner, isAdmin, onFeatureToggle, onUpdateBasicInfo, basicInfoSaving }: GroupInfoSectionProps) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<GroupBasicInfo>({
+    name: currentGroup.name,
+    description: currentGroup.description || '',
+    icon: currentGroup.icon || '',
+    color: currentGroup.color || '#6366f1',
+    logoImage: currentGroup.logoImage,
+  });
 
-    {/* 학원 타입 기능 설정 표시 */}
-    {currentGroup.type === 'education' && isAdmin && (
-      <>
-        <div className="group-detail__setting-divider" />
-        <h4 className="group-detail__setting-subtitle">기능 설정</h4>
-        <div className="group-detail__feature-toggles">
-          <div className="group-detail__feature-toggle-item">
-            <span className="label">반 운영</span>
+  const handleSave = async () => {
+    if (onUpdateBasicInfo) {
+      await onUpdateBasicInfo(editForm);
+      setIsEditing(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditForm({
+      name: currentGroup.name,
+      description: currentGroup.description || '',
+      icon: currentGroup.icon || '',
+      color: currentGroup.color || '#6366f1',
+      logoImage: currentGroup.logoImage,
+    });
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="group-detail__setting-section">
+      <div className="group-detail__setting-header">
+        <h3>모임 정보</h3>
+        {isAdmin && !isEditing && (
+          <button
+            className="group-detail__setting-edit-btn"
+            onClick={() => setIsEditing(true)}
+          >
+            수정
+          </button>
+        )}
+        {isEditing && (
+          <div className="group-detail__setting-actions">
             <button
-              type="button"
-              className={`group-detail__toggle-switch ${currentGroup.hasClasses ? 'on' : ''}`}
-              onClick={() => onFeatureToggle?.('hasClasses', !currentGroup.hasClasses)}
+              className="group-detail__setting-cancel-btn"
+              onClick={handleCancel}
+              disabled={basicInfoSaving}
             >
-              <div className="group-detail__toggle-switch-handle" />
+              취소
+            </button>
+            <button
+              className="group-detail__setting-save-btn"
+              onClick={handleSave}
+              disabled={!editForm.name.trim() || basicInfoSaving}
+            >
+              {basicInfoSaving ? '저장 중...' : '저장'}
             </button>
           </div>
-          <div className="group-detail__feature-toggle-item">
-            <span className="label">연습실</span>
-            <button
-              type="button"
-              className={`group-detail__toggle-switch ${currentGroup.hasPracticeRooms ? 'on' : ''}`}
-              onClick={() => onFeatureToggle?.('hasPracticeRooms', !currentGroup.hasPracticeRooms)}
-            >
-              <div className="group-detail__toggle-switch-handle" />
-            </button>
+        )}
+      </div>
+
+      {isEditing ? (
+        <div className="group-detail__basic-edit-form">
+          <div className="group-detail__basic-edit-row">
+            <div className="group-detail__basic-edit-icon">
+              <IconPicker
+                icon={editForm.icon}
+                color={editForm.color}
+                image={editForm.logoImage}
+                onIconChange={(v) => setEditForm(prev => ({ ...prev, icon: v }))}
+                onColorChange={(v) => setEditForm(prev => ({ ...prev, color: v }))}
+                onImageChange={(v) => setEditForm(prev => ({ ...prev, logoImage: v }))}
+              />
+            </div>
+            <div className="group-detail__basic-edit-name">
+              <label>모임 이름</label>
+              <input
+                type="text"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="모임 이름을 입력하세요"
+                maxLength={50}
+              />
+            </div>
           </div>
-          <div className="group-detail__feature-toggle-item">
-            <span className="label">출석체크</span>
-            <button
-              type="button"
-              className={`group-detail__toggle-switch ${currentGroup.hasAttendance ? 'on' : ''}`}
-              onClick={() => onFeatureToggle?.('hasAttendance', !currentGroup.hasAttendance)}
-            >
-              <div className="group-detail__toggle-switch-handle" />
-            </button>
-          </div>
-          <div className="group-detail__feature-toggle-item">
-            <span className="label">보호자 허용</span>
-            <button
-              type="button"
-              className={`group-detail__toggle-switch ${currentGroup.allowGuardians ? 'on' : ''}`}
-              onClick={() => onFeatureToggle?.('allowGuardians', !currentGroup.allowGuardians)}
-            >
-              <div className="group-detail__toggle-switch-handle" />
-            </button>
+          <div className="group-detail__basic-edit-field">
+            <label>설명</label>
+            <textarea
+              value={editForm.description}
+              onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="모임에 대한 간단한 설명"
+              rows={2}
+              maxLength={200}
+            />
           </div>
         </div>
-      </>
-    )}
-  </div>
-);
+      ) : (
+        <>
+          <div className="group-detail__setting-item">
+            <span className="label">모임 이름</span>
+            <span className="value">{currentGroup.name}</span>
+          </div>
+          {currentGroup.description && (
+            <div className="group-detail__setting-item">
+              <span className="label">설명</span>
+              <span className="value">{currentGroup.description}</span>
+            </div>
+          )}
+          <div className="group-detail__setting-item">
+            <span className="label">타입</span>
+            <span className="value">{GROUP_TYPE_LABELS[currentGroup.type]}</span>
+          </div>
+          {isOwner && (
+            <div className="group-detail__setting-item">
+              <span className="label">초대 코드</span>
+              <span className="value code">{currentGroup.inviteCode}</span>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 학원 타입 기능 설정 표시 */}
+      {currentGroup.type === 'education' && isAdmin && (
+        <>
+          <div className="group-detail__setting-divider" />
+          <h4 className="group-detail__setting-subtitle">수업 방식</h4>
+          <div className="group-detail__feature-toggles">
+            <div className="group-detail__feature-toggle-item group-detail__feature-toggle-item--readonly">
+              <div className="toggle-info">
+                <span className="label">{currentGroup.hasClasses ? '그룹 수업' : '1:1 수업'}</span>
+                <span className="desc">{currentGroup.hasClasses ? '반을 만들어 그룹으로 수업합니다' : '개별 학생마다 수업 시간을 배정합니다'}</span>
+              </div>
+              <span className="readonly-badge">변경 불가</span>
+            </div>
+          </div>
+
+          <div className="group-detail__setting-divider" />
+          <h4 className="group-detail__setting-subtitle">기능 설정</h4>
+          <div className="group-detail__feature-toggles">
+            <div className="group-detail__feature-toggle-item">
+              <div className="toggle-info">
+                <span className="label">출석 체크</span>
+                <span className="desc">QR 코드로 출석을 관리합니다</span>
+              </div>
+              <button
+                type="button"
+                className={`group-detail__toggle-switch ${currentGroup.hasAttendance ? 'on' : ''}`}
+                onClick={() => onFeatureToggle?.('hasAttendance', !currentGroup.hasAttendance)}
+              >
+                <div className="group-detail__toggle-switch-handle" />
+              </button>
+            </div>
+
+            {!currentGroup.hasClasses && (
+              <div className="group-detail__feature-toggle-item">
+                <div className="toggle-info">
+                  <span className="label">다중 강사 모드</span>
+                  <span className="desc">여러 강사가 각자의 학생을 관리합니다</span>
+                </div>
+                <button
+                  type="button"
+                  className={`group-detail__toggle-switch ${currentGroup.hasMultipleInstructors ? 'on' : ''}`}
+                  onClick={() => onFeatureToggle?.('hasMultipleInstructors', !currentGroup.hasMultipleInstructors)}
+                >
+                  <div className="group-detail__toggle-switch-handle" />
+                </button>
+              </div>
+            )}
+
+            <div className="group-detail__feature-toggle-item">
+              <div className="toggle-info">
+                <span className="label">학부모 가입 허용</span>
+                <span className="desc">보호자가 학생의 수업 현황을 확인할 수 있습니다</span>
+              </div>
+              <button
+                type="button"
+                className={`group-detail__toggle-switch ${currentGroup.allowGuardians ? 'on' : ''}`}
+                onClick={() => onFeatureToggle?.('allowGuardians', !currentGroup.allowGuardians)}
+              >
+                <div className="group-detail__toggle-switch-handle" />
+              </button>
+            </div>
+
+            <div className="group-detail__feature-toggle-item">
+              <div className="toggle-info">
+                <span className="label">가입 승인 필요</span>
+                <span className="desc">새 멤버 가입 시 관리자 승인이 필요합니다</span>
+              </div>
+              <button
+                type="button"
+                className={`group-detail__toggle-switch ${currentGroup.requiresApproval ? 'on' : ''}`}
+                onClick={() => onFeatureToggle?.('requiresApproval', !currentGroup.requiresApproval)}
+              >
+                <div className="group-detail__toggle-switch-handle" />
+              </button>
+            </div>
+
+            <div className="group-detail__feature-toggle-item">
+              <div className="toggle-info">
+                <span className="label">연습실 운영</span>
+                <span className="desc">학생들이 연습실을 예약하고 사용할 수 있습니다</span>
+              </div>
+              <button
+                type="button"
+                className={`group-detail__toggle-switch ${currentGroup.hasPracticeRooms ? 'on' : ''}`}
+                onClick={() => onFeatureToggle?.('hasPracticeRooms', !currentGroup.hasPracticeRooms)}
+              >
+                <div className="group-detail__toggle-switch-handle" />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 // 연습실 설정 인터페이스
 interface PracticeRoomSettings {
@@ -290,7 +449,7 @@ const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete, onShowQRCode }: Pr
   </div>
 );
 
-// 레슨실 관리 섹션 (1:1 수업용)
+// 수업실 관리 섹션 (1:1 수업용)
 interface LessonRoomSectionProps {
   lessonRooms: LessonRoom[];
   lessonRoomsLoading: boolean;
@@ -316,17 +475,17 @@ export const LessonRoomSection = ({
 }: LessonRoomSectionProps) => (
   <div className="group-detail__setting-section">
     <div className="group-detail__setting-header">
-      <h3>레슨실 관리</h3>
+      <h3>수업실 관리</h3>
     </div>
     <p className="group-detail__setting-hint" style={{ marginTop: 0, marginBottom: '1rem' }}>
-      1:1 수업이 진행되는 레슨실을 등록하세요. 학생 수업 배정 시 레슨실을 선택할 수 있습니다.
+      1:1 수업이 진행되는 수업실을 등록하세요. 학생 수업 배정 시 수업실을 선택할 수 있습니다.
     </p>
 
-    {/* 레슨실 추가 */}
+    {/* 수업실 추가 */}
     <div className="group-detail__practice-room-add">
       <input
         type="text"
-        placeholder="레슨실 이름 (예: A실, 1번 레슨실)"
+        placeholder="수업실 이름 (예: A실, 1번 수업실)"
         value={newLessonRoomName}
         onChange={(e) => setNewLessonRoomName(e.target.value)}
         onKeyDown={(e) => {
@@ -346,11 +505,11 @@ export const LessonRoomSection = ({
       </button>
     </div>
 
-    {/* 레슨실 목록 */}
+    {/* 수업실 목록 */}
     {lessonRoomsLoading ? (
       <p className="group-detail__setting-hint">불러오는 중...</p>
     ) : lessonRooms.length === 0 ? (
-      <p className="group-detail__setting-empty">등록된 레슨실이 없습니다</p>
+      <p className="group-detail__setting-empty">등록된 수업실이 없습니다</p>
     ) : (
       <div className="group-detail__practice-room-items">
         {lessonRooms.map((room) => (
@@ -366,7 +525,7 @@ export const LessonRoomSection = ({
   </div>
 );
 
-// 레슨실 아이템
+// 수업실 아이템
 interface LessonRoomItemProps {
   room: LessonRoom;
   onUpdateCapacity: (roomId: string, capacity: number) => void;

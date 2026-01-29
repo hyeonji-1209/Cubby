@@ -43,11 +43,64 @@ const MembersTab: React.FC<MembersTabProps> = ({
   instructorSubGroups,
   instructorFilter,
   setInstructorFilter,
+  pendingMembers,
+  pendingMembersLoading,
+  onApproveMember,
+  onRejectMember,
 }) => {
   const showInstructorFilter = hasMultipleInstructors && instructorSubGroups && instructorSubGroups.length > 0;
+  const hasPendingMembers = pendingMembers && pendingMembers.length > 0;
 
   return (
     <div className="group-detail__members">
+      {/* 가입 대기 멤버 섹션 */}
+      {isAdmin && hasPendingMembers && (
+        <div className="group-detail__pending-section">
+          <div className="group-detail__pending-header">
+            <h3 className="group-detail__pending-title">
+              가입 대기 <span className="group-detail__pending-count">{pendingMembers.length}</span>
+            </h3>
+          </div>
+          {pendingMembersLoading ? (
+            <p className="group-detail__loading-text">로딩 중...</p>
+          ) : (
+            <div className="group-detail__pending-list">
+              {pendingMembers.map((member) => (
+                <div key={member.id} className="group-detail__pending-item">
+                  <div className="group-detail__pending-user">
+                    <div className="group-detail__pending-avatar">
+                      {member.user?.profileImage ? (
+                        <img src={member.user.profileImage} alt={member.user.name} />
+                      ) : (
+                        member.user?.name?.charAt(0) || '?'
+                      )}
+                    </div>
+                    <div className="group-detail__pending-info">
+                      <span className="group-detail__pending-name">{member.user?.name}</span>
+                      <span className="group-detail__pending-email">{member.user?.email}</span>
+                    </div>
+                  </div>
+                  <div className="group-detail__pending-actions">
+                    <button
+                      className="group-detail__pending-btn group-detail__pending-btn--approve"
+                      onClick={() => onApproveMember?.(member)}
+                    >
+                      승인
+                    </button>
+                    <button
+                      className="group-detail__pending-btn group-detail__pending-btn--reject"
+                      onClick={() => onRejectMember?.(member)}
+                    >
+                      거부
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="group-detail__members-header">
         <div className="group-detail__search-row">
           <div className="group-detail__search">

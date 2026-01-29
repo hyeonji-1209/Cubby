@@ -1,7 +1,7 @@
 import type { Group, GroupMember, SubGroup, SubGroupRequest } from '@/types';
 import type { FavoriteLocation, InstructorSubGroup } from '@/api';
 
-export type TabType = 'lesson' | 'home' | 'members' | 'subgroups' | 'practicerooms' | 'announcements' | 'schedules' | 'settings';
+export type TabType = 'lesson' | 'home' | 'members' | 'subgroups' | 'practicerooms' | 'lessonrooms' | 'announcements' | 'schedules' | 'settings';
 
 export interface BaseTabProps {
   groupId: string;
@@ -45,6 +45,11 @@ export interface MembersTabProps extends BaseTabProps {
   instructorSubGroups?: InstructorSubGroup[];
   instructorFilter?: string; // 'all' | 'unassigned' | subGroupId
   setInstructorFilter?: (filter: string) => void;
+  // 가입 승인 관련
+  pendingMembers?: GroupMember[];
+  pendingMembersLoading?: boolean;
+  onApproveMember?: (member: GroupMember) => void;
+  onRejectMember?: (member: GroupMember) => void;
 }
 
 // SubGroupsTab - minimal props

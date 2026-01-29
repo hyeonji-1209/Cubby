@@ -1,10 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { randomBytes } from 'crypto';
+import { In } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { Attendance, AttendanceStatus } from '../models/Attendance';
 import { Schedule } from '../models/Schedule';
 import { Group } from '../models/Group';
-import { GroupMember } from '../models/GroupMember';
+import { GroupMember, MemberStatus } from '../models/GroupMember';
+import { SubGroupMember } from '../models/SubGroupMember';
+import { AbsenceRequest, AbsenceRequestStatus } from '../models/AbsenceRequest';
 import { AppError } from '../middlewares/error.middleware';
 import { requireActiveMember, isAdmin } from '../utils/membership';
 
@@ -31,6 +34,8 @@ export class AttendanceController {
   private scheduleRepository = AppDataSource.getRepository(Schedule);
   private groupRepository = AppDataSource.getRepository(Group);
   private memberRepository = AppDataSource.getRepository(GroupMember);
+  private subGroupMemberRepository = AppDataSource.getRepository(SubGroupMember);
+  private absenceRequestRepository = AppDataSource.getRepository(AbsenceRequest);
 
   // QR 토큰 생성 (관리자만)
   generateQRToken = async (req: Request, res: Response, next: NextFunction) => {
@@ -395,7 +400,7 @@ export class AttendanceController {
     }
   };
 
-  // 일정별 출석 목록 조회
+  // 일정별 출석 목록 조회 (사유결석 정보 포함)
   getBySchedule = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId, scheduleId } = req.params;
@@ -417,6 +422,21 @@ export class AttendanceController {
         order: { checkedAt: 'ASC' },
       });
 
+      // 사유결석 신청 정보 조회 (승인된 것만)
+      const absenceRequests = await this.absenceRequestRepository.find({
+        where: {
+          scheduleId,
+          status: AbsenceRequestStatus.APPROVED,
+        },
+      });
+
+      // 사유결석 맵 생성 (userId -> absenceRequest)
+      const absenceMap = new Map<string, AbsenceRequest>();
+      absenceRequests.forEach(req => {
+        const targetUserId = req.studentId || req.requesterId;
+        absenceMap.set(targetUserId, req);
+      });
+
       // 관리자가 아니면 본인 것만
       const filteredAttendances = isAdmin(member)
         ? attendances
@@ -424,14 +444,141 @@ export class AttendanceController {
 
       res.json({
         success: true,
-        data: filteredAttendances.map((a) => ({
-          id: a.id,
-          userId: a.userId,
-          userName: a.user?.name,
-          status: a.status,
-          checkedAt: a.checkedAt,
-          note: a.note,
-        })),
+        data: filteredAttendances.map((a) => {
+          const absenceRequest = absenceMap.get(a.userId);
+          return {
+            id: a.id,
+            userId: a.userId,
+            userName: a.user?.name,
+            status: a.status,
+            checkedAt: a.checkedAt,
+            leftAt: a.leftAt,
+            note: a.note,
+            // 사유결석 정보
+            absenceRequest: absenceRequest ? {
+              id: absenceRequest.id,
+              absenceType: absenceRequest.absenceType,
+              reason: absenceRequest.reason,
+              responseNote: absenceRequest.responseNote,
+            } : null,
+          };
+        }),
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // 일정별 전체 멤버 출석 현황 조회 (관리자) - 출석하지 않은 멤버 포함
+  getScheduleMembers = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupId, scheduleId } = req.params;
+
+      // 관리자 확인
+      const member = await requireActiveMember(this.memberRepository, groupId, req.user!.id);
+      if (!isAdmin(member)) {
+        throw new AppError('관리자만 조회할 수 있습니다', 403);
+      }
+
+      // 일정 확인
+      const schedule = await this.scheduleRepository.findOne({
+        where: { id: scheduleId, groupId },
+      });
+      if (!schedule) {
+        throw new AppError('일정을 찾을 수 없습니다', 404);
+      }
+
+      // 대상 멤버 목록 결정
+      let targetMembers: GroupMember[];
+
+      if (schedule.subGroupId) {
+        // 소그룹 일정인 경우: 해당 소그룹 멤버만
+        const subGroupMembers = await this.subGroupMemberRepository.find({
+          where: { subGroupId: schedule.subGroupId },
+          relations: ['groupMember', 'groupMember.user'],
+        });
+        targetMembers = subGroupMembers
+          .map(sgm => sgm.groupMember)
+          .filter(gm => gm && gm.status === MemberStatus.ACTIVE);
+      } else {
+        // 그룹 전체 일정인 경우: 전체 활성 멤버
+        targetMembers = await this.memberRepository.find({
+          where: { groupId, status: MemberStatus.ACTIVE },
+          relations: ['user'],
+        });
+      }
+
+      // 출석 기록 조회
+      const attendances = await this.attendanceRepository.find({
+        where: { scheduleId },
+      });
+      const attendanceMap = new Map<string, Attendance>();
+      attendances.forEach(a => attendanceMap.set(a.userId, a));
+
+      // 사유결석 신청 조회 (대기 중 + 승인된 것)
+      const absenceRequests = await this.absenceRequestRepository.find({
+        where: {
+          scheduleId,
+          status: In([AbsenceRequestStatus.PENDING, AbsenceRequestStatus.APPROVED]),
+        },
+      });
+      const absenceMap = new Map<string, AbsenceRequest>();
+      absenceRequests.forEach(req => {
+        const targetUserId = req.studentId || req.requesterId;
+        absenceMap.set(targetUserId, req);
+      });
+
+      // 결과 생성
+      const result = targetMembers.map(gm => {
+        const attendance = attendanceMap.get(gm.userId);
+        const absenceRequest = absenceMap.get(gm.userId);
+
+        return {
+          memberId: gm.id,
+          userId: gm.userId,
+          userName: gm.user?.name || gm.nickname,
+          profileImage: gm.user?.profileImage,
+          role: gm.role,
+          // 출석 정보
+          attendanceId: attendance?.id || null,
+          status: attendance?.status || null,
+          checkedAt: attendance?.checkedAt || null,
+          leftAt: attendance?.leftAt || null,
+          note: attendance?.note || null,
+          // 사유결석 정보
+          absenceRequest: absenceRequest ? {
+            id: absenceRequest.id,
+            status: absenceRequest.status,
+            absenceType: absenceRequest.absenceType,
+            reason: absenceRequest.reason,
+            responseNote: absenceRequest.responseNote,
+          } : null,
+        };
+      });
+
+      // 이름순 정렬
+      result.sort((a, b) => (a.userName || '').localeCompare(b.userName || '', 'ko'));
+
+      res.json({
+        success: true,
+        data: {
+          schedule: {
+            id: schedule.id,
+            title: schedule.title,
+            startAt: schedule.startAt,
+            endAt: schedule.endAt,
+          },
+          members: result,
+          summary: {
+            total: result.length,
+            present: result.filter(r => r.status === AttendanceStatus.PRESENT).length,
+            late: result.filter(r => r.status === AttendanceStatus.LATE).length,
+            excused: result.filter(r => r.status === AttendanceStatus.EXCUSED).length,
+            absent: result.filter(r => r.status === AttendanceStatus.ABSENT).length,
+            earlyLeave: result.filter(r => r.status === AttendanceStatus.EARLY_LEAVE).length,
+            notChecked: result.filter(r => !r.status).length,
+          },
+        },
       });
     } catch (error) {
       next(error);

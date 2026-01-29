@@ -6,8 +6,10 @@ import { Group } from '../models/Group';
 import { Attendance } from '../models/Attendance';
 import { SubGroup, SubGroupStatus, SubGroupType } from '../models/SubGroup';
 import { SubGroupMember } from '../models/SubGroupMember';
+import { User } from '../models/User';
 import { AppError } from '../middlewares/error.middleware';
 import { requireActiveMember, isAdmin } from '../utils/membership';
+import { notificationService } from '../services/notification.service';
 
 export class LessonRecordController {
   private lessonRecordRepository = AppDataSource.getRepository(LessonRecord);
@@ -282,6 +284,16 @@ export class LessonRecordController {
         if (homework !== undefined) record.homework = homework;
         if (note !== undefined) record.note = note;
       } else {
+        // 새 기록 생성 시 이전 수업의 currentContent를 previousContent로 자동 설정
+        let autoPreviousContent = previousContent;
+        if (!previousContent) {
+          const previousRecord = await this.lessonRecordRepository.findOne({
+            where: { groupId, memberId },
+            order: { lessonDate: 'DESC', lessonStartTime: 'DESC' },
+          });
+          autoPreviousContent = previousRecord?.currentContent || undefined;
+        }
+
         // 생성
         record = this.lessonRecordRepository.create({
           groupId,
@@ -289,7 +301,7 @@ export class LessonRecordController {
           lessonDate,
           lessonStartTime,
           lessonEndTime,
-          previousContent,
+          previousContent: autoPreviousContent,
           currentContent,
           homework,
           note,
@@ -298,6 +310,20 @@ export class LessonRecordController {
       }
 
       await this.lessonRecordRepository.save(record);
+
+      // 수업 내용이 입력되면 학생에게 알림 발송
+      if (currentContent) {
+        const userRepository = AppDataSource.getRepository(User);
+        const instructor = await userRepository.findOne({ where: { id: req.user!.id } });
+
+        await notificationService.notifyLessonCompleted({
+          studentId: memberId,
+          groupId,
+          lessonDate,
+          instructorName: instructor?.name || '강사',
+          lessonRecordId: record.id,
+        });
+      }
 
       res.json({
         success: true,

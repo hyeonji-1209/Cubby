@@ -38,6 +38,7 @@ const SubGroupDetailPage = () => {
     handleApproveRequest,
     handleRejectRequest,
     handleSubGroupClick,
+    updateSubGroup,
   } = actions;
 
   const { isAdmin, pendingRequestsCount } = computed;
@@ -102,7 +103,12 @@ const SubGroupDetailPage = () => {
         )}
 
         {activeTab === 'settings' && (
-          <SettingsTabContent groupId={groupId!} subGroup={subGroup} />
+          <SettingsTabContent
+            groupId={groupId!}
+            subGroup={subGroup}
+            isAdmin={isAdmin}
+            onUpdate={updateSubGroup}
+          />
         )}
       </div>
 

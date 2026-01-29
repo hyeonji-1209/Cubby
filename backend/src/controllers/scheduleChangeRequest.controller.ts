@@ -3,13 +3,17 @@ import { AppDataSource } from '../config/database';
 import { ScheduleChangeRequest, ScheduleChangeRequestStatus } from '../models/ScheduleChangeRequest';
 import { Schedule } from '../models/Schedule';
 import { GroupMember } from '../models/GroupMember';
+import { Group } from '../models/Group';
 import { AppError } from '../middlewares/error.middleware';
 import { requireActiveMember, isAdmin } from '../utils/membership';
+import { notificationService } from '../services/notification.service';
+import { NotificationType } from '../models/Notification';
 
 export class ScheduleChangeRequestController {
   private requestRepository = AppDataSource.getRepository(ScheduleChangeRequest);
   private scheduleRepository = AppDataSource.getRepository(Schedule);
   private memberRepository = AppDataSource.getRepository(GroupMember);
+  private groupRepository = AppDataSource.getRepository(Group);
 
   // 일정 변경 요청 생성
   create = async (req: Request, res: Response, next: NextFunction) => {
@@ -26,6 +30,42 @@ export class ScheduleChangeRequestController {
       });
       if (!schedule) {
         throw new AppError('일정을 찾을 수 없습니다', 404);
+      }
+
+      // 그룹 설정 확인 (당일 변경 허용 여부)
+      const group = await this.groupRepository.findOne({ where: { id: groupId } });
+      if (group && !group.allowSameDayChange) {
+        // 오늘 날짜와 일정 날짜 비교
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const scheduleDate = new Date(schedule.startAt);
+        scheduleDate.setHours(0, 0, 0, 0);
+
+        if (scheduleDate.getTime() === today.getTime()) {
+          throw new AppError('당일 일정 변경은 허용되지 않습니다', 400);
+        }
+      }
+
+      // 3주 이내 일정만 변경 요청 가능
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + 21); // 3주
+
+      const scheduleDate = new Date(schedule.startAt);
+      scheduleDate.setHours(0, 0, 0, 0);
+
+      if (scheduleDate > maxDate) {
+        throw new AppError('3주 이내의 수업만 변경 요청할 수 있습니다', 400);
+      }
+
+      // 변경 요청 날짜도 3주 이내여야 함
+      if (requestedStartAt) {
+        const requestedDate = new Date(requestedStartAt);
+        requestedDate.setHours(0, 0, 0, 0);
+        if (requestedDate > maxDate) {
+          throw new AppError('변경 요청 날짜는 3주 이내여야 합니다', 400);
+        }
       }
 
       // 이미 대기 중인 요청이 있는지 확인
@@ -52,6 +92,15 @@ export class ScheduleChangeRequestController {
       });
 
       await this.requestRepository.save(changeRequest);
+
+      // 관리자에게 알림 발송
+      await notificationService.notifyGroupAdmins(groupId, {
+        type: NotificationType.SCHEDULE_CHANGE_REQUEST,
+        title: '일정 변경 요청',
+        message: `${req.user!.name}님이 "${schedule.title}" 일정 변경을 요청했습니다.`,
+        data: { requestId: changeRequest.id, scheduleId, link: `/groups/${groupId}?tab=schedules` },
+        excludeUserId: req.user!.id,
+      });
 
       res.status(201).json({
         success: true,
@@ -183,6 +232,16 @@ export class ScheduleChangeRequestController {
 
       await this.requestRepository.save(changeRequest);
 
+      // 요청자에게 승인 알림
+      await notificationService.create({
+        userId: changeRequest.requesterId,
+        groupId,
+        type: NotificationType.SCHEDULE_CHANGE_APPROVED,
+        title: '일정 변경 승인',
+        message: `"${changeRequest.schedule?.title}" 일정 변경 요청이 승인되었습니다.`,
+        data: { requestId: changeRequest.id, scheduleId: changeRequest.scheduleId },
+      });
+
       res.json({
         success: true,
         data: changeRequest,
@@ -207,6 +266,7 @@ export class ScheduleChangeRequestController {
 
       const changeRequest = await this.requestRepository.findOne({
         where: { id: requestId, groupId },
+        relations: ['schedule'],
       });
 
       if (!changeRequest) {
@@ -224,6 +284,16 @@ export class ScheduleChangeRequestController {
       changeRequest.respondedAt = new Date();
 
       await this.requestRepository.save(changeRequest);
+
+      // 요청자에게 거절 알림
+      await notificationService.create({
+        userId: changeRequest.requesterId,
+        groupId,
+        type: NotificationType.SCHEDULE_CHANGE_REJECTED,
+        title: '일정 변경 거절',
+        message: `"${changeRequest.schedule?.title}" 일정 변경 요청이 거절되었습니다.${note ? ` 사유: ${note}` : ''}`,
+        data: { requestId: changeRequest.id, scheduleId: changeRequest.scheduleId },
+      });
 
       res.json({
         success: true,

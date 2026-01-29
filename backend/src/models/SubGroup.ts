@@ -83,7 +83,7 @@ export class SubGroup {
   @Column({ type: 'json', nullable: true })
   classSchedule: ClassSchedule[];
 
-  // 수업 레슨실 ID
+  // 수업 수업실 ID
   @Column({ type: 'uuid', nullable: true })
   lessonRoomId: string;
 

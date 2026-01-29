@@ -102,6 +102,14 @@ export class Group {
     closedDays?: number[]; // 휴무일 요일 (0=일요일, 6=토요일)
   } | null;
 
+  // 가입 승인 필요 여부 (education 1:1 수업은 기본 true)
+  @Column({ type: 'boolean', default: false })
+  requiresApproval: boolean;
+
+  // 당일 일정 변경 허용 여부 (education 타입 전용)
+  @Column({ type: 'boolean', default: false })
+  allowSameDayChange: boolean;
+
   @Column({ type: 'uuid' })
   ownerId: string;
 

@@ -745,3 +745,62 @@
     margin-bottom: 0;
   }
 }
+
+// 일정 변경 요청 폼
+.schedule-change-form {
+  &__current {
+    padding: $spacing-md;
+    background: $gray-50;
+    border-radius: $radius-md;
+    margin-bottom: $spacing-lg;
+    border-left: 3px solid $primary;
+
+    h4 {
+      font-size: $font-xs;
+      font-weight: 600;
+      color: $gray-500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 $spacing-sm 0;
+    }
+  }
+
+  &__schedule-title {
+    font-size: $font-base;
+    font-weight: 600;
+    color: $gray-900;
+    margin: 0 0 $spacing-xs 0;
+  }
+
+  &__schedule-time {
+    font-size: $font-sm;
+    color: $gray-600;
+    margin: 0;
+  }
+
+  &__datetime {
+    display: flex;
+    gap: $spacing-sm;
+
+    .modal__input {
+      flex: 1;
+    }
+
+    @media (max-width: $breakpoint-sm) {
+      flex-direction: column;
+    }
+  }
+}
+
+// 결석 신청 폼
+.absence-form {
+  &__guardian-note {
+    font-size: $font-sm;
+    color: $warning;
+    background: rgba($warning, 0.1);
+    padding: $spacing-sm $spacing-md;
+    border-radius: $radius-md;
+    margin-top: $spacing-md;
+    margin-bottom: 0;
+  }
+}

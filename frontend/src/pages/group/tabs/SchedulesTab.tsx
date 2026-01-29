@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import ReactCalendar from 'react-calendar';
-import { Modal, LocationPicker } from '@/components';
+import { Modal, LocationPicker, ScheduleAttendanceModal, ScheduleChangeRequestModal, AbsenceRequestModal } from '@/components';
 import { useGroupDetailStore } from '@/store';
 import { isHoliday, getHolidayName } from '@/utils/holidays';
 import type { SchedulesTabProps } from './types';
@@ -21,6 +21,9 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
   hasAttendance,
 }) => {
   const [calendarDate, setCalendarDate] = useState<Date | null | [Date | null, Date | null]>(new Date());
+  const [attendanceSchedule, setAttendanceSchedule] = useState<Schedule | null>(null);
+  const [changeRequestSchedule, setChangeRequestSchedule] = useState<Schedule | null>(null);
+  const [absenceRequestSchedule, setAbsenceRequestSchedule] = useState<Schedule | null>(null);
 
   const {
     schedules,
@@ -220,15 +223,47 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
                         <span className="schedule-item__location">📍 {schedule.location}</span>
                       )}
                     </div>
-                    {(isAdmin || schedule.authorId === userId) && (
-                      <button
-                        className="schedule-item__delete"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(schedule); }}
-                        title="삭제"
-                      >
-                        🗑️
-                      </button>
-                    )}
+                    <div className="schedule-item__actions">
+                      {/* 일정 변경 요청 버튼 (일반 멤버) */}
+                      {!isAdmin && (
+                        <button
+                          className="schedule-item__action-btn"
+                          onClick={(e) => { e.stopPropagation(); setChangeRequestSchedule(schedule); }}
+                          title="일정 변경 요청"
+                        >
+                          🔄
+                        </button>
+                      )}
+                      {/* 결석 신청 버튼 (출석 기능 활성화 시) */}
+                      {hasAttendance && (
+                        <button
+                          className="schedule-item__action-btn"
+                          onClick={(e) => { e.stopPropagation(); setAbsenceRequestSchedule(schedule); }}
+                          title="결석 신청"
+                        >
+                          🙋
+                        </button>
+                      )}
+                      {/* 출석 관리 버튼 (관리자 & 출석 기능 활성화) */}
+                      {isAdmin && hasAttendance && (
+                        <button
+                          className="schedule-item__attendance-btn"
+                          onClick={(e) => { e.stopPropagation(); setAttendanceSchedule(schedule); }}
+                          title="출석 관리"
+                        >
+                          📋
+                        </button>
+                      )}
+                      {(isAdmin || schedule.authorId === userId) && (
+                        <button
+                          className="schedule-item__delete"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(schedule); }}
+                          title="삭제"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -236,6 +271,39 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* 출석 관리 모달 */}
+      <ScheduleAttendanceModal
+        isOpen={!!attendanceSchedule}
+        onClose={() => setAttendanceSchedule(null)}
+        groupId={groupId}
+        scheduleId={attendanceSchedule?.id || ''}
+        scheduleTitle={attendanceSchedule?.title}
+      />
+
+      {/* 일정 변경 요청 모달 */}
+      <ScheduleChangeRequestModal
+        isOpen={!!changeRequestSchedule}
+        onClose={() => setChangeRequestSchedule(null)}
+        groupId={groupId}
+        schedule={changeRequestSchedule}
+        onSuccess={() => {
+          setChangeRequestSchedule(null);
+        }}
+      />
+
+      {/* 결석 신청 모달 */}
+      <AbsenceRequestModal
+        isOpen={!!absenceRequestSchedule}
+        onClose={() => setAbsenceRequestSchedule(null)}
+        groupId={groupId}
+        scheduleId={absenceRequestSchedule?.id}
+        scheduleTitle={absenceRequestSchedule?.title}
+        onSuccess={() => {
+          setAbsenceRequestSchedule(null);
+          if (hasAttendance) fetchMyAttendances(groupId);
+        }}
+      />
 
       {/* 일정 추가/수정 모달 */}
       <Modal

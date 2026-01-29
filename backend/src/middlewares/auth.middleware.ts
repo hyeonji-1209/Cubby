@@ -50,6 +50,9 @@ export const authMiddleware: RequestHandler = async (
   }
 };
 
+// authenticate 별칭 (호환성)
+export const authenticate = authMiddleware;
+
 export const optionalAuthMiddleware: RequestHandler = async (
   req: Request,
   res: Response,

@@ -79,6 +79,8 @@ export interface Group {
   hasMultipleInstructors?: boolean; // 다중 강사 운영 여부
   practiceRoomSettings?: PracticeRoomSettings;
   operatingHours?: OperatingHours; // 학원 운영시간
+  requiresApproval?: boolean; // 가입 승인 필요 여부
+  allowSameDayChange?: boolean; // 당일 일정 변경 허용 여부
   ownerId: string;
   owner?: User;
   memberCount?: number;
@@ -101,13 +103,13 @@ export interface ChildInfo {
   note?: string;
 }
 
-// 1:1 수업 스케줄 (요일 + 시간 + 레슨실)
+// 1:1 수업 스케줄 (요일 + 시간 + 수업실)
 export interface LessonSchedule {
   dayOfWeek: number;      // 0 = 일요일, 1 = 월요일, ..., 6 = 토요일
   startTime: string;      // "14:00"
   endTime: string;        // "15:00"
-  lessonRoomId?: string;  // 배정된 레슨실 ID
-  lessonRoomName?: string; // 레슨실 이름 (표시용)
+  lessonRoomId?: string;  // 배정된 수업실 ID
+  lessonRoomName?: string; // 수업실 이름 (표시용)
 }
 
 // 반(class) 수업 스케줄 (요일 + 시간)
@@ -129,6 +131,7 @@ export interface GroupMember {
   childInfo?: ChildInfo[]; // 보호자인 경우 자녀 정보 (복수)
   lessonSchedule?: LessonSchedule[]; // 1:1 수업 스케줄
   paymentDueDay?: number; // 수강료 납부일 (1-31)
+  instructorId?: string; // 담당 강사 ID (다중 강사 모드)
   joinedAt: string;
   user: {
     id: string;
@@ -144,6 +147,8 @@ export interface JoinGroupResponse {
   name: string;
   type: GroupType;
   allowGuardians?: boolean;
+  requiresApproval?: boolean;
+  isPending?: boolean; // 승인 대기 중인지 여부
   positions?: { id: string; name: string; color?: string }[];
 }
 
@@ -165,7 +170,7 @@ export interface SubGroup {
   instructorId?: string; // 강사별 소그룹일 때 담당 강사
   // 반(class) 전용 필드들
   classSchedule?: ClassSchedule[]; // 수업 시간표
-  lessonRoomId?: string; // 배정된 레슨실 ID
+  lessonRoomId?: string; // 배정된 수업실 ID
   lessonRoom?: {
     id: string;
     name: string;
@@ -222,17 +227,46 @@ export interface SubGroupRequest {
 
 // Notification
 export type NotificationType =
+  // 멤버 관련
+  | 'member_join_request'
+  | 'member_approved'
+  | 'member_rejected'
+  | 'member_removed'
+  | 'member_joined'
+  | 'member_left'
+  | 'role_changed'
+  // 소모임 관련
   | 'subgroup_request'
   | 'subgroup_approved'
   | 'subgroup_rejected'
   | 'subgroup_created_notify'
-  | 'member_joined'
-  | 'member_left'
-  | 'role_changed'
-  | 'new_announcement'
-  | 'new_schedule'
+  // 일정 관련
+  | 'schedule_created'
+  | 'schedule_updated'
+  | 'schedule_cancelled'
   | 'schedule_reminder'
+  | 'new_schedule'
+  // 일정 변경 요청
+  | 'schedule_change_request'
+  | 'schedule_change_approved'
+  | 'schedule_change_rejected'
+  // 결석 관련
+  | 'absence_request'
+  | 'absence_approved'
+  | 'absence_rejected'
+  // 수업실 예약
+  | 'reservation_created'
+  | 'reservation_cancelled'
+  | 'reservation_reminder'
+  // 공지사항
+  | 'announcement_new'
+  | 'new_announcement'
+  // 그룹 관련
+  | 'group_settings_updated'
+  // 시스템
   | 'system';
+
+export type NotificationPriority = 'low' | 'normal' | 'high';
 
 export interface Notification {
   id: string;
@@ -242,8 +276,19 @@ export interface Notification {
   title: string;
   message?: string;
   data?: Record<string, unknown>;
+  priority?: NotificationPriority;
   isRead: boolean;
   readAt?: string;
+  actorId?: string;
+  actor?: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
+  group?: {
+    id: string;
+    name: string;
+  };
   createdAt: string;
 }
 
@@ -462,6 +507,71 @@ export interface QRToken {
   expiresAt: string;
   scheduleId: string;
   scheduleName: string;
+}
+
+// Absence Request (결석 신청)
+export type AbsenceRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+export type AbsenceType = 'personal' | 'sick' | 'family' | 'travel' | 'exam' | 'other';
+
+export interface AbsenceRequest {
+  id: string;
+  groupId: string;
+  subGroupId?: string;
+  scheduleId?: string;
+  requesterId: string;
+  studentId?: string;
+  absenceDate: string;
+  absenceType: AbsenceType;
+  reason: string;
+  status: AbsenceRequestStatus;
+  responseNote?: string;
+  createdAt: string;
+  respondedAt?: string;
+  requester?: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
+  student?: {
+    id: string;
+    name: string;
+    profileImage?: string;
+  };
+  scheduleTitle?: string;
+  subGroupName?: string;
+}
+
+// 출석 멤버 정보 (전체 멤버 출석 현황 조회용)
+export interface AttendanceMember {
+  memberId: string;
+  userId: string;
+  userName: string;
+  profileImage?: string;
+  role: MemberRole;
+  // 출석 정보
+  attendanceId: string | null;
+  status: AttendanceStatus | null;
+  checkedAt: string | null;
+  leftAt: string | null;
+  note: string | null;
+  // 사유결석 정보
+  absenceRequest: {
+    id: string;
+    status: AbsenceRequestStatus;
+    absenceType: AbsenceType;
+    reason: string;
+    responseNote?: string;
+  } | null;
+}
+
+export interface ScheduleAttendanceSummary {
+  total: number;
+  present: number;
+  late: number;
+  excused: number;
+  absent: number;
+  earlyLeave: number;
+  notChecked: number;
 }
 
 // Schedule Change Request (일정 변경 요청)

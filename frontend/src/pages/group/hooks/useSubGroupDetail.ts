@@ -36,6 +36,7 @@ export interface SubGroupDetailActions {
   handleRejectRequest: (request: SubGroupRequest) => Promise<void>;
   handleSubGroupClick: (child: SubGroup) => void;
   refreshChildSubGroups: () => Promise<void>;
+  updateSubGroup: (updated: SubGroup) => void;
 }
 
 export interface SubGroupDetailComputed {
@@ -224,6 +225,7 @@ export const useSubGroupDetail = ({ groupId, subGroupId }: UseSubGroupDetailPara
     handleRejectRequest,
     handleSubGroupClick,
     refreshChildSubGroups: fetchChildSubGroups,
+    updateSubGroup: setSubGroup,
   };
 
   const computed: SubGroupDetailComputed = {

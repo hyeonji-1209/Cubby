@@ -33,13 +33,13 @@ export interface ChildInfo {
   note?: string;          // 메모 (알레르기, 특이사항 등)
 }
 
-// 1:1 수업 스케줄 (요일 + 시간 + 레슨실)
+// 1:1 수업 스케줄 (요일 + 시간 + 수업실)
 export interface LessonSchedule {
   dayOfWeek: number;      // 0 = 일요일, 1 = 월요일, ..., 6 = 토요일
   startTime: string;      // "14:00"
   endTime: string;        // "15:00"
-  lessonRoomId?: string;  // 배정된 레슨실 ID
-  lessonRoomName?: string; // 레슨실 이름 (표시용, 저장 시점에 캐싱)
+  lessonRoomId?: string;  // 배정된 수업실 ID
+  lessonRoomName?: string; // 수업실 이름 (표시용, 저장 시점에 캐싱)
 }
 
 @Entity('group_members')
@@ -78,6 +78,9 @@ export class GroupMember {
 
   @Column({ type: 'int', nullable: true })
   paymentDueDay: number; // 수강료 납부일 (1-31)
+
+  @Column({ type: 'uuid', nullable: true })
+  instructorId: string; // 담당 강사 ID (다중 강사 모드에서 사용)
 
   @Column({ type: 'uuid', nullable: true })
   invitedBy: string;

@@ -51,6 +51,30 @@ router.post(
 // 멤버 목록 조회
 router.get('/:groupId/members', requireGroupMember, groupController.getMembers);
 
+// 강사 목록 조회 (다중 강사 모드용)
+router.get('/:groupId/instructors', requireGroupMember, groupController.getInstructors);
+
+// 가입 대기 멤버 목록 조회 (운영자, 관리자만)
+router.get(
+  '/:groupId/pending-members',
+  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  groupController.getPendingMembers
+);
+
+// 멤버 승인 (운영자, 관리자만)
+router.post(
+  '/:groupId/members/:memberId/approve',
+  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  groupController.approveMember
+);
+
+// 멤버 거부 (운영자, 관리자만)
+router.post(
+  '/:groupId/members/:memberId/reject',
+  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  groupController.rejectMember
+);
+
 // 멤버 역할 변경 (운영자, 관리자만)
 router.patch(
   '/:groupId/members/:memberId',

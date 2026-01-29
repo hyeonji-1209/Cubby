@@ -35,6 +35,9 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
   // 기능 토글 저장 상태
   const [featureSaving, setFeatureSaving] = useState(false);
 
+  // 기본 정보 저장 상태
+  const [basicInfoSaving, setBasicInfoSaving] = useState(false);
+
   // 연습실 설정 로컬 상태
   const [practiceRoomSettings, setPracticeRoomSettings] = useState({
     openTime: currentGroup?.practiceRoomSettings?.openTime || '09:00',
@@ -60,13 +63,13 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
   const [operatingHoursChanged, setOperatingHoursChanged] = useState(false);
   const [operatingHoursSaving, setOperatingHoursSaving] = useState(false);
 
-  // 레슨실 관련 상태 (1:1 수업용)
+  // 수업실 관련 상태 (1:1 수업용)
   const [lessonRooms, setLessonRooms] = useState<LessonRoom[]>([]);
   const [lessonRoomsLoading, setLessonRoomsLoading] = useState(false);
   const [newLessonRoomName, setNewLessonRoomName] = useState('');
   const [newLessonRoomCapacity, setNewLessonRoomCapacity] = useState(1);
 
-  // 레슨실 목록 조회
+  // 수업실 목록 조회
   const fetchLessonRooms = async () => {
     if (!groupId) return;
     setLessonRoomsLoading(true);
@@ -86,11 +89,12 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
       if (currentGroup?.type === 'education' && currentGroup?.hasPracticeRooms) {
         fetchPracticeRooms(groupId);
       }
-      // 1:1 수업인 경우 레슨실 조회
+      // 1:1 수업인 경우 수업실 조회
       if (currentGroup?.type === 'education' && !currentGroup?.hasClasses) {
         fetchLessonRooms();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, currentGroup?.type, currentGroup?.hasPracticeRooms, currentGroup?.hasClasses, fetchFavoriteLocations, fetchPracticeRooms]);
 
   const handleSavePracticeRoomSettings = async () => {
@@ -143,7 +147,7 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     }
   };
 
-  // 레슨실 추가
+  // 수업실 추가
   const handleAddLessonRoom = async () => {
     if (!newLessonRoomName.trim()) return;
     try {
@@ -154,13 +158,13 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
       setNewLessonRoomName('');
       setNewLessonRoomCapacity(1);
       fetchLessonRooms();
-      showToast('success', '레슨실이 추가되었습니다.');
+      showToast('success', '수업실이 추가되었습니다.');
     } catch {
-      showToast('error', '레슨실 추가에 실패했습니다.');
+      showToast('error', '수업실 추가에 실패했습니다.');
     }
   };
 
-  // 레슨실 수용 인원 변경
+  // 수업실 수용 인원 변경
   const handleUpdateLessonRoomCapacity = async (roomId: string, capacity: number) => {
     try {
       await lessonRoomApi.update(groupId, roomId, { capacity });
@@ -170,15 +174,15 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     }
   };
 
-  // 레슨실 삭제
+  // 수업실 삭제
   const handleDeleteLessonRoom = async (room: LessonRoom) => {
     if (window.confirm(`"${room.name}"을(를) 삭제하시겠습니까?`)) {
       try {
         await lessonRoomApi.delete(groupId, room.id);
         fetchLessonRooms();
-        showToast('success', '레슨실이 삭제되었습니다.');
+        showToast('success', '수업실이 삭제되었습니다.');
       } catch {
-        showToast('error', '레슨실 삭제에 실패했습니다.');
+        showToast('error', '수업실 삭제에 실패했습니다.');
       }
     }
   };
@@ -243,7 +247,7 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
 
   // 기능 설정 토글
   const handleFeatureToggle = async (
-    feature: 'hasClasses' | 'hasPracticeRooms' | 'hasAttendance' | 'allowGuardians',
+    feature: 'hasClasses' | 'hasPracticeRooms' | 'hasAttendance' | 'allowGuardians' | 'hasMultipleInstructors' | 'requiresApproval',
     value: boolean
   ) => {
     if (featureSaving) return;
@@ -256,6 +260,32 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
       showToast('error', '설정 변경에 실패했습니다.');
     } finally {
       setFeatureSaving(false);
+    }
+  };
+
+  // 기본 정보 업데이트
+  const handleUpdateBasicInfo = async (info: {
+    name: string;
+    description: string;
+    icon: string;
+    color: string;
+    logoImage?: string;
+  }) => {
+    setBasicInfoSaving(true);
+    try {
+      await groupApi.update(groupId, {
+        name: info.name,
+        description: info.description || undefined,
+        icon: info.icon || undefined,
+        color: info.color || undefined,
+        logoImage: info.logoImage || undefined,
+      });
+      await fetchGroup(groupId);
+      showToast('success', '모임 정보가 저장되었습니다.');
+    } catch {
+      showToast('error', '모임 정보 저장에 실패했습니다.');
+    } finally {
+      setBasicInfoSaving(false);
     }
   };
 
@@ -283,6 +313,9 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     // Feature toggle
     featureSaving,
     handleFeatureToggle,
+    // Basic info
+    basicInfoSaving,
+    handleUpdateBasicInfo,
     // Operating hours
     operatingHours,
     operatingHoursChanged,

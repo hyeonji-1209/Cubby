@@ -1,6 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Modal } from '@/components';
-import type { SubGroup, SubGroupRequest } from '@/types';
+import { subGroupApi } from '@/api/subgroup.api';
+import { lessonRoomApi, LessonRoom } from '@/api/lessonRoom.api';
+import type { SubGroup, SubGroupRequest, ClassSchedule } from '@/types';
 
 // 브레드크럼
 interface BreadcrumbProps {
@@ -240,42 +243,215 @@ export const RequestsTabContent = ({ requests, onApprove, onReject }: RequestsTa
 interface SettingsTabContentProps {
   groupId: string;
   subGroup: SubGroup;
+  isAdmin: boolean;
+  onUpdate?: (updated: SubGroup) => void;
 }
 
-export const SettingsTabContent = ({ groupId, subGroup }: SettingsTabContentProps) => (
-  <div className="subgroup-detail__settings">
-    <h2>소모임 설정</h2>
+const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
-    <div className="subgroup-detail__setting-section">
-      <h3>기본 정보</h3>
-      <div className="subgroup-detail__setting-item">
-        <span className="label">소모임 이름</span>
-        <span className="value">{subGroup.name}</span>
-      </div>
-      <div className="subgroup-detail__setting-item">
-        <span className="label">상태</span>
-        <span className="value">{subGroup.status === 'active' ? '활성' : '비활성'}</span>
-      </div>
-      <div className="subgroup-detail__setting-item">
-        <span className="label">깊이</span>
-        <span className="value">{subGroup.depth}</span>
-      </div>
-      {subGroup.leader && (
+export const SettingsTabContent = ({ groupId, subGroup, isAdmin, onUpdate }: SettingsTabContentProps) => {
+  const [lessonRooms, setLessonRooms] = useState<LessonRoom[]>([]);
+  const [classSchedule, setClassSchedule] = useState<ClassSchedule[]>(subGroup.classSchedule || []);
+  const [lessonRoomId, setLessonRoomId] = useState<string | undefined>(subGroup.lessonRoomId);
+  const [saving, setSaving] = useState(false);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+
+  // 반(class) 타입인지 확인
+  const isClassType = subGroup.type === 'class';
+
+  // 수업실 목록 로드
+  useEffect(() => {
+    if (isClassType && isAdmin) {
+      setLoadingRooms(true);
+      lessonRoomApi.getByGroup(groupId)
+        .then((res) => {
+          if (res.success) {
+            setLessonRooms(res.data.filter(r => r.isActive));
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoadingRooms(false));
+    }
+  }, [groupId, isClassType, isAdmin]);
+
+  // subGroup 변경 시 상태 동기화
+  useEffect(() => {
+    setClassSchedule(subGroup.classSchedule || []);
+    setLessonRoomId(subGroup.lessonRoomId);
+  }, [subGroup]);
+
+  const handleAddSchedule = () => {
+    setClassSchedule([...classSchedule, { dayOfWeek: 1, startTime: '10:00', endTime: '11:00' }]);
+  };
+
+  const handleRemoveSchedule = (index: number) => {
+    setClassSchedule(classSchedule.filter((_, i) => i !== index));
+  };
+
+  const handleScheduleChange = (index: number, field: keyof ClassSchedule, value: number | string) => {
+    const updated = [...classSchedule];
+    updated[index] = { ...updated[index], [field]: value };
+    setClassSchedule(updated);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await subGroupApi.update(groupId, subGroup.id, {
+        classSchedule,
+        lessonRoomId: lessonRoomId || undefined,
+      });
+      if (res.success && onUpdate) {
+        onUpdate(res.data);
+      }
+      alert('저장되었습니다.');
+    } catch (error) {
+      console.error(error);
+      alert('저장 중 오류가 발생했습니다.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasChanges =
+    JSON.stringify(classSchedule) !== JSON.stringify(subGroup.classSchedule || []) ||
+    lessonRoomId !== subGroup.lessonRoomId;
+
+  return (
+    <div className="subgroup-detail__settings">
+      <h2>소모임 설정</h2>
+
+      <div className="subgroup-detail__setting-section">
+        <h3>기본 정보</h3>
         <div className="subgroup-detail__setting-item">
-          <span className="label">리더</span>
-          <span className="value">{subGroup.leader.name}</span>
+          <span className="label">소모임 이름</span>
+          <span className="value">{subGroup.name}</span>
         </div>
-      )}
-    </div>
+        <div className="subgroup-detail__setting-item">
+          <span className="label">상태</span>
+          <span className="value">{subGroup.status === 'active' ? '활성' : '비활성'}</span>
+        </div>
+        <div className="subgroup-detail__setting-item">
+          <span className="label">타입</span>
+          <span className="value">
+            {subGroup.type === 'class' ? '반' : subGroup.type === 'instructor' ? '강사별' : '일반'}
+          </span>
+        </div>
+        <div className="subgroup-detail__setting-item">
+          <span className="label">깊이</span>
+          <span className="value">{subGroup.depth}</span>
+        </div>
+        {subGroup.leader && (
+          <div className="subgroup-detail__setting-item">
+            <span className="label">리더</span>
+            <span className="value">{subGroup.leader.name}</span>
+          </div>
+        )}
+      </div>
 
-    <div className="subgroup-detail__setting-section">
-      <h3>바로가기</h3>
-      <Link to={`/groups/${groupId}`} className="subgroup-detail__link">
-        상위 모임으로 이동
-      </Link>
+      {/* 반 타입일 때만 수업 설정 표시 */}
+      {isClassType && isAdmin && (
+        <>
+          <div className="subgroup-detail__setting-section">
+            <h3>수업 시간표</h3>
+            <p className="subgroup-detail__setting-desc">
+              반의 정규 수업 시간을 설정하세요.
+            </p>
+
+            <div className="class-schedule-list">
+              {classSchedule.map((schedule, index) => (
+                <div key={index} className="class-schedule-item">
+                  <select
+                    value={schedule.dayOfWeek}
+                    onChange={(e) => handleScheduleChange(index, 'dayOfWeek', parseInt(e.target.value))}
+                    className="class-schedule-item__day"
+                  >
+                    {DAY_NAMES.map((day, i) => (
+                      <option key={i} value={i}>{day}요일</option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    value={schedule.startTime}
+                    onChange={(e) => handleScheduleChange(index, 'startTime', e.target.value)}
+                    className="class-schedule-item__time"
+                  />
+                  <span className="class-schedule-item__separator">~</span>
+                  <input
+                    type="time"
+                    value={schedule.endTime}
+                    onChange={(e) => handleScheduleChange(index, 'endTime', e.target.value)}
+                    className="class-schedule-item__time"
+                  />
+                  <button
+                    type="button"
+                    className="class-schedule-item__remove"
+                    onClick={() => handleRemoveSchedule(index)}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="subgroup-detail__add-schedule-btn"
+              onClick={handleAddSchedule}
+            >
+              + 수업 시간 추가
+            </button>
+          </div>
+
+          <div className="subgroup-detail__setting-section">
+            <h3>수업실 배정</h3>
+            <p className="subgroup-detail__setting-desc">
+              이 반이 사용하는 수업실을 선택하세요.
+            </p>
+
+            {loadingRooms ? (
+              <p className="subgroup-detail__loading-text">수업실 로딩 중...</p>
+            ) : lessonRooms.length === 0 ? (
+              <p className="subgroup-detail__empty-text">등록된 수업실이 없습니다.</p>
+            ) : (
+              <select
+                value={lessonRoomId || ''}
+                onChange={(e) => setLessonRoomId(e.target.value || undefined)}
+                className="subgroup-detail__room-select"
+              >
+                <option value="">수업실 선택</option>
+                {lessonRooms.map((room) => (
+                  <option key={room.id} value={room.id}>
+                    {room.name} (정원: {room.capacity}명)
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {hasChanges && (
+            <div className="subgroup-detail__save-section">
+              <button
+                className="subgroup-detail__save-btn"
+                onClick={handleSave}
+                disabled={saving}
+              >
+                {saving ? '저장 중...' : '변경사항 저장'}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="subgroup-detail__setting-section">
+        <h3>바로가기</h3>
+        <Link to={`/groups/${groupId}`} className="subgroup-detail__link">
+          상위 모임으로 이동
+        </Link>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // 소모임 생성 모달
 interface CreateSubGroupModalProps {

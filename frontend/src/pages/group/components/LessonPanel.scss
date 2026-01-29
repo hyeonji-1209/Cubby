@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../../styles/variables' as *;
 
 .lesson-panel {
@@ -124,7 +125,7 @@
 
     &--early_leave {
       background: rgba($warning, 0.15);
-      color: darken($warning, 10%);
+      color: color.adjust($warning, $lightness: -10%);
     }
 
     &--pending {
@@ -150,7 +151,7 @@
     transition: background 0.15s;
 
     &:hover {
-      background: darken($warning, 10%);
+      background: color.adjust($warning, $lightness: -10%);
     }
   }
 

@@ -447,5 +447,138 @@
       background: $primary-600;
     }
   }
+
+  &__setting-desc {
+    font-size: $font-size-sm;
+    color: $gray-500;
+    margin-bottom: $spacing-md;
+  }
+
+  &__empty-text {
+    font-size: $font-size-sm;
+    color: $gray-400;
+    text-align: center;
+    padding: $spacing-md;
+  }
+
+  &__room-select {
+    width: 100%;
+    max-width: 300px;
+    padding: $spacing-sm $spacing-md;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    background: white;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 2px rgba($primary-500, 0.1);
+    }
+  }
+
+  &__add-schedule-btn {
+    padding: $spacing-sm $spacing-md;
+    background: $gray-100;
+    color: $primary-600;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+    margin-top: $spacing-md;
+
+    &:hover {
+      background: $gray-200;
+    }
+  }
+
+  &__save-section {
+    padding: $spacing-lg;
+    background: $primary-50;
+    border-radius: $radius-md;
+    text-align: right;
+  }
+
+  &__save-btn {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary-500;
+    color: white;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    border-radius: $radius-md;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// 수업 시간표 스타일
+.class-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.class-schedule-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm;
+  background: white;
+  border: 1px solid $gray-200;
+  border-radius: $radius-md;
+
+  &__day {
+    padding: $spacing-xs $spacing-sm;
+    border: 1px solid $gray-300;
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    min-width: 80px;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+  }
+
+  &__time {
+    padding: $spacing-xs $spacing-sm;
+    border: 1px solid $gray-300;
+    border-radius: $radius-sm;
+    font-size: $font-size-sm;
+    color: $gray-700;
+    width: 100px;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+  }
+
+  &__separator {
+    color: $gray-400;
+    font-size: $font-size-sm;
+  }
+
+  &__remove {
+    padding: $spacing-xs;
+    background: transparent;
+    color: $gray-400;
+    font-size: $font-size-sm;
+    border-radius: $radius-sm;
+    line-height: 1;
+
+    &:hover {
+      background: $error-50;
+      color: $error;
+    }
+  }
 }
 

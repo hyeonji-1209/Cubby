@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiResponse, Attendance, QRToken, AttendanceStatus } from '@/types';
+import type { ApiResponse, Attendance, QRToken, AttendanceStatus, AttendanceMember, ScheduleAttendanceSummary } from '@/types';
 
 export const attendanceApi = {
   // QR 토큰 생성 (관리자) - 일반 스케줄용
@@ -33,6 +33,12 @@ export const attendanceApi = {
   // 일정별 출석 목록
   getBySchedule: async (groupId: string, scheduleId: string): Promise<ApiResponse<Attendance[]>> => {
     const response = await apiClient.get(`/groups/${groupId}/schedules/${scheduleId}/attendance`);
+    return response.data;
+  },
+
+  // 일정별 전체 멤버 출석 현황 (관리자) - 미출석 멤버 포함
+  getScheduleMembers: async (groupId: string, scheduleId: string): Promise<ApiResponse<ScheduleMembersResponse>> => {
+    const response = await apiClient.get(`/groups/${groupId}/schedules/${scheduleId}/attendance/members`);
     return response.data;
   },
 
@@ -89,4 +95,15 @@ export interface MemberAttendanceStats {
     status: AttendanceStatus;
     checkedAt: string;
   }>;
+}
+
+export interface ScheduleMembersResponse {
+  schedule: {
+    id: string;
+    title: string;
+    startAt: string;
+    endAt: string;
+  };
+  members: AttendanceMember[];
+  summary: ScheduleAttendanceSummary;
 }

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
 import { QRCodeSVG } from 'qrcode.react';
 import { useGroupDetail } from './hooks';
-import { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal, LessonPanel } from './components';
+import { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal, LessonPanel, MemberApprovalModal } from './components';
 import { Modal } from '@/components';
 import {
   HomeTab,
@@ -11,6 +11,7 @@ import {
   AnnouncementsTab,
   SchedulesTab,
   PracticeRoomsTab,
+  LessonRoomReservationsTab,
   SettingsTab,
   LessonTab,
 } from './tabs';
@@ -63,6 +64,18 @@ const GroupDetailPage = () => {
     memberSearch,
     setMemberSearch,
     filteredMembers,
+    // 가입 대기 멤버 (승인 시스템)
+    pendingMembers,
+    pendingMembersLoading,
+    handleApproveMember,
+    handleRejectMember,
+    // 승인 모달 (1:1 교육용)
+    showApprovalModal,
+    setShowApprovalModal,
+    approvalMember,
+    instructors,
+    approvalLoading,
+    handleApprovalSubmit,
     // 강사별 필터링 (다중 강사 모드)
     instructorFilter,
     setInstructorFilter,
@@ -86,7 +99,7 @@ const GroupDetailPage = () => {
     setPaymentDueDay,
     lessonInfoLoading,
     handleSaveLessonInfo,
-    // 레슨실 (1:1 교육용)
+    // 수업실 (1:1 교육용)
     lessonRooms,
     // 출석 QR
     showAttendanceQRModal,
@@ -213,6 +226,10 @@ const GroupDetailPage = () => {
             instructorSubGroups={instructorSubGroups}
             instructorFilter={instructorFilter}
             setInstructorFilter={setInstructorFilter}
+            pendingMembers={pendingMembers}
+            pendingMembersLoading={pendingMembersLoading}
+            onApproveMember={handleApproveMember}
+            onRejectMember={handleRejectMember}
           />
         )}
 
@@ -259,6 +276,14 @@ const GroupDetailPage = () => {
             groupId={groupId}
             currentGroup={currentGroup}
             isAdmin={isAdmin}
+          />
+        )}
+
+        {activeTab === 'lessonrooms' && currentGroup?.type === 'education' && !currentGroup?.hasClasses && groupId && (
+          <LessonRoomReservationsTab
+            groupId={groupId}
+            isAdmin={isAdmin}
+            operatingHours={currentGroup.operatingHours}
           />
         )}
 
@@ -328,6 +353,18 @@ const GroupDetailPage = () => {
         description={`정말 ${currentGroup.name} 모임을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
         confirmText="삭제"
         onConfirm={handleDeleteGroup}
+      />
+
+      {/* 멤버 승인 모달 (1:1 교육용) */}
+      <MemberApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => setShowApprovalModal(false)}
+        member={approvalMember}
+        instructors={instructors}
+        lessonRooms={lessonRooms}
+        hasMultipleInstructors={currentGroup.hasMultipleInstructors}
+        onApprove={handleApprovalSubmit}
+        loading={approvalLoading}
       />
 
       {/* 출석 QR 코드 모달 */}

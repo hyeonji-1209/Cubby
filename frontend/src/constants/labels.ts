@@ -61,16 +61,43 @@ export const ROLE_OPTIONS = [
  * 알림 타입 레이블
  */
 export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  // 멤버 관련
+  member_join_request: '가입 요청',
+  member_approved: '가입 승인',
+  member_rejected: '가입 거절',
+  member_removed: '멤버 제외',
+  member_joined: '멤버 가입',
+  member_left: '멤버 탈퇴',
+  role_changed: '역할 변경',
+  // 소모임 관련
   subgroup_request: '소모임 생성 요청',
   subgroup_approved: '소모임 승인',
   subgroup_rejected: '소모임 거절',
   subgroup_created_notify: '소모임 생성',
-  member_joined: '멤버 가입',
-  member_left: '멤버 탈퇴',
-  role_changed: '역할 변경',
-  new_announcement: '새 공지사항',
-  new_schedule: '새 일정',
+  // 일정 관련
+  schedule_created: '일정 생성',
+  schedule_updated: '일정 수정',
+  schedule_cancelled: '일정 취소',
   schedule_reminder: '일정 알림',
+  new_schedule: '새 일정',
+  // 일정 변경 요청
+  schedule_change_request: '일정 변경 요청',
+  schedule_change_approved: '일정 변경 승인',
+  schedule_change_rejected: '일정 변경 거절',
+  // 결석 관련
+  absence_request: '결석 신청',
+  absence_approved: '결석 승인',
+  absence_rejected: '결석 거절',
+  // 수업실 예약
+  reservation_created: '예약 등록',
+  reservation_cancelled: '예약 취소',
+  reservation_reminder: '예약 알림',
+  // 공지사항
+  announcement_new: '새 공지사항',
+  new_announcement: '새 공지사항',
+  // 그룹 관련
+  group_settings_updated: '설정 변경',
+  // 시스템
   system: '시스템',
 };
 

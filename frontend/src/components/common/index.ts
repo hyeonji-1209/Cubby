@@ -14,3 +14,6 @@ export type { LocationData } from './LocationPicker';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { AttendanceQRGenerator, AttendanceCheckIn, AttendanceList } from './AttendanceQR';
 export { SidePanel } from './SidePanel';
+export { ScheduleAttendanceModal } from './ScheduleAttendanceModal';
+export { ScheduleChangeRequestModal } from './ScheduleChangeRequestModal';
+export { AbsenceRequestModal } from './AbsenceRequestModal';

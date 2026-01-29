@@ -2,22 +2,56 @@ import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database';
 import { Schedule } from '../models/Schedule';
 import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
+import { SubGroupMember } from '../models/SubGroupMember';
+import { Group } from '../models/Group';
 import { AppError } from '../middlewares/error.middleware';
-import { requireActiveMember } from '../utils/membership';
+import { requireActiveMember, isAdmin } from '../utils/membership';
 
 export class ScheduleController {
   private scheduleRepository = AppDataSource.getRepository(Schedule);
   private memberRepository = AppDataSource.getRepository(GroupMember);
+  private subGroupMemberRepository = AppDataSource.getRepository(SubGroupMember);
+  private groupRepository = AppDataSource.getRepository(Group);
 
   getByGroup = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId } = req.params;
       const { subGroupId, startDate, endDate } = req.query;
 
+      // 현재 사용자의 멤버십 확인
+      const membership = await this.memberRepository.findOne({
+        where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
+      });
+
+      if (!membership) {
+        throw new AppError('그룹 멤버만 조회할 수 있습니다', 403);
+      }
+
       const queryBuilder = this.scheduleRepository
         .createQueryBuilder('schedule')
         .leftJoinAndSelect('schedule.author', 'author')
         .where('schedule.groupId = :groupId', { groupId });
+
+      // 역할별 필터링
+      const userIsAdmin = isAdmin(membership);
+
+      if (!userIsAdmin) {
+        // 일반 멤버: 그룹 전체 일정 + 본인이 속한 소그룹 일정만 조회
+        const mySubGroupMemberships = await this.subGroupMemberRepository.find({
+          where: { groupMemberId: membership.id },
+        });
+        const mySubGroupIds = mySubGroupMemberships.map(sgm => sgm.subGroupId);
+
+        if (mySubGroupIds.length > 0) {
+          queryBuilder.andWhere(
+            '(schedule.subGroupId IS NULL OR schedule.subGroupId IN (:...mySubGroupIds))',
+            { mySubGroupIds }
+          );
+        } else {
+          // 소그룹에 속하지 않은 경우 그룹 전체 일정만 조회
+          queryBuilder.andWhere('schedule.subGroupId IS NULL');
+        }
+      }
 
       if (subGroupId) {
         queryBuilder.andWhere('schedule.subGroupId = :subGroupId', { subGroupId });

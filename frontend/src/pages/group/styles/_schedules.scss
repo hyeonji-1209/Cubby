@@ -503,6 +503,33 @@
     margin-top: 2px;
   }
 
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity $transition-fast;
+  }
+
+  &:hover &__actions {
+    opacity: 1;
+  }
+
+  &__attendance-btn {
+    padding: $spacing-xs;
+    background: transparent;
+    border: none;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: rgba($primary, 0.1);
+    }
+  }
+
   &__delete {
     padding: $spacing-xs;
     background: transparent;
@@ -510,16 +537,11 @@
     font-size: $font-size-sm;
     cursor: pointer;
     border-radius: $radius-sm;
-    opacity: 0;
     transition: all $transition-fast;
 
     &:hover {
       background: rgba($error, 0.1);
     }
-  }
-
-  &:hover &__delete {
-    opacity: 1;
   }
 }
 

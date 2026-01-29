@@ -1,8 +1,8 @@
 @use '@/styles/variables' as *;
 
 .header {
-  height: 64px;
-  min-height: 64px;
+  height: 56px;
+  min-height: 56px;
   background-color: white;
   border-bottom: 1px solid $gray-200;
   display: flex;
@@ -17,7 +17,7 @@
   }
 
   &__logo {
-    font-size: $font-size-xl;
+    font-size: $font-size-lg;
     font-weight: $font-weight-bold;
     color: $primary-600;
   }
@@ -34,7 +34,7 @@
   }
 
   &__logout-btn {
-    padding: $spacing-sm $spacing-md;
+    padding: $spacing-xs $spacing-sm;
     font-size: $font-size-sm;
     color: $gray-600;
     border: 1px solid $gray-300;
@@ -54,8 +54,8 @@
 
   &__notification-btn {
     position: relative;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -71,16 +71,16 @@
 
   &__notification-badge {
     position: absolute;
-    top: 4px;
-    right: 4px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
     background-color: $error;
     color: white;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: $font-weight-semibold;
-    line-height: 18px;
+    line-height: 16px;
     text-align: center;
     border-radius: $radius-full;
   }
@@ -89,8 +89,8 @@
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    width: 360px;
-    max-height: 480px;
+    width: 380px;
+    max-height: 520px;
     background-color: white;
     border-radius: $radius-lg;
     box-shadow: $shadow-lg;
@@ -102,28 +102,88 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: $spacing-md $spacing-lg;
+    padding: $spacing-sm $spacing-md;
     border-bottom: 1px solid $gray-200;
+    background-color: $gray-50;
 
     h3 {
-      font-size: $font-size-base;
+      font-size: $font-size-sm;
       font-weight: $font-weight-semibold;
       color: $gray-900;
     }
   }
 
-  &__notification-mark-all {
-    font-size: $font-size-sm;
+  &__notification-header-actions {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  &__notification-header-btn {
+    font-size: 12px;
     color: $primary-600;
     font-weight: $font-weight-medium;
+    padding: 4px 8px;
+    border-radius: $radius-sm;
+    transition: all $transition-fast;
 
     &:hover {
-      text-decoration: underline;
+      background-color: $primary-50;
+    }
+
+    &--delete {
+      color: $gray-500;
+
+      &:hover {
+        background-color: $gray-100;
+        color: $error;
+      }
+    }
+  }
+
+  &__notification-confirm {
+    padding: $spacing-sm $spacing-md;
+    background-color: $warning-50;
+    border-bottom: 1px solid $warning-100;
+
+    p {
+      font-size: $font-size-sm;
+      color: $gray-700;
+      margin-bottom: $spacing-xs;
+    }
+
+    &-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: $spacing-xs;
+
+      button {
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: $radius-sm;
+        color: $gray-600;
+        background-color: white;
+        border: 1px solid $gray-300;
+
+        &:hover {
+          background-color: $gray-50;
+        }
+
+        &.delete {
+          background-color: $error;
+          color: white;
+          border-color: $error;
+
+          &:hover {
+            background-color: darken($error, 10%);
+          }
+        }
+      }
     }
   }
 
   &__notification-list {
-    max-height: 400px;
+    max-height: 420px;
     overflow-y: auto;
   }
 
@@ -135,21 +195,28 @@
     font-size: $font-size-sm;
   }
 
-  &__notification-item {
+  &__notification-empty {
     display: flex;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
     gap: $spacing-sm;
-    padding: $spacing-md $spacing-lg;
-    cursor: pointer;
-    transition: background-color $transition-fast;
+
+    &-icon {
+      font-size: 32px;
+      opacity: 0.5;
+    }
+
+    p {
+      color: $gray-400;
+    }
+  }
+
+  &__notification-item {
+    position: relative;
     border-bottom: 1px solid $gray-100;
 
     &:last-child {
       border-bottom: none;
-    }
-
-    &:hover {
-      background-color: $gray-50;
     }
 
     &.unread {
@@ -159,6 +226,29 @@
         background-color: $primary-50;
       }
     }
+
+    &:hover {
+      background-color: $gray-50;
+    }
+
+    &-main {
+      display: flex;
+      align-items: flex-start;
+      gap: $spacing-sm;
+      padding: $spacing-sm $spacing-md;
+      cursor: pointer;
+    }
+  }
+
+  &__notification-icon {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
   }
 
   &__notification-content {
@@ -167,15 +257,15 @@
   }
 
   &__notification-title {
-    font-size: $font-size-sm;
+    font-size: 13px;
     font-weight: $font-weight-medium;
     color: $gray-900;
     margin-bottom: 2px;
-    line-height: 1.4;
+    line-height: 1.3;
   }
 
   &__notification-message {
-    font-size: $font-size-sm;
+    font-size: 12px;
     color: $gray-600;
     margin-bottom: 4px;
     line-height: 1.4;
@@ -185,17 +275,57 @@
     overflow: hidden;
   }
 
+  &__notification-meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
   &__notification-time {
-    font-size: $font-size-xs;
+    font-size: 11px;
     color: $gray-400;
+  }
+
+  &__notification-group {
+    font-size: 11px;
+    color: $gray-500;
+    padding: 1px 6px;
+    background-color: $gray-100;
+    border-radius: $radius-sm;
   }
 
   &__notification-dot {
     flex-shrink: 0;
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
     background-color: $primary-500;
     border-radius: $radius-full;
-    margin-top: 6px;
+    margin-top: 4px;
+  }
+
+  &__notification-actions {
+    position: absolute;
+    top: 50%;
+    right: $spacing-sm;
+    transform: translateY(-50%);
+  }
+
+  &__notification-action-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-full;
+    color: $gray-400;
+    font-size: 12px;
+    background-color: white;
+    box-shadow: $shadow-sm;
+    transition: all $transition-fast;
+
+    &:hover {
+      background-color: $error-50;
+      color: $error;
+    }
   }
 }
