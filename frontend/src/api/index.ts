@@ -1,4 +1,6 @@
 export { apiClient } from './client';
+export { createCrudApi, createGroupResourceApi, extractData, getErrorMessage, safeApiCall } from './factory';
+export type { ApiResponse, PaginatedResponse, CrudApi, GroupResourceApi } from './factory';
 export { authApi } from './auth.api';
 export { userApi } from './user.api';
 export { groupApi } from './group.api';

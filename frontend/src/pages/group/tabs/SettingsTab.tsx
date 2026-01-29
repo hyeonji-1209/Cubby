@@ -1,7 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { Modal, LocationPicker } from '@/components';
 import { useSettingsTab } from './hooks';
-import { GroupInfoSection, PracticeRoomSection, OperatingHoursSection, LessonRoomSection, LocationSection, DangerSection, LeaveSection, HolidaySection } from './components';
+import { GroupInfoSection, PracticeRoomSection, OperatingHoursSection, LessonRoomSection, LocationSection, DangerSection, LeaveSection } from './components';
 import { InstructorManagement } from '../components';
 import PositionsTab from '../PositionsTab';
 import type { SettingsTabProps } from './types';
@@ -94,11 +94,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               onSettingChange={updateOperatingHoursSetting}
               onSaveSettings={handleSaveOperatingHours}
             />
-          )}
-
-          {/* 휴일 관리 섹션 (학원 타입 전용) */}
-          {currentGroup.type === 'education' && (
-            <HolidaySection groupId={groupId} />
           )}
 
           {/* 강사 관리 섹션 (1:1 교육 + 다중 강사 모드) */}

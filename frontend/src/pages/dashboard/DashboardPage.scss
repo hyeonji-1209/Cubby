@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../styles/variables' as *;
 
 // 대시보드 - 고정 레이아웃 (페이지 스크롤 없음)
@@ -817,7 +818,7 @@
       color: white;
 
       &:hover:not(:disabled) {
-        background-color: darken($error, 10%);
+        background-color: color.adjust($error, $lightness: -10%);
       }
 
       &:disabled {

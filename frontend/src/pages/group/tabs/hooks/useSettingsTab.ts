@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useToast } from '@/components';
 import { useGroupDetailStore } from '@/store';
 import { useGroupStore } from '@/store/groupStore';
@@ -31,6 +31,9 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     saveLocation,
     deleteLocation,
   } = useGroupDetailStore();
+
+  // 초기 로드 추적 (API 중복 호출 방지)
+  const initialLoadDone = useRef(false);
 
   // 기능 토글 저장 상태
   const [featureSaving, setFeatureSaving] = useState(false);
@@ -69,8 +72,19 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
   const [newLessonRoomName, setNewLessonRoomName] = useState('');
   const [newLessonRoomCapacity, setNewLessonRoomCapacity] = useState(1);
 
+  // currentGroup이 변경되면 운영시간 상태 동기화 (수정 중이 아닐 때만)
+  useEffect(() => {
+    if (currentGroup?.operatingHours && !operatingHoursChanged) {
+      setOperatingHours({
+        openTime: currentGroup.operatingHours.openTime || '09:00',
+        closeTime: currentGroup.operatingHours.closeTime || '22:00',
+        closedDays: currentGroup.operatingHours.closedDays || [],
+      });
+    }
+  }, [currentGroup?.operatingHours, operatingHoursChanged]);
+
   // 수업실 목록 조회
-  const fetchLessonRooms = async () => {
+  const fetchLessonRooms = useCallback(async () => {
     if (!groupId) return;
     setLessonRoomsLoading(true);
     try {
@@ -81,21 +95,22 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     } finally {
       setLessonRoomsLoading(false);
     }
-  };
+  }, [groupId]);
 
+  // 초기 데이터 로드 (한 번만 실행)
   useEffect(() => {
-    if (groupId) {
+    if (groupId && currentGroup && !initialLoadDone.current) {
+      initialLoadDone.current = true;
       fetchFavoriteLocations(groupId);
-      if (currentGroup?.type === 'education' && currentGroup?.hasPracticeRooms) {
+      if (currentGroup.type === 'education' && currentGroup.hasPracticeRooms) {
         fetchPracticeRooms(groupId);
       }
       // 1:1 수업인 경우 수업실 조회
-      if (currentGroup?.type === 'education' && !currentGroup?.hasClasses) {
+      if (currentGroup.type === 'education' && !currentGroup.hasClasses) {
         fetchLessonRooms();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, currentGroup?.type, currentGroup?.hasPracticeRooms, currentGroup?.hasClasses, fetchFavoriteLocations, fetchPracticeRooms]);
+  }, [groupId, currentGroup, fetchFavoriteLocations, fetchPracticeRooms, fetchLessonRooms]);
 
   const handleSavePracticeRoomSettings = async () => {
     setPracticeRoomSaving(true);

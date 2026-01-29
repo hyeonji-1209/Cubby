@@ -5,16 +5,15 @@ import type { Holiday, CreateHolidayRequest, HolidayType } from '@/api';
 
 interface HolidaySectionProps {
   groupId: string;
+  isAdmin?: boolean;
 }
 
-const DAYS_OF_WEEK = ['일', '월', '화', '수', '목', '금', '토'];
-const HOLIDAY_TYPE_LABELS: Record<HolidayType, string> = {
+const HOLIDAY_TYPE_LABELS: Record<Exclude<HolidayType, 'regular'>, string> = {
   specific: '특정 날짜',
   range: '기간',
-  regular: '정기 휴일',
 };
 
-export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
+export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId, isAdmin = false }) => {
   const toast = useToast();
 
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -74,18 +73,6 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Toggle recurring day
-  const toggleRecurringDay = (day: number) => {
-    setForm((prev) => {
-      const days = prev.recurringDays || [];
-      if (days.includes(day)) {
-        return { ...prev, recurringDays: days.filter((d) => d !== day) };
-      } else {
-        return { ...prev, recurringDays: [...days, day].sort() };
-      }
-    });
-  };
-
   // Create holiday
   const handleCreate = async () => {
     if (!form.name.trim()) {
@@ -100,11 +87,6 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
 
     if (form.type === 'range' && (!form.startDate || !form.endDate)) {
       toast.error('시작일과 종료일을 선택해주세요');
-      return;
-    }
-
-    if (form.type === 'regular' && (!form.recurringDays || form.recurringDays.length === 0)) {
-      toast.error('반복 요일을 선택해주세요');
       return;
     }
 
@@ -150,9 +132,6 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
       const [, em, ed] = holiday.endDate.split('-');
       return `${sm}/${sd} ~ ${em}/${ed}`;
     }
-    if (holiday.type === 'regular' && holiday.recurringDays) {
-      return `매주 ${holiday.recurringDays.map((d) => DAYS_OF_WEEK[d]).join(', ')}`;
-    }
     return '';
   };
 
@@ -160,17 +139,21 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
     <div className="group-detail__setting-section">
       <div className="group-detail__setting-header">
         <h3>휴일 관리</h3>
-        <button
-          type="button"
-          className="group-detail__setting-add-btn"
-          onClick={() => setShowModal(true)}
-        >
-          + 휴일 추가
-        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            className="group-detail__setting-add-btn"
+            onClick={() => setShowModal(true)}
+          >
+            + 휴일 추가
+          </button>
+        )}
       </div>
-      <p className="group-detail__setting-description">
-        학원 휴일을 등록하면 1주일 전 해당 날짜에 수업이 있는 학생/강사에게 알림이 발송됩니다.
-      </p>
+      {isAdmin && (
+        <p className="group-detail__setting-description">
+          학원 휴일을 등록하면 1주일 전 해당 날짜에 수업이 있는 학생/강사에게 알림이 발송됩니다.
+        </p>
+      )}
 
       {loading ? (
         <p className="group-detail__loading-text">로딩 중...</p>
@@ -184,16 +167,18 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
                 <span className="group-detail__holiday-name">{holiday.name}</span>
                 <span className="group-detail__holiday-date">{formatHolidayDate(holiday)}</span>
                 <span className={`group-detail__holiday-type group-detail__holiday-type--${holiday.type}`}>
-                  {HOLIDAY_TYPE_LABELS[holiday.type]}
+                  {HOLIDAY_TYPE_LABELS[holiday.type as Exclude<HolidayType, 'regular'>]}
                 </span>
               </div>
-              <button
-                type="button"
-                className="group-detail__holiday-delete"
-                onClick={() => handleDelete(holiday.id)}
-              >
-                삭제
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="group-detail__holiday-delete"
+                  onClick={() => handleDelete(holiday.id)}
+                >
+                  삭제
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -271,24 +256,6 @@ export const HolidaySection: React.FC<HolidaySectionProps> = ({ groupId }) => {
                   value={form.endDate || ''}
                   onChange={(e) => updateForm('endDate', e.target.value)}
                 />
-              </div>
-            </div>
-          )}
-
-          {form.type === 'regular' && (
-            <div className="holiday-form__field">
-              <label>반복 요일 *</label>
-              <div className="holiday-form__days">
-                {DAYS_OF_WEEK.map((day, index) => (
-                  <label key={index} className="holiday-form__day">
-                    <input
-                      type="checkbox"
-                      checked={form.recurringDays?.includes(index) || false}
-                      onChange={() => toggleRecurringDay(index)}
-                    />
-                    <span>{day}</span>
-                  </label>
-                ))}
               </div>
             </div>
           )}

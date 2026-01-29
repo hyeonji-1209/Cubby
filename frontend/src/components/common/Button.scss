@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../styles/variables' as *;
 
 .btn {
@@ -90,11 +91,11 @@
     color: white;
 
     &:hover:not(:disabled) {
-      background-color: darken($error, 10%);
+      background-color: color.adjust($error, $lightness: -10%);
     }
 
     &:active:not(:disabled) {
-      background-color: darken($error, 15%);
+      background-color: color.adjust($error, $lightness: -15%);
     }
   }
 

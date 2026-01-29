@@ -1,5 +1,9 @@
-// Variables & Mixins
+// Variables (includes basic responsive & flex mixins for backward compatibility)
 @forward 'variables';
+
+// Extended mixins available via: @use '../../styles/mixins' as mixins;
+// The _mixins.scss file provides additional utility mixins (badge, avatar, card, etc.)
+// Note: Not auto-forwarded to avoid naming conflicts with variables
 
 // Global styles
 @use 'global';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useGroupStore } from '@/store/groupStore';
 import { useAuthStore } from '@/store';
 import { groupApi, locationApi, attendanceApi, scheduleApi, subgroupMemberApi, lessonRoomApi } from '@/api';
@@ -9,11 +9,15 @@ import { useLoading } from '@/hooks';
 import type { GroupMember, SubGroupRequest, Schedule, LessonSchedule } from '@/types';
 import type { TabType } from '../tabs';
 
+// 유효한 탭 목록
+const VALID_TABS: TabType[] = ['home', 'lesson', 'members', 'subgroups', 'practicerooms', 'lessonrooms', 'announcements', 'schedules', 'settings'];
+
 type CalendarValue = Date | null | [Date | null, Date | null];
 
 export const useGroupDetail = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
   const toast = useToast();
 
@@ -37,7 +41,19 @@ export const useGroupDetail = () => {
     clearCurrentGroup,
   } = useGroupStore();
 
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  // URL 해시에서 초기 탭 읽기
+  const getInitialTab = (): TabType => {
+    const hash = location.hash.replace('#', '');
+    return VALID_TABS.includes(hash as TabType) ? (hash as TabType) : 'home';
+  };
+
+  const [activeTab, setActiveTabState] = useState<TabType>(getInitialTab);
+
+  // 탭 변경 시 URL 해시 업데이트
+  const setActiveTab = useCallback((tab: TabType) => {
+    setActiveTabState(tab);
+    navigate(`#${tab}`, { replace: true });
+  }, [navigate]);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSubGroupModal, setShowSubGroupModal] = useState(false);

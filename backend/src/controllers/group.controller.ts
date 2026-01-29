@@ -1,8 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { IsNull } from 'typeorm';
 import { AppDataSource } from '../config/database';
-import { Group, GroupType, GroupStatus } from '../models/Group';
-import { GroupMember, MemberRole, MemberStatus } from '../models/GroupMember';
+import {
+  Group,
+  GroupType,
+  GroupStatus,
+  EducationSettings,
+  CoupleSettings,
+  DEFAULT_TYPE_SETTINGS,
+} from '../models/Group';
+import { GroupMember, MemberRole, MemberStatus, EducationStudentData } from '../models/GroupMember';
 import { SubGroup, SubGroupType, SubGroupStatus } from '../models/SubGroup';
 import { SubGroupMember, SubGroupMemberRole } from '../models/SubGroupMember';
 import { Announcement } from '../models/Announcement';
@@ -44,13 +51,20 @@ export class GroupController {
         coverImage,
         settings,
         enabledFeatures,
-        // 학원(education) 타입 전용
+        // 타입별 설정 (프론트엔드에서 typeSettings로 전달하거나 개별 필드로 전달)
+        typeSettings: rawTypeSettings,
+        // 하위 호환성: 개별 필드도 지원
         hasClasses,
         hasPracticeRooms,
         allowGuardians,
         hasAttendance,
         hasMultipleInstructors,
         practiceRoomSettings,
+        operatingHours,
+        // 커플 타입
+        anniversaryDate,
+        myBirthday,
+        coupleRole,
       } = req.body;
 
       if (!Object.values(GroupType).includes(type)) {
@@ -59,8 +73,32 @@ export class GroupController {
 
       const inviteCode = await this.generateUniqueInviteCode();
 
-      // education 타입의 1:1 수업인 경우 가입 승인 필요
-      const isEducation1on1 = type === GroupType.EDUCATION && !hasClasses;
+      // 타입별 설정 생성
+      let typeSettings = rawTypeSettings;
+      if (!typeSettings) {
+        if (type === GroupType.EDUCATION) {
+          const isEducation1on1 = !hasClasses;
+          typeSettings = {
+            hasClasses: hasClasses ?? false,
+            hasMultipleInstructors: hasMultipleInstructors ?? false,
+            hasAttendance: hasAttendance ?? false,
+            hasPracticeRooms: hasPracticeRooms ?? false,
+            allowGuardians: allowGuardians ?? false,
+            requiresApproval: isEducation1on1,
+            allowSameDayChange: false,
+            ...(operatingHours && { operatingHours }),
+            ...(practiceRoomSettings && { practiceRoomSettings }),
+          } as EducationSettings;
+        } else if (type === GroupType.COUPLE) {
+          typeSettings = {
+            anniversaryDate,
+            myBirthday,
+            myRole: coupleRole,
+          } as CoupleSettings;
+        } else {
+          typeSettings = DEFAULT_TYPE_SETTINGS[type as GroupType] || null;
+        }
+      }
 
       const group = this.groupRepository.create({
         name,
@@ -75,16 +113,7 @@ export class GroupController {
         settings,
         enabledFeatures,
         ownerId: req.user!.id,
-        // 학원(education) 타입 전용 설정
-        hasClasses: type === GroupType.EDUCATION ? hasClasses ?? false : false,
-        hasPracticeRooms: type === GroupType.EDUCATION ? hasPracticeRooms ?? false : false,
-        allowGuardians: type === GroupType.EDUCATION ? allowGuardians ?? false : false,
-        hasAttendance: type === GroupType.EDUCATION ? hasAttendance ?? false : false,
-        hasMultipleInstructors: type === GroupType.EDUCATION ? hasMultipleInstructors ?? false : false,
-        requiresApproval: isEducation1on1, // 1:1 수업은 승인 필요
-        ...(type === GroupType.EDUCATION && hasPracticeRooms && practiceRoomSettings
-          ? { practiceRoomSettings }
-          : {}),
+        typeSettings,
       });
 
       await this.groupRepository.save(group);
@@ -213,7 +242,7 @@ export class GroupController {
         existingMembership.status = memberStatus;
         existingMembership.role = role;
         if (isGuardian && childInfo) {
-          existingMembership.childInfo = childInfo;
+          existingMembership.typeData = { children: childInfo };
         }
         if (positionId) {
           existingMembership.positionId = positionId;
@@ -226,7 +255,7 @@ export class GroupController {
           userId: req.user!.id,
           role,
           status: memberStatus,
-          childInfo: isGuardian ? childInfo : undefined,
+          typeData: isGuardian && childInfo ? { children: childInfo } : undefined,
           positionId: positionId || undefined,
         });
         savedMembership = await this.memberRepository.save(membership);
@@ -444,13 +473,16 @@ export class GroupController {
         coverImage,
         settings,
         enabledFeatures,
-        // 학원 타입 전용 설정
+        // 타입별 설정 (전체 교체 또는 개별 필드)
+        typeSettings: rawTypeSettings,
+        // 하위 호환성: education 개별 필드
         hasClasses,
         hasPracticeRooms,
         allowGuardians,
         hasAttendance,
         hasMultipleInstructors,
         requiresApproval,
+        allowSameDayChange,
         practiceRoomSettings,
         operatingHours,
       } = req.body;
@@ -461,6 +493,7 @@ export class GroupController {
         throw new AppError('Group not found', 404);
       }
 
+      // 기본 필드 업데이트
       if (name) group.name = name;
       if (description !== undefined) group.description = description;
       if (icon !== undefined) group.icon = icon;
@@ -470,15 +503,26 @@ export class GroupController {
       if (settings !== undefined) group.settings = settings;
       if (enabledFeatures !== undefined) group.enabledFeatures = enabledFeatures;
 
-      // 학원 타입 전용 설정 업데이트
-      if (hasClasses !== undefined) group.hasClasses = hasClasses;
-      if (hasPracticeRooms !== undefined) group.hasPracticeRooms = hasPracticeRooms;
-      if (allowGuardians !== undefined) group.allowGuardians = allowGuardians;
-      if (hasAttendance !== undefined) group.hasAttendance = hasAttendance;
-      if (hasMultipleInstructors !== undefined) group.hasMultipleInstructors = hasMultipleInstructors;
-      if (requiresApproval !== undefined) group.requiresApproval = requiresApproval;
-      if (practiceRoomSettings !== undefined) group.practiceRoomSettings = practiceRoomSettings;
-      if (operatingHours !== undefined) group.operatingHours = operatingHours;
+      // 타입별 설정 업데이트
+      if (rawTypeSettings !== undefined) {
+        // 전체 교체
+        group.typeSettings = rawTypeSettings;
+      } else if (group.type === GroupType.EDUCATION) {
+        // 개별 필드 업데이트 (education 타입)
+        const currentSettings = (group.typeSettings || {}) as EducationSettings;
+        group.typeSettings = {
+          ...currentSettings,
+          ...(hasClasses !== undefined && { hasClasses }),
+          ...(hasPracticeRooms !== undefined && { hasPracticeRooms }),
+          ...(allowGuardians !== undefined && { allowGuardians }),
+          ...(hasAttendance !== undefined && { hasAttendance }),
+          ...(hasMultipleInstructors !== undefined && { hasMultipleInstructors }),
+          ...(requiresApproval !== undefined && { requiresApproval }),
+          ...(allowSameDayChange !== undefined && { allowSameDayChange }),
+          ...(practiceRoomSettings !== undefined && { practiceRoomSettings }),
+          ...(operatingHours !== undefined && { operatingHours }),
+        };
+      }
 
       await this.groupRepository.save(group);
 
@@ -781,19 +825,26 @@ export class GroupController {
         throw new AppError('Member not found', 404);
       }
 
-      if (lessonSchedule !== undefined) membership.lessonSchedule = lessonSchedule;
-      if (paymentDueDay !== undefined) membership.paymentDueDay = paymentDueDay;
-      if (instructorId !== undefined) membership.instructorId = instructorId;
+      // typeData를 통해 업데이트
+      const currentTypeData = (membership.typeData || {}) as EducationStudentData;
+      membership.typeData = {
+        ...currentTypeData,
+        ...(lessonSchedule !== undefined && { lessonSchedule }),
+        ...(paymentDueDay !== undefined && { paymentDueDay }),
+        ...(instructorId !== undefined && { instructorId }),
+      };
 
       await this.memberRepository.save(membership);
+
+      const typeData = membership.typeData as EducationStudentData;
 
       res.json({
         success: true,
         data: {
           id: membership.id,
-          lessonSchedule: membership.lessonSchedule,
-          paymentDueDay: membership.paymentDueDay,
-          instructorId: membership.instructorId,
+          lessonSchedule: typeData?.lessonSchedule,
+          paymentDueDay: typeData?.paymentDueDay,
+          instructorId: typeData?.instructorId,
           user: {
             id: membership.user.id,
             name: membership.user.name,
@@ -878,16 +929,17 @@ export class GroupController {
       // 승인 처리
       membership.status = MemberStatus.ACTIVE;
 
-      // 1:1 교육 그룹인 경우 추가 정보 설정
-      if (group && group.type === 'education' && !group.hasClasses) {
-        if (instructorId) membership.instructorId = instructorId;
-        if (lessonSchedule) membership.lessonSchedule = lessonSchedule;
-        if (paymentDueDay) membership.paymentDueDay = paymentDueDay;
+      // 1:1 교육 그룹인 경우 추가 정보 설정 (typeData 사용)
+      if (group && group.type === GroupType.EDUCATION && !group.hasClasses) {
+        const currentTypeData = (membership.typeData || {}) as EducationStudentData;
+        const actualInstructorId = instructorId || (group.hasMultipleInstructors ? null : group.ownerId);
 
-        // 강사가 지정되지 않으면 owner가 강사
-        if (!instructorId && group.hasMultipleInstructors === false) {
-          membership.instructorId = group.ownerId;
-        }
+        membership.typeData = {
+          ...currentTypeData,
+          ...(actualInstructorId && { instructorId: actualInstructorId }),
+          ...(lessonSchedule && { lessonSchedule }),
+          ...(paymentDueDay && { paymentDueDay }),
+        };
       }
 
       await this.memberRepository.save(membership);
@@ -899,14 +951,17 @@ export class GroupController {
         groupName: group!.name,
       });
 
+      // 응답 데이터 (하위 호환성)
+      const typeData = membership.typeData as EducationStudentData | null;
+
       res.json({
         success: true,
         data: {
           id: membership.id,
           status: membership.status,
-          instructorId: membership.instructorId,
-          lessonSchedule: membership.lessonSchedule,
-          paymentDueDay: membership.paymentDueDay,
+          instructorId: typeData?.instructorId,
+          lessonSchedule: typeData?.lessonSchedule,
+          paymentDueDay: typeData?.paymentDueDay,
           user: {
             id: membership.user.id,
             name: membership.user.name,

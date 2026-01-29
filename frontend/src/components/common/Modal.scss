@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../styles/variables' as *;
 
 .modal-overlay {
@@ -283,7 +284,7 @@
       background: $error;
 
       &:hover:not(:disabled) {
-        background: darken($error, 10%);
+        background: color.adjust($error, $lightness: -10%);
       }
     }
   }
@@ -723,7 +724,7 @@
 
     &--early-leave {
       background: rgba($warning, 0.15);
-      color: darken($warning, 10%);
+      color: color.adjust($warning, $lightness: -10%);
     }
   }
 

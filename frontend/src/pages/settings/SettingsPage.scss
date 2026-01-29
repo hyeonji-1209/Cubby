@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../styles/variables' as *;
 
 .settings {
@@ -184,7 +185,7 @@
       color: white;
 
       &:hover {
-        background-color: darken($error, 10%);
+        background-color: color.adjust($error, $lightness: -10%);
       }
     }
 

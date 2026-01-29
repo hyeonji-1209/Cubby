@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GROUP_TYPE_LABELS, DAYS_OF_WEEK } from '@/constants/labels';
 import { IconPicker } from '@/components';
+import { QRIcon } from '@/components/icons';
 import type { Group, PracticeRoom, OperatingHours } from '@/types';
 import type { FavoriteLocation, LessonRoom } from '@/api';
 
@@ -375,7 +376,7 @@ export const PracticeRoomSection = ({
           <span>수용</span>
           <button type="button" onClick={() => setNewPracticeRoomCapacity((c) => Math.max(1, c - 1))}>-</button>
           <span>{newPracticeRoomCapacity}명</span>
-          <button type="button" onClick={() => setNewPracticeRoomCapacity((c) => Math.min(20, c + 1))}>+</button>
+          <button type="button" onClick={() => setNewPracticeRoomCapacity((c) => Math.min(50, c + 1))}>+</button>
         </div>
         <button type="button" onClick={onAddRoom} disabled={!newPracticeRoomName.trim()}>
           추가
@@ -423,7 +424,7 @@ const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete, onShowQRCode }: Pr
       <span>{room.capacity}명</span>
       <button
         type="button"
-        onClick={() => onUpdateCapacity(room.id, Math.min(20, room.capacity + 1))}
+        onClick={() => onUpdateCapacity(room.id, Math.min(50, room.capacity + 1))}
       >
         +
       </button>
@@ -498,7 +499,7 @@ export const LessonRoomSection = ({
         <span>수용</span>
         <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.max(1, c - 1))}>-</button>
         <span>{newLessonRoomCapacity}명</span>
-        <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.min(10, c + 1))}>+</button>
+        <button type="button" onClick={() => setNewLessonRoomCapacity((c) => Math.min(50, c + 1))}>+</button>
       </div>
       <button type="button" onClick={onAddRoom} disabled={!newLessonRoomName.trim()}>
         추가
@@ -545,7 +546,7 @@ const LessonRoomItem = ({ room, onUpdateCapacity, onDelete }: LessonRoomItemProp
       <span>{room.capacity}명</span>
       <button
         type="button"
-        onClick={() => onUpdateCapacity(room.id, Math.min(10, room.capacity + 1))}
+        onClick={() => onUpdateCapacity(room.id, Math.min(50, room.capacity + 1))}
       >
         +
       </button>
@@ -742,14 +743,3 @@ const EditIcon = () => (
   </svg>
 );
 
-const QRIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-    <rect x="14" y="14" width="3" height="3" />
-    <rect x="18" y="14" width="3" height="3" />
-    <rect x="14" y="18" width="3" height="3" />
-    <rect x="18" y="18" width="3" height="3" />
-  </svg>
-);

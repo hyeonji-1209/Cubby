@@ -62,7 +62,7 @@
     background: $primary-50;
 
     &:hover {
-      background: darken($primary-50, 3%) !important;
+      background: color.adjust($primary-50, $lightness: -3%) !important;
     }
   }
 
@@ -286,7 +286,7 @@
       color: white;
 
       &:hover {
-        background: darken($success, 10%);
+        background: color.adjust($success, $lightness: -10%);
       }
     }
 
@@ -376,7 +376,7 @@
       animation: pulse-live 2s infinite;
 
       &:hover {
-        background: darken($success, 10%);
+        background: color.adjust($success, $lightness: -10%);
       }
     }
 

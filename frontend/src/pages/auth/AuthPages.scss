@@ -1,3 +1,4 @@
+@use 'sass:color';
 @use '../../styles/variables' as *;
 
 .auth-page {
@@ -135,7 +136,7 @@
 
   &__dev-code {
     background-color: rgba($warning, 0.1);
-    color: darken($warning, 20%);
+    color: color.adjust($warning, $lightness: -20%);
     padding: $spacing-xs $spacing-sm;
     border-radius: $radius-sm;
     font-size: $font-size-sm;

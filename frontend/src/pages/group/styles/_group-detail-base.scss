@@ -185,7 +185,7 @@
 
       &:hover {
         background: rgba($success, 0.2);
-        color: darken($success, 10%);
+        color: color.adjust($success, $lightness: -10%);
       }
 
       &.active {
@@ -725,7 +725,7 @@
       border: 1px solid $primary-100;
 
       &:hover {
-        background: darken($primary-50, 3%);
+        background: color.adjust($primary-50, $lightness: -3%);
       }
     }
 
@@ -963,7 +963,7 @@
       border: none;
 
       &:hover {
-        background: darken($success, 5%);
+        background: color.adjust($success, $lightness: -5%);
       }
     }
 
@@ -1239,7 +1239,7 @@
     border-radius: $radius-md;
 
     &:hover {
-      background: darken($error, 10%);
+      background: color.adjust($error, $lightness: -10%);
     }
   }
 
@@ -1273,7 +1273,7 @@
     border-radius: $radius-md;
 
     &:hover {
-      background: darken($error, 10%);
+      background: color.adjust($error, $lightness: -10%);
     }
   }
 
@@ -1917,8 +1917,63 @@
       color: white;
 
       &:hover {
-        background: darken($error, 10%);
+        background: color.adjust($error, $lightness: -10%);
       }
+    }
+  }
+}
+
+// 장소 추가/수정 폼
+.location-form {
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+    padding-top: $spacing-md;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__cancel {
+    padding: $spacing-sm $spacing-lg;
+    background: $white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $gray-50;
+      border-color: $gray-400;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__submit {
+    padding: $spacing-sm $spacing-lg;
+    background: $primary;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $white;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      background: $gray-300;
+      cursor: not-allowed;
     }
   }
 }

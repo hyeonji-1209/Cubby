@@ -75,6 +75,7 @@ export interface AnnouncementsTabProps {
 // SchedulesTab - uses groupDetailStore
 export interface SchedulesTabProps {
   groupId: string;
+  groupType?: string; // 그룹 타입 (휴일 관리 표시용)
   isAdmin: boolean;
   canWriteSchedule: boolean;
   userId?: string;

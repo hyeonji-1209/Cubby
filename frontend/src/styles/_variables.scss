@@ -108,7 +108,11 @@ $breakpoint-lg: 1024px;
 $breakpoint-xl: 1280px;
 $breakpoint-2xl: 1536px;
 
-// Mixins
+// Note: Mixins have been moved to _mixins.scss
+// Import both files using: @use '../../styles' as *; or @use '../../styles/variables' as *;
+
+// Legacy mixin support (for backward compatibility)
+// These will be removed in future updates - use _mixins.scss instead
 @mixin mobile {
   @media (max-width: #{$breakpoint-md - 1px}) {
     @content;

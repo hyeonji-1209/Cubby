@@ -263,6 +263,7 @@ const GroupDetailPage = () => {
         {activeTab === 'schedules' && groupId && (
           <SchedulesTab
             groupId={groupId}
+            groupType={currentGroup.type}
             isAdmin={isAdmin}
             canWriteSchedule={!!canWriteSchedule}
             userId={user?.id}

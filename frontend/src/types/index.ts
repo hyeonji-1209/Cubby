@@ -30,6 +30,68 @@ export interface OperatingHours {
   closedDays?: number[]; // 휴무일 요일 (0=일요일, 6=토요일)
 }
 
+// ============ 타입별 설정 인터페이스 ============
+
+// 학원/교육 타입 설정
+export interface EducationSettings {
+  hasClasses: boolean;
+  hasMultipleInstructors: boolean;
+  hasAttendance: boolean;
+  hasPracticeRooms: boolean;
+  allowGuardians: boolean;
+  requiresApproval: boolean;
+  allowSameDayChange: boolean;
+  operatingHours?: OperatingHours;
+  practiceRoomSettings?: PracticeRoomSettings;
+}
+
+// 교회/종교 타입 설정
+export interface ReligiousSettings {
+  denomination?: string;
+  hasSmallGroups: boolean;
+  worshipTimes?: {
+    dayOfWeek: number;
+    time: string;
+    name: string;
+  }[];
+}
+
+// 동호회/커뮤니티 타입 설정
+export interface CommunitySettings {
+  category?: string;
+  isPublic: boolean;
+  maxMembers?: number;
+  hasSchedule: boolean;
+  hasDues: boolean;
+}
+
+// 회사/팀 타입 설정
+export interface CompanySettings {
+  department?: string;
+  hasProjects: boolean;
+  hasAttendance: boolean;
+  workingHours?: {
+    startTime: string;
+    endTime: string;
+  };
+}
+
+// 연인/커플 타입 설정
+export interface CoupleSettings {
+  anniversaryDate?: string;
+  partnerBirthday?: string;
+  myBirthday?: string;
+  myRole?: 'boyfriend' | 'girlfriend';
+}
+
+// 타입별 설정 유니온
+export type GroupTypeSettings =
+  | EducationSettings
+  | ReligiousSettings
+  | CommunitySettings
+  | CompanySettings
+  | CoupleSettings;
+
 export interface PracticeRoom {
   id: string;
   groupId: string;
@@ -71,22 +133,24 @@ export interface Group {
   settings?: Record<string, unknown>;
   enabledFeatures?: string[];
   status: GroupStatus;
-  // 학원 타입 전용 설정
-  hasClasses?: boolean; // 반 운영 여부
-  hasPracticeRooms?: boolean; // 연습실 운영 여부
-  allowGuardians?: boolean; // 보호자 허용 여부
-  hasAttendance?: boolean; // 출석 기능 사용 여부
-  hasMultipleInstructors?: boolean; // 다중 강사 운영 여부
+  // 타입별 설정 (JSON)
+  typeSettings?: GroupTypeSettings;
+  // 하위 호환성: 학원 타입 전용 설정 (백엔드 getter로 제공)
+  hasClasses?: boolean;
+  hasPracticeRooms?: boolean;
+  allowGuardians?: boolean;
+  hasAttendance?: boolean;
+  hasMultipleInstructors?: boolean;
   practiceRoomSettings?: PracticeRoomSettings;
-  operatingHours?: OperatingHours; // 학원 운영시간
-  requiresApproval?: boolean; // 가입 승인 필요 여부
-  allowSameDayChange?: boolean; // 당일 일정 변경 허용 여부
+  operatingHours?: OperatingHours;
+  requiresApproval?: boolean;
+  allowSameDayChange?: boolean;
   ownerId: string;
   owner?: User;
   memberCount?: number;
   subGroupCount?: number;
   myRole?: MemberRole;
-  myMembershipId?: string; // 그룹 생성 시 반환
+  myMembershipId?: string;
   joinedAt?: string;
   createdAt: string;
 }
@@ -119,6 +183,26 @@ export interface ClassSchedule {
   endTime: string;        // "15:00"
 }
 
+// ============ 타입별 멤버 데이터 인터페이스 ============
+
+// 학원/교육 타입 - 학생 데이터
+export interface EducationStudentData {
+  lessonSchedule?: LessonSchedule[];
+  paymentDueDay?: number;
+  instructorId?: string;
+}
+
+// 학원/교육 타입 - 보호자 데이터
+export interface EducationGuardianData {
+  children: ChildInfo[];
+  linkedStudentIds?: string[];
+}
+
+// 멤버 타입 데이터 유니온
+export type MemberTypeData =
+  | EducationStudentData
+  | EducationGuardianData;
+
 export interface GroupMember {
   id: string;
   groupId: string;
@@ -128,10 +212,13 @@ export interface GroupMember {
   nickname?: string;
   title?: string; // 직책/직분 (본인이 설정)
   positionId?: string; // 선택한 직책 ID
-  childInfo?: ChildInfo[]; // 보호자인 경우 자녀 정보 (복수)
-  lessonSchedule?: LessonSchedule[]; // 1:1 수업 스케줄
-  paymentDueDay?: number; // 수강료 납부일 (1-31)
-  instructorId?: string; // 담당 강사 ID (다중 강사 모드)
+  // 타입별 데이터 (JSON)
+  typeData?: MemberTypeData;
+  // 하위 호환성: 개별 필드 (백엔드 getter로 제공)
+  childInfo?: ChildInfo[];
+  lessonSchedule?: LessonSchedule[];
+  paymentDueDay?: number;
+  instructorId?: string;
   joinedAt: string;
   user: {
     id: string;

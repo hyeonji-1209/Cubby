@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppDataSource } from '../config/database';
-import { User, AuthProvider, UserStatus } from '../models/User';
+import { User, AuthProvider } from '../models/User';
 import { RefreshToken } from '../models/RefreshToken';
 import { hashPassword, comparePassword } from '../utils/password.util';
-import { generateTokens, verifyRefreshToken } from '../utils/jwt.util';
+import { verifyRefreshToken } from '../utils/jwt.util';
 import { AppError } from '../middlewares/error.middleware';
-import { config } from '../config';
-import axios from 'axios';
 import { VerificationController } from './verification.controller';
+import { tokenService } from '../services/token.service';
+import { oauthService } from '../services/oauth.service';
 
 export class AuthController {
   private userRepository = AppDataSource.getRepository(User);
@@ -56,16 +56,8 @@ export class AuthController {
 
       await this.userRepository.save(user);
 
-      // 토큰 생성
-      const tokens = generateTokens(user.id);
-
-      // 리프레시 토큰 저장
-      const refreshTokenEntity = this.refreshTokenRepository.create({
-        userId: user.id,
-        token: tokens.refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일
-      });
-      await this.refreshTokenRepository.save(refreshTokenEntity);
+      // 토큰 생성 및 저장
+      const tokens = await tokenService.createAndSaveTokens(user.id);
 
       res.status(201).json({
         success: true,
@@ -116,16 +108,8 @@ export class AuthController {
         throw new AppError('Account is not active', 403);
       }
 
-      // 토큰 생성
-      const tokens = generateTokens(user.id);
-
-      // 리프레시 토큰 저장
-      const refreshTokenEntity = this.refreshTokenRepository.create({
-        userId: user.id,
-        token: tokens.refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
-      await this.refreshTokenRepository.save(refreshTokenEntity);
+      // 토큰 생성 및 저장
+      const tokens = await tokenService.createAndSaveTokens(user.id);
 
       res.json({
         success: true,
@@ -172,20 +156,8 @@ export class AuthController {
         throw new AppError('Refresh token expired', 401);
       }
 
-      // 기존 토큰 폐기
-      storedToken.isRevoked = true;
-      await this.refreshTokenRepository.save(storedToken);
-
-      // 새 토큰 생성
-      const tokens = generateTokens(decoded.userId);
-
-      // 새 리프레시 토큰 저장
-      const newRefreshToken = this.refreshTokenRepository.create({
-        userId: decoded.userId,
-        token: tokens.refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
-      await this.refreshTokenRepository.save(newRefreshToken);
+      // 토큰 갱신 (기존 토큰 폐기 + 새 토큰 생성)
+      const tokens = await tokenService.refreshTokens(refreshToken, decoded.userId);
 
       res.json({
         success: true,
@@ -263,17 +235,9 @@ export class AuthController {
   };
 
   // Google OAuth - 인증 시작
-  googleAuth = async (req: Request, res: Response, next: NextFunction) => {
+  googleAuth = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const { clientId, callbackUrl } = config.oauth.google;
-
-      if (!clientId) {
-        throw new AppError('Google OAuth is not configured', 500);
-      }
-
-      const scope = encodeURIComponent('email profile');
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&scope=${scope}&access_type=offline`;
-
+      const authUrl = oauthService.getAuthUrl('google');
       res.redirect(authUrl);
     } catch (error) {
       next(error);
@@ -286,94 +250,20 @@ export class AuthController {
       const { code } = req.query;
 
       if (!code) {
-        throw new AppError('Authorization code is required', 400);
+        return res.redirect(oauthService.getErrorRedirectUrl('missing_code'));
       }
 
-      const { clientId, clientSecret, callbackUrl } = config.oauth.google;
-
-      // 액세스 토큰 요청
-      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: callbackUrl,
-        grant_type: 'authorization_code',
-      });
-
-      const { access_token } = tokenResponse.data;
-
-      // 사용자 정보 요청
-      const userInfoResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-
-      const { id: googleId, email, name, picture } = userInfoResponse.data;
-
-      // 사용자 조회 또는 생성
-      let user = await this.userRepository.findOne({
-        where: [
-          { provider: AuthProvider.GOOGLE, providerId: googleId },
-          { email },
-        ],
-      });
-
-      if (user) {
-        // 기존 사용자가 다른 provider로 가입된 경우
-        if (user.provider !== AuthProvider.GOOGLE && user.providerId !== googleId) {
-          // Google 정보로 업데이트 (계정 연동)
-          user.provider = AuthProvider.GOOGLE;
-          user.providerId = googleId;
-          if (picture && !user.profileImage) {
-            user.profileImage = picture;
-          }
-          await this.userRepository.save(user);
-        }
-      } else {
-        // 새 사용자 생성
-        user = this.userRepository.create({
-          email,
-          name,
-          profileImage: picture,
-          provider: AuthProvider.GOOGLE,
-          providerId: googleId,
-          emailVerified: true,
-          status: UserStatus.ACTIVE,
-        });
-        await this.userRepository.save(user);
-      }
-
-      // 토큰 생성
-      const tokens = generateTokens(user.id);
-
-      // 리프레시 토큰 저장
-      const refreshTokenEntity = this.refreshTokenRepository.create({
-        userId: user.id,
-        token: tokens.refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
-      await this.refreshTokenRepository.save(refreshTokenEntity);
-
-      // 프론트엔드로 리다이렉트 (토큰 포함)
-      const frontendUrl = `${config.frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
-      res.redirect(frontendUrl);
+      const { tokens } = await oauthService.handleCallback('google', code as string);
+      res.redirect(oauthService.getSuccessRedirectUrl(tokens));
     } catch (error) {
-      // 오류 시 프론트엔드로 리다이렉트
-      const errorUrl = `${config.frontendUrl}/auth/callback?error=oauth_failed`;
-      res.redirect(errorUrl);
+      res.redirect(oauthService.getErrorRedirectUrl());
     }
   };
 
   // Kakao OAuth - 인증 시작
-  kakaoAuth = async (req: Request, res: Response, next: NextFunction) => {
+  kakaoAuth = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const { clientId, callbackUrl } = config.oauth.kakao;
-
-      if (!clientId) {
-        throw new AppError('Kakao OAuth is not configured', 500);
-      }
-
-      const authUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code`;
-
+      const authUrl = oauthService.getAuthUrl('kakao');
       res.redirect(authUrl);
     } catch (error) {
       next(error);
@@ -386,95 +276,13 @@ export class AuthController {
       const { code } = req.query;
 
       if (!code) {
-        throw new AppError('Authorization code is required', 400);
+        return res.redirect(oauthService.getErrorRedirectUrl('missing_code'));
       }
 
-      const { clientId, clientSecret, callbackUrl } = config.oauth.kakao;
-
-      // 액세스 토큰 요청
-      const tokenResponse = await axios.post(
-        'https://kauth.kakao.com/oauth/token',
-        new URLSearchParams({
-          grant_type: 'authorization_code',
-          client_id: clientId,
-          client_secret: clientSecret || '',
-          redirect_uri: callbackUrl,
-          code: code as string,
-        }).toString(),
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-        }
-      );
-
-      const { access_token } = tokenResponse.data;
-
-      // 사용자 정보 요청
-      const userInfoResponse = await axios.get('https://kapi.kakao.com/v2/user/me', {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-
-      const { id: kakaoId, kakao_account } = userInfoResponse.data;
-      const email = kakao_account?.email;
-      const name = kakao_account?.profile?.nickname || `카카오사용자${kakaoId}`;
-      const profileImage = kakao_account?.profile?.profile_image_url;
-
-      if (!email) {
-        throw new AppError('Email permission is required', 400);
-      }
-
-      // 사용자 조회 또는 생성
-      let user = await this.userRepository.findOne({
-        where: [
-          { provider: AuthProvider.KAKAO, providerId: String(kakaoId) },
-          { email },
-        ],
-      });
-
-      if (user) {
-        // 기존 사용자가 다른 provider로 가입된 경우
-        if (user.provider !== AuthProvider.KAKAO && user.providerId !== String(kakaoId)) {
-          // Kakao 정보로 업데이트 (계정 연동)
-          user.provider = AuthProvider.KAKAO;
-          user.providerId = String(kakaoId);
-          if (profileImage && !user.profileImage) {
-            user.profileImage = profileImage;
-          }
-          await this.userRepository.save(user);
-        }
-      } else {
-        // 새 사용자 생성
-        user = this.userRepository.create({
-          email,
-          name,
-          profileImage,
-          provider: AuthProvider.KAKAO,
-          providerId: String(kakaoId),
-          emailVerified: true,
-          status: UserStatus.ACTIVE,
-        });
-        await this.userRepository.save(user);
-      }
-
-      // 토큰 생성
-      const tokens = generateTokens(user.id);
-
-      // 리프레시 토큰 저장
-      const refreshTokenEntity = this.refreshTokenRepository.create({
-        userId: user.id,
-        token: tokens.refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
-      await this.refreshTokenRepository.save(refreshTokenEntity);
-
-      // 프론트엔드로 리다이렉트 (토큰 포함)
-      const frontendUrl = `${config.frontendUrl}/auth/callback?accessToken=${tokens.accessToken}&refreshToken=${tokens.refreshToken}`;
-      res.redirect(frontendUrl);
+      const { tokens } = await oauthService.handleCallback('kakao', code as string);
+      res.redirect(oauthService.getSuccessRedirectUrl(tokens));
     } catch (error) {
-      // 오류 시 프론트엔드로 리다이렉트
-      const errorUrl = `${config.frontendUrl}/auth/callback?error=oauth_failed`;
-      res.redirect(errorUrl);
+      res.redirect(oauthService.getErrorRedirectUrl());
     }
   };
 }

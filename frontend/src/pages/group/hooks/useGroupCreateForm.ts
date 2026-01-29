@@ -242,9 +242,9 @@ export const useGroupCreateForm = () => {
         groupData.hasClasses = hasClasses;
         groupData.hasPracticeRooms = hasPracticeRooms;
         groupData.allowGuardians = allowGuardians;
-        // 1:1 수업일 때만 출석 기능과 다중 강사 모드 설정
+        groupData.hasAttendance = hasAttendance;
+        // 1:1 수업일 때만 다중 강사 모드 설정
         if (!hasClasses) {
-          groupData.hasAttendance = hasAttendance;
           groupData.hasMultipleInstructors = hasMultipleInstructors;
         }
         if (hasPracticeRooms) {

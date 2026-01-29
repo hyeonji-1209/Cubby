@@ -3,6 +3,7 @@ import ReactCalendar from 'react-calendar';
 import { Modal, LocationPicker, ScheduleAttendanceModal, ScheduleChangeRequestModal, AbsenceRequestModal } from '@/components';
 import { useGroupDetailStore } from '@/store';
 import { isHoliday, getHolidayName } from '@/utils/holidays';
+import { HolidaySection } from './components';
 import type { SchedulesTabProps } from './types';
 import type { Schedule } from '@/types';
 
@@ -14,6 +15,7 @@ const COLOR_OPTIONS = [
 
 const SchedulesTab: React.FC<SchedulesTabProps> = ({
   groupId,
+  groupType,
   isAdmin,
   canWriteSchedule,
   userId,
@@ -164,6 +166,11 @@ const SchedulesTab: React.FC<SchedulesTabProps> = ({
           </button>
         )}
       </div>
+
+      {/* 휴일 관리 섹션 (학원 타입 전용) */}
+      {groupType === 'education' && (
+        <HolidaySection groupId={groupId} isAdmin={isAdmin} />
+      )}
 
       {schedulesLoading ? (
         <p className="group-detail__loading-text">로딩 중...</p>

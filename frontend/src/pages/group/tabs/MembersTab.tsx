@@ -1,19 +1,7 @@
 import { MEMBER_ROLE_LABELS } from '@/constants/labels';
 import { formatDate } from '@/utils/dateFormat';
+import { QRIcon } from '@/components/icons';
 import type { MembersTabProps } from './types';
-
-// QR 아이콘 컴포넌트
-const QRIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-    <rect x="14" y="14" width="3" height="3" />
-    <rect x="18" y="14" width="3" height="3" />
-    <rect x="14" y="18" width="3" height="3" />
-    <rect x="18" y="18" width="3" height="3" />
-  </svg>
-);
 
 // 수업 시작 10분 전부터 수업 종료까지 확인하는 함수
 const isWithinLessonTime = (startAt: Date, endAt: Date): boolean => {
