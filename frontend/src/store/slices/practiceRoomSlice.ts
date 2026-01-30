@@ -1,12 +1,12 @@
 import type { StateCreator } from 'zustand';
-import { practiceRoomApi, practiceRoomReservationApi } from '@/api';
-import type { LessonByDate } from '@/api';
+import { lessonRoomApi, practiceRoomReservationApi } from '@/api';
+import type { LessonByDate, LessonRoom } from '@/api';
 import { formatDateInput } from '@/utils/dateFormat';
-import type { PracticeRoom, PracticeRoomReservation } from '@/types';
+import type { PracticeRoomReservation } from '@/types';
 
 export interface PracticeRoomSlice {
-  // State
-  practiceRooms: PracticeRoom[];
+  // State - LessonRoom 사용 (클래스 예약)
+  practiceRooms: LessonRoom[];
   practiceRoomsLoading: boolean;
   reservations: PracticeRoomReservation[];
   reservationsLoading: boolean;
@@ -40,12 +40,14 @@ export const createPracticeRoomSlice: StateCreator<PracticeRoomSlice, [], [], Pr
   selectedEndTime: '',
   lessonsByDate: [],
 
-  // Actions
+  // Actions - LessonRoom 사용 (클래스 예약 가능한 것만 필터링)
   fetchPracticeRooms: async (groupId) => {
     set({ practiceRoomsLoading: true });
     try {
-      const response = await practiceRoomApi.getList(groupId);
-      set({ practiceRooms: response.data });
+      const response = await lessonRoomApi.getByGroup(groupId);
+      // 예약 가능한 클래스만 필터링 (excludeFromPractice가 false인 것)
+      const availableRooms = (response.data || []).filter(room => !room.excludeFromPractice && room.isActive);
+      set({ practiceRooms: availableRooms });
     } catch (error) {
       console.error('Failed to fetch practice rooms:', error);
     } finally {

@@ -105,7 +105,7 @@
       cursor: not-allowed;
     }
 
-    & + & {
+    &+& {
       border-top: 1px solid $gray-100;
     }
   }
@@ -118,5 +118,53 @@
     font-size: $font-size-xs;
     color: $gray-500;
     margin-top: 2px;
+  }
+
+  // Compact variant (모달 내 폼용)
+  &.modal__dropdown--compact {
+    .dropdown__trigger {
+      padding: 6px 10px;
+      font-size: $font-size-sm;
+    }
+  }
+
+  // Small variant (인라인용)
+  &.modal__dropdown--sm {
+    min-width: 60px;
+
+    .dropdown__trigger {
+      padding: 6px 10px;
+      font-size: $font-size-sm;
+      border-radius: $radius-md;
+    }
+
+    .dropdown__menu {
+      min-width: 60px;
+    }
+
+    .dropdown__option {
+      padding: 6px 10px;
+      font-size: $font-size-sm;
+    }
+  }
+
+  // Approval modal variant
+  &.modal__approval-dropdown {
+    flex: 1;
+
+    .dropdown__trigger {
+      padding: $spacing-sm $spacing-md;
+      font-size: $font-size-sm;
+    }
+  }
+
+  // Group detail filter variant
+  &.group-detail__instructor-filter {
+    min-width: 140px;
+
+    .dropdown__trigger {
+      padding: $spacing-sm $spacing-md;
+      font-size: $font-size-sm;
+    }
   }
 }

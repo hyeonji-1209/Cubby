@@ -32,6 +32,9 @@ export class LessonRoom {
   @Column({ type: 'varchar', length: 7, nullable: true })
   color: string; // 시간표에서 구분용 색상
 
+  @Column({ type: 'boolean', default: false })
+  excludeFromPractice: boolean; // 연습실로 사용하지 않을 경우 true
+
   @ManyToOne(() => Group, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'groupId' })
   group: Group;

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { ApiResponse, Group, GroupMember, GroupType, Announcement, Schedule, JoinGroupResponse, ChildInfo, LessonSchedule } from '@/types';
+import type { ApiResponse, Group, GroupMember, GroupType, Announcement, Schedule, JoinGroupResponse, ChildInfo, LessonSchedule, MemberRole } from '@/types';
 
 // Overview API 응답 타입
 export interface GroupOverviewResponse {
@@ -46,6 +46,7 @@ export const groupApi = {
     inviteCode: string,
     options?: {
       isGuardian?: boolean;
+      isInstructor?: boolean;
       childInfo?: ChildInfo[];
       positionId?: string;
     }
@@ -149,7 +150,7 @@ export const groupApi = {
   approveMember: async (
     groupId: string,
     memberId: string,
-    data?: { instructorId?: string; lessonSchedule?: LessonSchedule[]; paymentDueDay?: number }
+    data?: { role?: MemberRole; instructorId?: string; lessonSchedule?: LessonSchedule[]; paymentDueDay?: number }
   ): Promise<ApiResponse<GroupMember>> => {
     const response = await apiClient.post(`/groups/${groupId}/members/${memberId}/approve`, data || {});
     return response.data;

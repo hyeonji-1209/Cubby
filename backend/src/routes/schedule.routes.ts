@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { ScheduleController } from '../controllers/schedule.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
-import { requireGroupRole, requireGroupMember } from '../middlewares/role.middleware';
-import { MemberRole } from '../models/GroupMember';
+import { requireGroupMember } from '../middlewares/role.middleware';
 
 const router = Router();
 const scheduleController = new ScheduleController();
@@ -16,10 +15,10 @@ router.get('/group/:groupId', requireGroupMember, scheduleController.getByGroup)
 // 일정 상세 조회
 router.get('/:scheduleId', scheduleController.getById);
 
-// 일정 생성 (운영자, 관리자, 리더만)
+// 일정 생성 (권한은 컨트롤러에서 확인)
 router.post(
   '/group/:groupId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER),
+  requireGroupMember,
   scheduleController.create
 );
 

@@ -147,8 +147,7 @@ export const GroupInfoSection = ({ currentGroup, isOwner, isAdmin, onFeatureTogg
       {/* 학원 타입 기능 설정 표시 */}
       {currentGroup.type === 'education' && isAdmin && (
         <>
-          <div className="group-detail__setting-divider" />
-          <h4 className="group-detail__setting-subtitle">수업 방식</h4>
+          <h4 className="group-detail__setting-subtitle" style={{ marginTop: '1rem' }}>수업 방식</h4>
           <div className="group-detail__feature-toggles">
             <div className="group-detail__feature-toggle-item group-detail__feature-toggle-item--readonly">
               <div className="toggle-info">
@@ -159,8 +158,7 @@ export const GroupInfoSection = ({ currentGroup, isOwner, isAdmin, onFeatureTogg
             </div>
           </div>
 
-          <div className="group-detail__setting-divider" />
-          <h4 className="group-detail__setting-subtitle">기능 설정</h4>
+          <h4 className="group-detail__setting-subtitle" style={{ marginTop: '1rem' }}>기능 설정</h4>
           <div className="group-detail__feature-toggles">
             <div className="group-detail__feature-toggle-item">
               <div className="toggle-info">
@@ -222,8 +220,8 @@ export const GroupInfoSection = ({ currentGroup, isOwner, isAdmin, onFeatureTogg
 
             <div className="group-detail__feature-toggle-item">
               <div className="toggle-info">
-                <span className="label">연습실 운영</span>
-                <span className="desc">학생들이 연습실을 예약하고 사용할 수 있습니다</span>
+                <span className="label">클래스 예약</span>
+                <span className="desc">학생들이 클래스를 예약하여 공부할 수 있습니다</span>
               </div>
               <button
                 type="button"
@@ -450,7 +448,15 @@ const PracticeRoomItem = ({ room, onUpdateCapacity, onDelete, onShowQRCode }: Pr
   </div>
 );
 
-// 수업실 관리 섹션 (1:1 수업용)
+// 클래스 예약 설정 인터페이스
+interface ClassReservationSettings {
+  openTime: string;
+  closeTime: string;
+  slotMinutes: 30 | 60;
+  maxHoursPerDay: number;
+}
+
+// 클래스 관리 섹션 (1:1 수업용) - 클래스 예약 통합
 interface LessonRoomSectionProps {
   lessonRooms: LessonRoom[];
   lessonRoomsLoading: boolean;
@@ -461,6 +467,14 @@ interface LessonRoomSectionProps {
   onAddRoom: () => void;
   onUpdateCapacity: (roomId: string, capacity: number) => void;
   onDeleteRoom: (room: LessonRoom) => void;
+  onTogglePracticeExclusion?: (roomId: string, exclude: boolean) => void;
+  hasPracticeRooms?: boolean; // 클래스 예약 기능 활성화 여부
+  // 클래스 예약 설정 (hasPracticeRooms가 true일 때)
+  reservationSettings?: ClassReservationSettings;
+  reservationSettingsChanged?: boolean;
+  reservationSettingsSaving?: boolean;
+  onReservationSettingChange?: <K extends keyof ClassReservationSettings>(key: K, value: ClassReservationSettings[K]) => void;
+  onSaveReservationSettings?: () => void;
 }
 
 export const LessonRoomSection = ({
@@ -473,20 +487,99 @@ export const LessonRoomSection = ({
   onAddRoom,
   onUpdateCapacity,
   onDeleteRoom,
+  onTogglePracticeExclusion,
+  hasPracticeRooms,
+  reservationSettings,
+  reservationSettingsChanged,
+  reservationSettingsSaving,
+  onReservationSettingChange,
+  onSaveReservationSettings,
 }: LessonRoomSectionProps) => (
   <div className="group-detail__setting-section">
     <div className="group-detail__setting-header">
-      <h3>수업실 관리</h3>
+      <h3>클래스 관리</h3>
+      {reservationSettingsChanged && onSaveReservationSettings && (
+        <button
+          className="group-detail__setting-save-btn"
+          disabled={reservationSettingsSaving}
+          onClick={onSaveReservationSettings}
+        >
+          {reservationSettingsSaving ? '저장 중...' : '저장'}
+        </button>
+      )}
     </div>
     <p className="group-detail__setting-hint" style={{ marginTop: 0, marginBottom: '1rem' }}>
-      1:1 수업이 진행되는 수업실을 등록하세요. 학생 수업 배정 시 수업실을 선택할 수 있습니다.
+      수업 및 공부에 사용할 클래스를 등록하세요. 학생 수업 배정 시 클래스를 선택할 수 있습니다.
+      {hasPracticeRooms && ' 클래스 예약 기능이 활성화되어 있어, 수업 외 시간에 학생들이 예약하여 사용할 수 있습니다.'}
     </p>
 
-    {/* 수업실 추가 */}
+    {/* 클래스 예약 설정 (hasPracticeRooms가 true일 때만 표시) */}
+    {hasPracticeRooms && reservationSettings && onReservationSettingChange && (
+      <>
+        <div className="group-detail__setting-item">
+          <span className="label">예약 가능 시간</span>
+          <div className="group-detail__practice-room-time">
+            <input
+              type="time"
+              value={reservationSettings.openTime}
+              onChange={(e) => onReservationSettingChange('openTime', e.target.value)}
+            />
+            <span>~</span>
+            <input
+              type="time"
+              value={reservationSettings.closeTime}
+              onChange={(e) => onReservationSettingChange('closeTime', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="group-detail__setting-item">
+          <span className="label">예약 단위</span>
+          <div className="group-detail__practice-room-toggle">
+            <button
+              type="button"
+              className={`group-detail__toggle-btn ${reservationSettings.slotMinutes === 30 ? 'active' : ''}`}
+              onClick={() => onReservationSettingChange('slotMinutes', 30)}
+            >
+              30분
+            </button>
+            <button
+              type="button"
+              className={`group-detail__toggle-btn ${reservationSettings.slotMinutes === 60 ? 'active' : ''}`}
+              onClick={() => onReservationSettingChange('slotMinutes', 60)}
+            >
+              1시간
+            </button>
+          </div>
+        </div>
+
+        <div className="group-detail__setting-item">
+          <span className="label">1인 1일 최대</span>
+          <div className="group-detail__practice-room-max">
+            <button
+              type="button"
+              onClick={() => onReservationSettingChange('maxHoursPerDay', Math.max(1, reservationSettings.maxHoursPerDay - 1))}
+            >
+              -
+            </button>
+            <span>{reservationSettings.maxHoursPerDay}시간</span>
+            <button
+              type="button"
+              onClick={() => onReservationSettingChange('maxHoursPerDay', Math.min(8, reservationSettings.maxHoursPerDay + 1))}
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+      </>
+    )}
+
+    {/* 클래스 추가 */}
     <div className="group-detail__practice-room-add">
       <input
         type="text"
-        placeholder="수업실 이름 (예: A실, 1번 수업실)"
+        placeholder="클래스 이름 (예: A실, 1번방)"
         value={newLessonRoomName}
         onChange={(e) => setNewLessonRoomName(e.target.value)}
         onKeyDown={(e) => {
@@ -506,11 +599,11 @@ export const LessonRoomSection = ({
       </button>
     </div>
 
-    {/* 수업실 목록 */}
+    {/* 클래스 목록 */}
     {lessonRoomsLoading ? (
       <p className="group-detail__setting-hint">불러오는 중...</p>
     ) : lessonRooms.length === 0 ? (
-      <p className="group-detail__setting-empty">등록된 수업실이 없습니다</p>
+      <p className="group-detail__setting-empty">등록된 클래스가 없습니다</p>
     ) : (
       <div className="group-detail__practice-room-items">
         {lessonRooms.map((room) => (
@@ -519,6 +612,8 @@ export const LessonRoomSection = ({
             room={room}
             onUpdateCapacity={onUpdateCapacity}
             onDelete={onDeleteRoom}
+            onTogglePracticeExclusion={onTogglePracticeExclusion}
+            hasPracticeRooms={hasPracticeRooms}
           />
         ))}
       </div>
@@ -531,9 +626,11 @@ interface LessonRoomItemProps {
   room: LessonRoom;
   onUpdateCapacity: (roomId: string, capacity: number) => void;
   onDelete: (room: LessonRoom) => void;
+  onTogglePracticeExclusion?: (roomId: string, exclude: boolean) => void;
+  hasPracticeRooms?: boolean;
 }
 
-const LessonRoomItem = ({ room, onUpdateCapacity, onDelete }: LessonRoomItemProps) => (
+const LessonRoomItem = ({ room, onUpdateCapacity, onDelete, onTogglePracticeExclusion, hasPracticeRooms }: LessonRoomItemProps) => (
   <div className="group-detail__practice-room-item">
     <span className="group-detail__practice-room-name">{room.name}</span>
     <div className="group-detail__practice-room-capacity">
@@ -551,6 +648,16 @@ const LessonRoomItem = ({ room, onUpdateCapacity, onDelete }: LessonRoomItemProp
         +
       </button>
     </div>
+    {hasPracticeRooms && onTogglePracticeExclusion && (
+      <button
+        type="button"
+        className={`group-detail__practice-room-status ${room.excludeFromPractice ? 'excluded' : ''}`}
+        onClick={() => onTogglePracticeExclusion(room.id, !room.excludeFromPractice)}
+        title={room.excludeFromPractice ? '예약 가능으로 변경' : '예약에서 제외'}
+      >
+        {room.excludeFromPractice ? '예약 제외' : '예약 가능'}
+      </button>
+    )}
     <button
       className="group-detail__practice-room-delete"
       onClick={() => onDelete(room)}

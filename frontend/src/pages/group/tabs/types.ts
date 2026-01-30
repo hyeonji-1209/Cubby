@@ -1,7 +1,7 @@
 import type { Group, GroupMember, SubGroup, SubGroupRequest } from '@/types';
 import type { FavoriteLocation, InstructorSubGroup } from '@/api';
 
-export type TabType = 'lesson' | 'home' | 'members' | 'subgroups' | 'practicerooms' | 'lessonrooms' | 'announcements' | 'schedules' | 'settings';
+export type TabType = 'lesson' | 'lesson-management' | 'home' | 'members' | 'subgroups' | 'practicerooms' | 'announcements' | 'schedules' | 'settings';
 
 export interface BaseTabProps {
   groupId: string;
@@ -50,6 +50,9 @@ export interface MembersTabProps extends BaseTabProps {
   pendingMembersLoading?: boolean;
   onApproveMember?: (member: GroupMember) => void;
   onRejectMember?: (member: GroupMember) => void;
+  // 수업 관리 탭 이동 관련
+  userId?: string;
+  onGoToLessonManagement?: (instructorId?: string) => void;
 }
 
 // SubGroupsTab - minimal props
@@ -103,6 +106,15 @@ export interface LessonTabProps {
   groupId: string;
   member: GroupMember;
   onEarlyLeave?: (attendanceId: string) => Promise<void>;
+}
+
+// LessonManagementTab - for instructor/owner lesson management
+export interface LessonManagementTabProps extends BaseTabProps {
+  userId?: string;
+  instructorSubGroups: InstructorSubGroup[];
+  members: GroupMember[];
+  onOpenLessonPanel: (member: GroupMember) => void;
+  initialInstructorId?: string; // 멤버탭에서 강사 클릭 시 해당 강사 선택
 }
 
 // Legacy interfaces for backward compatibility during refactoring

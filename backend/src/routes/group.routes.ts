@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { GroupController } from '../controllers/group.controller';
 import { SubGroupController } from '../controllers/subgroup.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
-import { requireGroupRole, requireGroupMember } from '../middlewares/role.middleware';
+import { requireGroupRole, requireGroupMember, requireGroupOwner } from '../middlewares/role.middleware';
 import { MemberRole } from '../models/GroupMember';
 
 const router = Router();
@@ -27,10 +27,10 @@ router.get('/:groupId', requireGroupMember, groupController.getById);
 // 모임 홈 개요 조회 (그룹 정보 + 최근 공지사항 + 이번 달 일정)
 router.get('/:groupId/overview', requireGroupMember, groupController.getOverview);
 
-// 모임 수정 (운영자, 관리자만)
+// 모임 수정 (운영자만)
 router.patch(
   '/:groupId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.update
 );
 
@@ -41,10 +41,10 @@ router.delete(
   groupController.delete
 );
 
-// 초대 코드 재생성 (운영자, 관리자만)
+// 초대 코드 재생성 (운영자만)
 router.post(
   '/:groupId/invite-code',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.regenerateInviteCode
 );
 
@@ -54,45 +54,45 @@ router.get('/:groupId/members', requireGroupMember, groupController.getMembers);
 // 강사 목록 조회 (다중 강사 모드용)
 router.get('/:groupId/instructors', requireGroupMember, groupController.getInstructors);
 
-// 가입 대기 멤버 목록 조회 (운영자, 관리자만)
+// 가입 대기 멤버 목록 조회 (운영자만)
 router.get(
   '/:groupId/pending-members',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.getPendingMembers
 );
 
-// 멤버 승인 (운영자, 관리자만)
+// 멤버 승인 (운영자만)
 router.post(
   '/:groupId/members/:memberId/approve',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.approveMember
 );
 
-// 멤버 거부 (운영자, 관리자만)
+// 멤버 거부 (운영자만)
 router.post(
   '/:groupId/members/:memberId/reject',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.rejectMember
 );
 
-// 멤버 역할 변경 (운영자, 관리자만)
+// 멤버 역할 변경 (운영자만)
 router.patch(
   '/:groupId/members/:memberId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.updateMemberRole
 );
 
-// 멤버 수업 정보 업데이트 (운영자, 관리자만 - 1:1 교육용)
+// 멤버 수업 정보 업데이트 (운영자만 - 1:1 교육용)
 router.patch(
   '/:groupId/members/:memberId/lesson-info',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.updateMemberLessonInfo
 );
 
-// 멤버 제거 (운영자, 관리자만)
+// 멤버 제거 (운영자만)
 router.delete(
   '/:groupId/members/:memberId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   groupController.removeMember
 );
 
@@ -110,10 +110,10 @@ router.get('/:groupId/subgroups', requireGroupMember, subGroupController.getSubG
 // 소모임 생성 요청 (모든 멤버 가능, 권한에 따라 바로 생성 또는 승인 대기)
 router.post('/:groupId/subgroups', requireGroupMember, subGroupController.requestCreate);
 
-// 소모임 생성 요청 목록 조회 (운영자, 관리자만)
+// 소모임 생성 요청 목록 조회 (운영자만)
 router.get(
   '/:groupId/subgroup-requests',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   subGroupController.getRequests
 );
 
@@ -134,17 +134,17 @@ router.post(
 // 소모임 상세 조회
 router.get('/:groupId/subgroups/:subGroupId', requireGroupMember, subGroupController.getById);
 
-// 소모임 수정
+// 소모임 수정 (운영자 또는 리더)
 router.patch(
   '/:groupId/subgroups/:subGroupId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER),
+  requireGroupMember, // 권한은 컨트롤러에서 확인
   subGroupController.update
 );
 
-// 소모임 삭제
+// 소모임 삭제 (운영자만)
 router.delete(
   '/:groupId/subgroups/:subGroupId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   subGroupController.delete
 );
 

@@ -2,8 +2,7 @@ import { Router } from 'express';
 import { AnnouncementController } from '../controllers/announcement.controller';
 import { CommentController } from '../controllers/comment.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
-import { requireGroupRole, requireGroupMember } from '../middlewares/role.middleware';
-import { MemberRole } from '../models/GroupMember';
+import { requireGroupMember } from '../middlewares/role.middleware';
 
 const router = Router();
 const announcementController = new AnnouncementController();
@@ -18,10 +17,10 @@ router.get('/group/:groupId', requireGroupMember, announcementController.getByGr
 // 공지사항 상세 조회
 router.get('/:announcementId', announcementController.getById);
 
-// 공지사항 작성 (운영자, 관리자, 리더만)
+// 공지사항 작성 (권한은 컨트롤러에서 확인)
 router.post(
   '/group/:groupId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER),
+  requireGroupMember,
   announcementController.create
 );
 
@@ -54,10 +53,10 @@ router.get('/:announcementId/comments', commentController.getComments);
 // 댓글 작성
 router.post('/:announcementId/comments', commentController.createComment);
 
-// 댓글 수정 (본인, 관리자, 오너만)
+// 댓글 수정 (본인, owner만)
 router.patch('/:announcementId/comments/:commentId', commentController.updateComment);
 
-// 댓글 삭제 (본인, 관리자, 오너만)
+// 댓글 삭제 (본인, owner만)
 router.delete('/:announcementId/comments/:commentId', commentController.deleteComment);
 
 // 댓글 좋아요 토글

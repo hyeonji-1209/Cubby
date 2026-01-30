@@ -153,14 +153,14 @@ const PracticeRoomsTab: React.FC<PracticeRoomsTabProps> = ({
   return (
     <div className="group-detail__practicerooms">
       <div className="group-detail__section-header">
-        <h2>연습실 예약</h2>
+        <h2>클래스 예약</h2>
       </div>
 
       {/* 운영 정보 */}
       {currentGroup.practiceRoomSettings && (
         <div className="group-detail__practiceroom-info">
           <div className="group-detail__practiceroom-info-item">
-            <span className="label">운영 시간</span>
+            <span className="label">예약 시간</span>
             <span className="value">
               {currentGroup.practiceRoomSettings.openTime} ~ {currentGroup.practiceRoomSettings.closeTime}
             </span>
@@ -268,16 +268,15 @@ const PracticeRoomsTab: React.FC<PracticeRoomsTabProps> = ({
         </div>
       </div>
 
-      {/* 연습실 목록 및 예약 */}
+      {/* 클래스 목록 및 예약 */}
       <div className="group-detail__practiceroom-list">
-        <h3>연습실 선택</h3>
+        <h3>클래스 선택</h3>
         {practiceRoomsLoading || reservationsLoading ? (
           <p className="group-detail__loading-text">불러오는 중...</p>
         ) : practiceRooms.length === 0 ? (
           <EmptyState
-            icon="🚪"
-            title="등록된 연습실이 없습니다"
-            description="설정에서 연습실을 추가해주세요."
+            title="예약 가능한 클래스가 없습니다"
+            description="설정에서 클래스를 추가해주세요."
           />
         ) : (
           <div className="group-detail__practiceroom-cards">

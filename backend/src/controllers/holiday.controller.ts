@@ -10,12 +10,12 @@ const holidayRepository = AppDataSource.getRepository(Holiday);
 const memberRepository = AppDataSource.getRepository(GroupMember);
 const groupRepository = AppDataSource.getRepository(Group);
 
-// 관리자 권한 체크
+// owner 권한 체크
 const checkAdminPermission = async (groupId: string, userId: string): Promise<boolean> => {
   const member = await memberRepository.findOne({
     where: { groupId, userId, status: MemberStatus.ACTIVE },
   });
-  return member?.role === MemberRole.OWNER || member?.role === MemberRole.ADMIN;
+  return member?.role === MemberRole.OWNER;
 };
 
 export const holidayController = {

@@ -1,8 +1,6 @@
-export { default as AcademySettings } from './AcademySettings';
 export { default as PositionSettings } from './PositionSettings';
 export { default as InstructorManagement } from './InstructorManagement';
 export { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal, MemberApprovalModal } from './GroupDetailComponents';
-export { LessonPanel } from './LessonPanel';
 export {
   Breadcrumb,
   SubGroupHeader,

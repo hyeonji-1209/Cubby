@@ -55,7 +55,7 @@ export class SubGroupController {
       }
 
       // 관리자인 경우 바로 생성, 아닌 경우 요청 생성
-      const isAdmin = [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role);
+      const isAdmin = membership.role === MemberRole.OWNER;
       const isLeaderOfParent =
         parentSubGroupId &&
         (await this.subGroupRepository.findOne({
@@ -443,7 +443,7 @@ export class SubGroupController {
       where: { groupId, userId, status: MemberStatus.ACTIVE },
     });
 
-    if (membership && [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role)) {
+    if (membership && membership.role === MemberRole.OWNER) {
       return true;
     }
 

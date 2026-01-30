@@ -4,7 +4,7 @@ export { default as SubGroupsTab } from './SubGroupsTab';
 export { default as AnnouncementsTab } from './AnnouncementsTab';
 export { default as SchedulesTab } from './SchedulesTab';
 export { default as PracticeRoomsTab } from './PracticeRoomsTab';
-export { default as LessonRoomReservationsTab } from './LessonRoomReservationsTab';
 export { default as SettingsTab } from './SettingsTab';
 export { default as LessonTab } from './LessonTab';
+export { default as LessonManagementTab } from './LessonManagementTab';
 export * from './types';

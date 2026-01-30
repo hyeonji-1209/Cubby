@@ -282,7 +282,7 @@
     padding: 10px 20px;
     border: none;
     border-radius: $radius-md;
-    background: $primary;
+    background: $gray-800;
     color: $white;
     font-size: $font-sm;
     font-weight: 500;
@@ -290,7 +290,7 @@
     transition: all 0.2s;
 
     &:hover:not(:disabled) {
-      background: $primary-600;
+      background: $gray-900;
     }
 
     &:disabled {
@@ -495,7 +495,7 @@
     padding: 4px 8px;
     background: $white;
     border: 1px solid $gray-200;
-    border-radius: $radius-full;
+    border-radius: $radius-sm;
     font-size: $font-xs;
   }
 

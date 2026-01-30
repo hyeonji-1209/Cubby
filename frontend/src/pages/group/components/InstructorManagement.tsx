@@ -26,9 +26,9 @@ const InstructorManagement: React.FC<InstructorManagementProps> = ({
   const [loading, setLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(false);
 
-  // 강사 후보 (admin 역할)
+  // 강사 후보 (title이 '강사'이거나 owner)
   const instructorCandidates = members.filter(
-    (m) => m.role === 'admin' || m.role === 'owner'
+    (m) => m.title === '강사' || m.role === 'owner'
   );
 
   // 강사 소그룹 목록 조회

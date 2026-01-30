@@ -1,10 +1,12 @@
-import { QRCodeSVG } from 'qrcode.react';
+import { useState } from 'react';
 import { Modal, LocationPicker } from '@/components';
 import { useSettingsTab } from './hooks';
-import { GroupInfoSection, PracticeRoomSection, OperatingHoursSection, LessonRoomSection, LocationSection, DangerSection, LeaveSection } from './components';
+import { GroupInfoSection, OperatingHoursSection, LessonRoomSection, LocationSection, DangerSection, LeaveSection } from './components';
 import { InstructorManagement } from '../components';
 import PositionsTab from '../PositionsTab';
 import type { SettingsTabProps } from './types';
+
+type SettingsSubTab = 'basic' | 'members' | 'facilities' | 'danger';
 
 const SettingsTab: React.FC<SettingsTabProps> = ({
   groupId,
@@ -17,26 +19,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   onShowDeleteModal,
 }) => {
   const {
-    // Practice rooms
-    practiceRooms,
-    practiceRoomsLoading,
-    practiceRoomSettings,
-    practiceRoomSettingsChanged,
-    practiceRoomSaving,
-    newPracticeRoomName,
-    setNewPracticeRoomName,
-    newPracticeRoomCapacity,
-    setNewPracticeRoomCapacity,
-    updatePracticeRoomSetting,
-    handleSavePracticeRoomSettings,
-    handleAddPracticeRoom,
-    handleUpdateRoomCapacity,
-    handleDeletePracticeRoom,
-    // QR Code
-    showQRModal,
-    selectedRoomForQR,
-    handleShowQRCode,
-    handleCloseQRModal,
     // Feature toggle
     handleFeatureToggle,
     // Basic info
@@ -59,7 +41,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     setLocationForm,
     handleSaveLocation,
     handleDeleteLocation,
-    // Lesson rooms (1:1 수업용)
+    // Lesson rooms (1:1 수업용) - 클래스 예약 통합
     lessonRooms,
     lessonRoomsLoading,
     newLessonRoomName,
@@ -69,99 +51,151 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     handleAddLessonRoom,
     handleUpdateLessonRoomCapacity,
     handleDeleteLessonRoom,
+    handleTogglePracticeExclusion,
+    // 클래스 예약 설정
+    reservationSettings,
+    reservationSettingsChanged,
+    reservationSettingsSaving,
+    updateReservationSetting,
+    handleSaveReservationSettings,
   } = useSettingsTab({ groupId, currentGroup });
+
+  const [activeSubTab, setActiveSubTab] = useState<SettingsSubTab>('basic');
+
+  // 멤버 관리 탭 표시 조건 (강사 관리 또는 직책 관리가 있을 때)
+  const showMembersTab = isAdmin && (
+    (currentGroup.type === 'education' && !currentGroup.hasClasses && currentGroup.hasMultipleInstructors) ||
+    groupId
+  );
+
+  // 시설 관리 탭 표시 조건
+  const showFacilitiesTab = isAdmin && currentGroup.type === 'education' && (
+    !currentGroup.hasClasses || currentGroup.hasPracticeRooms
+  );
 
   return (
     <div className="group-detail__settings">
       {isAdmin ? (
         <>
-          {/* 모임 정보 섹션 */}
-          <GroupInfoSection
-            currentGroup={currentGroup}
-            isOwner={isOwner}
-            isAdmin={isAdmin}
-            onFeatureToggle={handleFeatureToggle}
-            onUpdateBasicInfo={handleUpdateBasicInfo}
-            basicInfoSaving={basicInfoSaving}
-          />
+          {/* 설정 서브탭 네비게이션 */}
+          <div className="settings-tabs">
+            <button
+              className={`settings-tabs__btn ${activeSubTab === 'basic' ? 'active' : ''}`}
+              onClick={() => setActiveSubTab('basic')}
+            >
+              기본 설정
+            </button>
+            {showMembersTab && (
+              <button
+                className={`settings-tabs__btn ${activeSubTab === 'members' ? 'active' : ''}`}
+                onClick={() => setActiveSubTab('members')}
+              >
+                멤버 관리
+              </button>
+            )}
+            {showFacilitiesTab && (
+              <button
+                className={`settings-tabs__btn ${activeSubTab === 'facilities' ? 'active' : ''}`}
+                onClick={() => setActiveSubTab('facilities')}
+              >
+                시설 관리
+              </button>
+            )}
+            {isOwner && (
+              <button
+                className={`settings-tabs__btn settings-tabs__btn--danger ${activeSubTab === 'danger' ? 'active' : ''}`}
+                onClick={() => setActiveSubTab('danger')}
+              >
+                모임 관리
+              </button>
+            )}
+          </div>
 
-          {/* 학원 운영시간 설정 (학원 타입 전용) */}
-          {currentGroup.type === 'education' && (
-            <OperatingHoursSection
-              operatingHours={operatingHours}
-              operatingHoursChanged={operatingHoursChanged}
-              operatingHoursSaving={operatingHoursSaving}
-              onSettingChange={updateOperatingHoursSetting}
-              onSaveSettings={handleSaveOperatingHours}
-            />
-          )}
+          {/* 기본 설정 탭 */}
+          {activeSubTab === 'basic' && (
+            <div className="settings-content">
+              <GroupInfoSection
+                currentGroup={currentGroup}
+                isOwner={isOwner}
+                isAdmin={isAdmin}
+                onFeatureToggle={handleFeatureToggle}
+                onUpdateBasicInfo={handleUpdateBasicInfo}
+                basicInfoSaving={basicInfoSaving}
+              />
 
-          {/* 강사 관리 섹션 (1:1 교육 + 다중 강사 모드) */}
-          {currentGroup.type === 'education' && !currentGroup.hasClasses && currentGroup.hasMultipleInstructors && (
-            <div className="group-detail__setting-section">
-              <InstructorManagement
-                groupId={groupId}
-                members={members}
+              {currentGroup.type === 'education' && (
+                <OperatingHoursSection
+                  operatingHours={operatingHours}
+                  operatingHoursChanged={operatingHoursChanged}
+                  operatingHoursSaving={operatingHoursSaving}
+                  onSettingChange={updateOperatingHoursSetting}
+                  onSaveSettings={handleSaveOperatingHours}
+                />
+              )}
+
+              <LocationSection
+                favoriteLocations={favoriteLocations}
+                onOpenModal={openLocationModal}
+                onDelete={handleDeleteLocation}
               />
             </div>
           )}
 
-          {/* 직책 관리 섹션 */}
-          {groupId && (
-            <div className="group-detail__setting-section">
-              <PositionsTab groupId={groupId} members={members} isAdmin={isAdmin} groupType={currentGroup.type} />
+          {/* 멤버 관리 탭 */}
+          {activeSubTab === 'members' && showMembersTab && (
+            <div className="settings-content">
+              {currentGroup.type === 'education' && !currentGroup.hasClasses && currentGroup.hasMultipleInstructors && (
+                <div className="group-detail__setting-section">
+                  <InstructorManagement
+                    groupId={groupId}
+                    members={members}
+                  />
+                </div>
+              )}
+
+              {groupId && (
+                <div className="group-detail__setting-section">
+                  <PositionsTab groupId={groupId} members={members} isAdmin={isAdmin} groupType={currentGroup.type} />
+                </div>
+              )}
             </div>
           )}
 
-          {/* 수업실 관리 섹션 (1:1 수업 전용) */}
-          {currentGroup.type === 'education' && !currentGroup.hasClasses && (
-            <LessonRoomSection
-              lessonRooms={lessonRooms}
-              lessonRoomsLoading={lessonRoomsLoading}
-              newLessonRoomName={newLessonRoomName}
-              setNewLessonRoomName={setNewLessonRoomName}
-              newLessonRoomCapacity={newLessonRoomCapacity}
-              setNewLessonRoomCapacity={setNewLessonRoomCapacity}
-              onAddRoom={handleAddLessonRoom}
-              onUpdateCapacity={handleUpdateLessonRoomCapacity}
-              onDeleteRoom={handleDeleteLessonRoom}
-            />
+          {/* 시설 관리 탭 */}
+          {activeSubTab === 'facilities' && showFacilitiesTab && (
+            <div className="settings-content">
+              {currentGroup.type === 'education' && !currentGroup.hasClasses && (
+                <LessonRoomSection
+                  lessonRooms={lessonRooms}
+                  lessonRoomsLoading={lessonRoomsLoading}
+                  newLessonRoomName={newLessonRoomName}
+                  setNewLessonRoomName={setNewLessonRoomName}
+                  newLessonRoomCapacity={newLessonRoomCapacity}
+                  setNewLessonRoomCapacity={setNewLessonRoomCapacity}
+                  onAddRoom={handleAddLessonRoom}
+                  onUpdateCapacity={handleUpdateLessonRoomCapacity}
+                  onDeleteRoom={handleDeleteLessonRoom}
+                  onTogglePracticeExclusion={handleTogglePracticeExclusion}
+                  hasPracticeRooms={currentGroup.hasPracticeRooms}
+                  reservationSettings={reservationSettings}
+                  reservationSettingsChanged={reservationSettingsChanged}
+                  reservationSettingsSaving={reservationSettingsSaving}
+                  onReservationSettingChange={updateReservationSetting}
+                  onSaveReservationSettings={handleSaveReservationSettings}
+                />
+              )}
+
+            </div>
           )}
 
-          {/* 연습실 관리 섹션 (학원 타입 + 연습실 ON) */}
-          {currentGroup.type === 'education' && currentGroup.hasPracticeRooms && (
-            <PracticeRoomSection
-              practiceRooms={practiceRooms}
-              practiceRoomsLoading={practiceRoomsLoading}
-              practiceRoomSettings={practiceRoomSettings}
-              practiceRoomSettingsChanged={practiceRoomSettingsChanged}
-              practiceRoomSaving={practiceRoomSaving}
-              newPracticeRoomName={newPracticeRoomName}
-              setNewPracticeRoomName={setNewPracticeRoomName}
-              newPracticeRoomCapacity={newPracticeRoomCapacity}
-              setNewPracticeRoomCapacity={setNewPracticeRoomCapacity}
-              onSettingChange={updatePracticeRoomSetting}
-              onSaveSettings={handleSavePracticeRoomSettings}
-              onAddRoom={handleAddPracticeRoom}
-              onUpdateCapacity={handleUpdateRoomCapacity}
-              onDeleteRoom={handleDeletePracticeRoom}
-              onShowQRCode={handleShowQRCode}
-            />
-          )}
-
-          {/* 모임 장소 설정 섹션 */}
-          <LocationSection
-            favoriteLocations={favoriteLocations}
-            onOpenModal={openLocationModal}
-            onDelete={handleDeleteLocation}
-          />
-
-          {/* 모임 삭제 (운영자만) */}
-          {isOwner && (
-            <DangerSection
-              memberCount={memberCount}
-              onShowDeleteModal={onShowDeleteModal}
-            />
+          {/* 모임 관리 (위험 영역) 탭 */}
+          {activeSubTab === 'danger' && isOwner && (
+            <div className="settings-content">
+              <DangerSection
+                memberCount={memberCount}
+                onShowDeleteModal={onShowDeleteModal}
+              />
+            </div>
           )}
         </>
       ) : (
@@ -205,30 +239,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
       </Modal>
 
-      {/* 연습실 QR 코드 모달 */}
-      <Modal
-        isOpen={showQRModal}
-        onClose={handleCloseQRModal}
-        title={`${selectedRoomForQR?.name || '연습실'} QR 코드`}
-        size="sm"
-      >
-        <div className="qr-modal">
-          <div className="qr-modal__code">
-            <QRCodeSVG
-              value={`${window.location.origin}/groups/${groupId}/practice-rooms/${selectedRoomForQR?.id}`}
-              size={200}
-              level="M"
-              marginSize={2}
-            />
-          </div>
-          <p className="qr-modal__hint">
-            이 QR 코드를 스캔하면 연습실 예약 페이지로 이동합니다.
-          </p>
-          <p className="qr-modal__room-info">
-            수용 인원: {selectedRoomForQR?.capacity}명
-          </p>
-        </div>
-      </Modal>
     </div>
   );
 };

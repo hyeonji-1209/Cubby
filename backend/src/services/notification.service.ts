@@ -40,7 +40,7 @@ export class NotificationService {
     await this.notificationRepository.save(notifications);
   }
 
-  // 모임의 관리자들에게 알림 발송
+  // 모임의 운영자들에게 알림 발송 (새로운 시스템: owner만)
   async notifyGroupAdmins(
     groupId: string,
     params: {
@@ -51,14 +51,13 @@ export class NotificationService {
       excludeUserId?: string; // 특정 사용자 제외
     }
   ): Promise<void> {
-    const adminRoles = [MemberRole.OWNER, MemberRole.ADMIN];
-
+    // 새로운 시스템: owner만 관리자로 취급
     const admins = await this.memberRepository.find({
-      where: adminRoles.map((role) => ({
+      where: {
         groupId,
-        role,
+        role: MemberRole.OWNER,
         status: MemberStatus.ACTIVE,
-      })),
+      },
     });
 
     const adminIds = admins

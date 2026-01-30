@@ -9,6 +9,7 @@ export interface LessonRoom {
   isActive: boolean;
   capacity: number;
   color?: string;
+  excludeFromPractice: boolean; // 연습실로 사용하지 않을 경우 true
   createdAt: string;
   updatedAt: string;
 }
@@ -17,6 +18,7 @@ export interface CreateLessonRoomDto {
   name: string;
   capacity?: number;
   color?: string;
+  excludeFromPractice?: boolean;
 }
 
 export interface UpdateLessonRoomDto {
@@ -24,6 +26,7 @@ export interface UpdateLessonRoomDto {
   capacity?: number;
   color?: string;
   isActive?: boolean;
+  excludeFromPractice?: boolean;
 }
 
 // 예약 관련 타입

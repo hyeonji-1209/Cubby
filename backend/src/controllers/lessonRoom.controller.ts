@@ -36,12 +36,12 @@ const timesOverlap = (
   return s1 < e2 && s2 < e1;
 };
 
-// 권한 체크 헬퍼
+// owner 권한 체크 헬퍼
 const checkAdminPermission = async (groupId: string, userId: string): Promise<boolean> => {
   const member = await groupMemberRepository.findOne({
     where: { groupId, userId },
   });
-  return member?.role === MemberRole.OWNER || member?.role === MemberRole.ADMIN;
+  return member?.role === MemberRole.OWNER;
 };
 
 export const lessonRoomController = {
@@ -452,7 +452,7 @@ export const lessonRoomController = {
         order: { date: 'ASC', startTime: 'ASC' },
       });
 
-      const isAdmin = member.role === MemberRole.OWNER || member.role === MemberRole.ADMIN;
+      const isAdmin = member.role === MemberRole.OWNER;
 
       return res.json({
         data: reservations.map((r) => ({
@@ -627,7 +627,7 @@ export const lessonRoomController = {
       }
 
       // 본인 예약이거나 관리자인지 확인
-      const isAdmin = member.role === MemberRole.OWNER || member.role === MemberRole.ADMIN;
+      const isAdmin = member.role === MemberRole.OWNER;
       if (reservation.userId !== userId && !isAdmin) {
         return res.status(403).json({ message: '본인 예약만 취소할 수 있습니다.' });
       }

@@ -168,7 +168,7 @@ interface JoinedGroupInfo {
   positions?: { id: string; name: string; color?: string }[];
 }
 
-type InviteStep = 'code' | 'guardian' | 'position';
+type InviteStep = 'code' | 'guardian' | 'position' | 'complete';
 
 // 자녀 정보 타입
 interface ChildFormData {
@@ -186,8 +186,8 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
   const { joinGroup, fetchMyGroups } = useGroupStore();
   const toast = useToast();
 
-  // 가입 유형 상태 ('self' | 'guardian' | 'other')
-  const [memberType, setMemberType] = useState<'self' | 'guardian' | 'other'>('self');
+  // 가입 유형 상태 ('self' | 'guardian' | 'instructor')
+  const [memberType, setMemberType] = useState<'self' | 'guardian' | 'instructor'>('self');
   const [children, setChildren] = useState<ChildFormData[]>([{ name: '', birthYear: '', note: '' }]);
 
   // 직책 관련 상태
@@ -226,6 +226,48 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
     onClose();
   }, [onClose]);
 
+  // 교육 타입에서 직책 선택 없이 바로 가입 처리
+  const handleCompleteJoin = useCallback(async () => {
+    if (!joinedGroup) return;
+
+    setError('');
+    const isGuardian = memberType === 'guardian';
+    const isInstructor = memberType === 'instructor';
+    await withLoading(async () => {
+      const validChildren = isGuardian
+        ? children
+            .filter(child => child.name.trim())
+            .map(child => ({
+              name: child.name.trim(),
+              birthYear: child.birthYear ? parseInt(child.birthYear) : undefined,
+              note: child.note.trim() || undefined,
+            }))
+        : undefined;
+
+      const result = await joinGroup(inviteCode.trim(), {
+        isGuardian,
+        isInstructor,
+        childInfo: validChildren,
+      });
+
+      if (result.alreadyPending) {
+        toast.info('이미 가입 승인 대기 중입니다. 관리자의 승인을 기다려주세요.');
+      } else if (result.isPending) {
+        toast.info('가입 신청이 완료되었습니다. 관리자의 승인을 기다려주세요.');
+      } else {
+        toast.success('모임에 가입되었습니다!');
+        await fetchMyGroups();
+      }
+      handleClose();
+    }).catch(() => setError('가입에 실패했습니다'));
+  }, [joinedGroup, memberType, children, inviteCode, joinGroup, toast, fetchMyGroups, handleClose, withLoading]);
+
+  useEffect(() => {
+    if (step === 'complete' && !loading) {
+      handleCompleteJoin();
+    }
+  }, [step, loading, handleCompleteJoin]);
+
   if (!isOpen) return null;
 
   // Step 1: 초대 코드 검증만 (가입은 아직 안함)
@@ -254,8 +296,11 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
       // 보호자 허용 그룹이면 보호자 선택 단계로
       if (result.allowGuardians) {
         setStep('guardian');
+      } else if (result.type === 'education') {
+        // 교육 타입은 직책 선택 없이 바로 가입
+        setStep('complete');
       } else {
-        // 아니면 바로 직책 선택 단계로
+        // 그 외는 직책 선택 단계로
         setStep('position');
       }
     }).catch(() => setError('유효하지 않은 초대 코드입니다'));
@@ -272,14 +317,18 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
       }
     }
     setError('');
-    setStep('position');
+    // 교육 타입은 직책 선택 없이 바로 가입 처리
+    if (joinedGroup?.type === 'education') {
+      setStep('complete');
+    } else {
+      setStep('position');
+    }
   };
 
   // Step 3: 직책 설정 후 가입 완료
   const handleComplete = async () => {
     const positions = joinedGroup?.positions || [];
     const hasPositions = positions.length > 0;
-    const selectedPosition = positions.find(p => p.id === selectedPositionId);
 
     if (hasPositions && !selectedPositionId) {
       setError(`${positionLabel}을 선택해주세요`);
@@ -290,6 +339,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
 
     setError('');
     const isGuardian = memberType === 'guardian';
+    const isInstructor = memberType === 'instructor';
     await withLoading(async () => {
       // 유효한 자녀 정보만 필터링 (이름이 있는 것만)
       const validChildren = isGuardian
@@ -306,6 +356,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
       // positionId는 joinByInviteCode에서 직접 설정됨
       const result = await joinGroup(inviteCode.trim(), {
         isGuardian,
+        isInstructor,
         childInfo: validChildren,
         positionId: selectedPositionId || undefined,
       });
@@ -392,14 +443,14 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
                 />
                 <span className="sidebar-modal__radio-label">보호자</span>
               </label>
-              <label className={`sidebar-modal__radio ${memberType === 'other' ? 'active' : ''}`}>
+              <label className={`sidebar-modal__radio ${memberType === 'instructor' ? 'active' : ''}`}>
                 <input
                   type="radio"
                   name="memberType"
-                  checked={memberType === 'other'}
-                  onChange={() => setMemberType('other')}
+                  checked={memberType === 'instructor'}
+                  onChange={() => setMemberType('instructor')}
                 />
-                <span className="sidebar-modal__radio-label">기타</span>
+                <span className="sidebar-modal__radio-label">강사</span>
               </label>
             </div>
 
@@ -474,7 +525,7 @@ const InviteModal = ({ isOpen, onClose }: InviteModalProps) => {
                 onClick={handleGuardianNext}
                 disabled={loading || (memberType === 'guardian' && !children.some(c => c.name.trim()))}
               >
-                다음
+                {loading ? '가입 중...' : joinedGroup?.type === 'education' ? '가입하기' : '다음'}
               </button>
             </div>
           </>

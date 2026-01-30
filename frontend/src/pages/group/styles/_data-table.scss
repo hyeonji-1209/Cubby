@@ -18,7 +18,7 @@
 
       &:last-child {
         text-align: right;
-        width: 80px;
+        min-width: 160px;
       }
     }
   }
@@ -265,15 +265,17 @@
     display: flex;
     gap: $spacing-xs;
     justify-content: flex-end;
+    flex-wrap: nowrap;
+    white-space: nowrap;
   }
 
   &__action-btn {
-    padding: $spacing-xs $spacing-sm;
+    padding: $spacing-sm $spacing-md;
     background: $gray-100;
     color: $gray-600;
-    font-size: $font-size-xs;
+    font-size: $font-size-sm;
     font-weight: $font-weight-medium;
-    border-radius: $radius-sm;
+    border-radius: $radius-md;
     transition: all $transition-fast;
 
     &:hover {
@@ -355,13 +357,13 @@
 
   // 수업 버튼 (1:1 교육용)
   &__lesson-btn {
-    padding: $spacing-xs $spacing-sm;
+    padding: $spacing-sm $spacing-md;
     background: $gray-100;
     border: none;
     color: $gray-600;
     cursor: pointer;
-    border-radius: $radius-sm;
-    font-size: $font-size-xs;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
     font-weight: $font-weight-medium;
     transition: all $transition-fast;
 
@@ -377,13 +379,17 @@
 
       &:hover {
         background: color.adjust($success, $lightness: -10%);
+        color: white;
       }
     }
 
     @keyframes pulse-live {
-      0%, 100% {
+
+      0%,
+      100% {
         box-shadow: 0 0 0 0 rgba($success, 0.4);
       }
+
       50% {
         box-shadow: 0 0 0 4px rgba($success, 0);
       }
@@ -455,4 +461,3 @@
     margin: 0;
   }
 }
-

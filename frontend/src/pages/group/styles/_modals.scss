@@ -19,7 +19,7 @@
 
   &__name {
     font-size: $font-size-base;
-    font-weight: $font-weight-semibold;
+    font-weight: $font-weight-medium;
     color: $gray-900;
     margin: 0 0 $spacing-xs 0;
   }
@@ -30,15 +30,10 @@
     margin-bottom: $spacing-xs;
   }
 
-  &__requester {
-    font-size: $font-size-xs;
-    color: $gray-500;
-    margin: 0;
-  }
-
+  &__requester,
   &__date {
     font-size: $font-size-xs;
-    color: $gray-400;
+    color: $gray-500;
     margin: 0;
   }
 
@@ -53,14 +48,14 @@
 
   &__approve {
     padding: $spacing-sm $spacing-md;
-    background: $success;
+    background: $primary-500;
     color: white;
     font-size: $font-size-sm;
     font-weight: $font-weight-medium;
     border-radius: $radius-md;
 
     &:hover {
-      background: color.adjust($success, $lightness: -10%);
+      background: $primary-600;
     }
   }
 
@@ -78,8 +73,9 @@
   }
 }
 
-// 모달 추가 스타일
+// 모달 스타일
 .modal {
+  // ============ 폼 요소 ============
   &__field {
     margin-bottom: $spacing-md;
   }
@@ -99,13 +95,11 @@
     padding: $spacing-sm $spacing-md;
     border: 1px solid $gray-300;
     border-radius: $radius-md;
-    font-size: $font-size-base;
-    transition: border-color $transition-fast, box-shadow $transition-fast;
+    font-size: $font-size-sm;
 
     &:focus {
       outline: none;
       border-color: $primary-500;
-      box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
     }
 
     &::placeholder {
@@ -115,6 +109,7 @@
 
   &__textarea {
     min-height: 80px;
+    resize: vertical;
   }
 
   &__hint {
@@ -123,15 +118,20 @@
     margin-top: $spacing-xs;
   }
 
-  &__select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
+  &__row {
+    display: flex;
+    gap: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+    }
   }
 
+  &__field--half {
+    flex: 1;
+  }
+
+  // ============ 멤버 정보 ============
   &__member-info {
     display: flex;
     align-items: center;
@@ -146,15 +146,23 @@
     width: 48px;
     height: 48px;
     border-radius: $radius-full;
-    background: $primary-100;
-    color: $primary-600;
+    background: $gray-200;
+    color: $gray-600;
     @include flex-center;
-    font-weight: $font-weight-semibold;
+    font-weight: $font-weight-medium;
     font-size: $font-size-lg;
+    flex-shrink: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: $radius-full;
+    }
   }
 
   &__member-name {
-    font-weight: $font-weight-semibold;
+    font-weight: $font-weight-medium;
     color: $gray-900;
     margin: 0;
   }
@@ -165,40 +173,39 @@
     margin: 0;
   }
 
-  &__checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    cursor: pointer;
-    font-size: $font-size-sm;
-    color: $gray-700;
-
-    input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: $primary-500;
-      cursor: pointer;
-    }
-
-    span {
-      user-select: none;
-    }
-  }
-
-  // 일정용 스타일
-  &__row {
-    display: flex;
-    gap: $spacing-md;
-
-    @include mobile {
-      flex-direction: column;
-    }
-  }
-
-  &__field--half {
+  &__member-details {
     flex: 1;
+    min-width: 0;
   }
 
+  // 역할 토글 버튼
+  &__role-toggle {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  &__role-btn {
+    padding: 4px 10px;
+    background: white;
+    color: $gray-500;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $gray-400;
+    }
+
+    &.active {
+      background: $gray-900;
+      color: white;
+      border-color: $gray-900;
+    }
+  }
+
+  // ============ 색상 선택 ============
   &__color-picker {
     display: flex;
     gap: $spacing-sm;
@@ -211,7 +218,6 @@
     border-radius: $radius-full;
     border: 2px solid transparent;
     cursor: pointer;
-    transition: all $transition-fast;
 
     &:hover {
       transform: scale(1.1);
@@ -219,68 +225,66 @@
 
     &.active {
       border-color: $gray-900;
-      box-shadow: 0 0 0 2px white, 0 0 0 4px $gray-900;
     }
   }
 
+  // ============ 체크박스 ============
+  &__checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    color: $gray-700;
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: $primary-500;
+    }
+  }
+
+  // ============ 상태 ============
   &__loading {
     text-align: center;
     padding: $spacing-lg;
     color: $gray-500;
   }
 
-  // 출석 통계 (1:1 수업 멤버 관리)
+  &__empty-text {
+    font-size: $font-size-sm;
+    color: $gray-500;
+  }
+
+  // ============ 출석 통계 ============
   &__attendance-stats {
     margin-bottom: $spacing-lg;
-    padding: $spacing-md;
-    background: $gray-50;
-    border-radius: $radius-md;
   }
 
   &__stats-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    display: flex;
     gap: $spacing-sm;
     margin-top: $spacing-sm;
   }
 
   &__stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex: 1;
+    text-align: center;
     padding: $spacing-sm;
+    background: $gray-50;
     border-radius: $radius-md;
-    background: white;
 
-    &--present {
-      border: 1px solid $success-100;
-      .modal__stat-value { color: $success; }
-    }
-
-    &--late {
-      border: 1px solid $warning-100;
-      .modal__stat-value { color: $warning; }
-    }
-
-    &--absent {
-      border: 1px solid $error-100;
-      .modal__stat-value { color: $error; }
-    }
-
-    &--excused {
-      border: 1px solid $gray-200;
-      .modal__stat-value { color: $gray-500; }
-    }
-
-    &--early-leave {
-      border: 1px solid $warning-100;
-      .modal__stat-value { color: color.adjust($warning, $lightness: -10%); }
-    }
+    &--present .modal__stat-value { color: $success; }
+    &--late .modal__stat-value { color: $warning; }
+    &--absent .modal__stat-value { color: $error; }
+    &--excused .modal__stat-value { color: $gray-500; }
+    &--early-leave .modal__stat-value { color: $warning; }
   }
 
   &__stat-value {
-    font-size: $font-size-xl;
-    font-weight: $font-weight-bold;
+    font-size: $font-size-lg;
+    font-weight: $font-weight-medium;
+    color: $gray-900;
   }
 
   &__stat-label {
@@ -292,35 +296,228 @@
     text-align: center;
     margin-top: $spacing-sm;
     font-size: $font-size-xs;
+    color: $gray-500;
+  }
+
+  // ============ 수업 정보 ============
+  &__lesson-info {
+    margin-bottom: $spacing-lg;
+  }
+
+  &__lesson-header {
+    margin-bottom: $spacing-xs;
+  }
+
+  &__info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__info-value {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-medium;
+    color: $gray-900;
+  }
+
+  &__info-link {
+    padding: 0;
+    background: none;
+    border: none;
+    color: $primary-500;
+    font-size: $font-size-sm;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // ============ 납부일/급여일 버튼 ============
+  &__salary-btns {
+    display: flex;
+    gap: $spacing-xs;
+  }
+
+  &__salary-btn {
+    flex: 1;
+    padding: $spacing-sm;
+    background: white;
+    color: $gray-600;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    text-align: center;
+
+    &:hover {
+      border-color: $gray-400;
+    }
+
+    &.active {
+      background: $primary-500;
+      color: white;
+      border-color: $primary-500;
+    }
+  }
+
+  &__salary-input {
+    flex: 1;
+    padding: $spacing-sm;
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    text-align: center;
+    -moz-appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  // ============ 스케줄 태그 ============
+  &__schedule-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  &__schedule-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-700;
+  }
+
+  &__schedule-tag-day {
+    color: $gray-900;
+  }
+
+  &__schedule-tag-time {
+    color: $gray-600;
+  }
+
+  &__schedule-tag-room {
+    color: $gray-500;
+    font-size: $font-size-xs;
+
+    &::before {
+      content: '·';
+      margin-right: 4px;
+    }
+  }
+
+  &__schedule-tag-remove {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
     color: $gray-400;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 2px;
+    padding: 0;
+
+    &:hover {
+      color: $gray-600;
+    }
   }
 
-  // 승인 모달 스타일
-  &__approval {
-    padding: $spacing-sm 0;
+  &__schedule-add-btn {
+    padding: 6px 10px;
+    background: white;
+    color: $gray-500;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $gray-400;
+      color: $gray-600;
+    }
   }
 
-  &__approval-member {
+  // ============ 버튼 ============
+  &__btn-cancel-sm {
+    padding: 6px 12px;
+    background: $gray-100;
+    color: $gray-600;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    cursor: pointer;
+
+    &:hover {
+      background: $gray-200;
+    }
+  }
+
+  &__btn-confirm {
+    padding: 6px 12px;
+    background: $primary-500;
+    color: white;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+
+    &:hover {
+      background: $primary-600;
+    }
+  }
+
+  // ============ 승인 모달 ============
+  &__approval-compact {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
+
+  &__approval-card {
     display: flex;
     align-items: center;
     gap: $spacing-md;
     padding: $spacing-md;
-    background: $primary-50;
+    background: $gray-50;
     border-radius: $radius-md;
-    margin-bottom: $spacing-lg;
   }
 
-  &__approval-avatar {
+  &__approval-card-avatar {
     width: 48px;
     height: 48px;
     border-radius: $radius-full;
-    background: $primary-100;
-    color: $primary-600;
-    @include flex-center;
-    font-weight: $font-weight-semibold;
+    background: $gray-200;
+    color: $gray-600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: $font-size-lg;
-    overflow: hidden;
+    font-weight: $font-weight-medium;
     flex-shrink: 0;
+    overflow: hidden;
 
     img {
       width: 100%;
@@ -329,158 +526,279 @@
     }
   }
 
-  &__approval-info {
+  &__approval-card-info {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
   }
 
-  &__approval-name {
-    font-weight: $font-weight-semibold;
+  &__approval-card-name {
+    font-size: $font-size-base;
+    font-weight: $font-weight-medium;
     color: $gray-900;
   }
 
-  &__approval-email {
+  &__approval-card-meta {
     font-size: $font-size-sm;
     color: $gray-500;
-  }
-
-  // 스케줄 관련 스타일
-  &__schedule-list {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-xs;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__schedule-item {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
-    padding: $spacing-xs $spacing-sm;
-    background: $gray-50;
-    border-radius: $radius-md;
-    font-size: $font-size-sm;
+    flex-wrap: wrap;
   }
 
-  &__schedule-day {
-    font-weight: $font-weight-medium;
-    color: $primary-600;
-    min-width: 50px;
-  }
-
-  &__schedule-time {
-    color: $gray-700;
-  }
-
-  &__schedule-room {
-    font-size: $font-size-xs;
-    color: $gray-500;
+  &__approval-card-role {
     padding: 2px 6px;
-    background: white;
-    border-radius: $radius-sm;
+    background: $gray-200;
+    color: $gray-600;
+    border-radius: $radius-md;
+    font-size: $font-size-xs;
   }
 
-  &__schedule-remove {
-    margin-left: auto;
-    width: 20px;
-    height: 20px;
-    @include flex-center;
-    background: $gray-200;
-    border: none;
-    border-radius: $radius-full;
-    color: $gray-500;
-    font-size: $font-size-sm;
-    cursor: pointer;
-    transition: all $transition-fast;
+  &__approval-settings {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-md;
+  }
 
-    &:hover {
-      background: $error;
-      color: white;
+  &__approval-row {
+    display: flex;
+    align-items: flex-start;
+    gap: $spacing-md;
+
+    &--payment {
+      padding-top: $spacing-md;
+      border-top: 1px solid $gray-200;
     }
   }
 
-  &__schedule-form {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: $spacing-sm;
-    padding: $spacing-sm;
-    background: $gray-50;
-    border-radius: $radius-md;
-    margin-bottom: $spacing-sm;
+  &__approval-row-label {
+    width: 70px;
+    flex-shrink: 0;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $gray-700;
+    padding-top: 8px;
   }
 
-  &__schedule-separator {
-    color: $gray-400;
-  }
-
-  &__schedule-form-actions {
+  &__approval-role-picker {
+    flex: 1;
     display: flex;
     gap: $spacing-xs;
-    width: 100%;
+  }
+
+  &__approval-role-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: white;
+    color: $gray-600;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    text-align: center;
+
+    &:hover {
+      border-color: $gray-400;
+    }
+
+    &.active {
+      background: $gray-900;
+      color: white;
+      border-color: $gray-900;
+    }
+  }
+
+  &__approval-schedule {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+  }
+
+  &__approval-schedule-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__approval-schedule-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    color: $gray-700;
+  }
+
+  &__approval-schedule-tag-remove {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: $gray-400;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0;
+
+    &:hover {
+      color: $gray-600;
+    }
+  }
+
+  &__approval-schedule-form {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    padding: $spacing-md;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
     margin-top: $spacing-xs;
   }
 
-  &__input--time {
-    width: 100px;
-    padding: $spacing-xs $spacing-sm;
-  }
-
-  &__input--number {
-    width: 60px;
-    padding: $spacing-xs $spacing-sm;
-    text-align: center;
-  }
-
-  &__select--small {
-    width: auto;
-    min-width: 80px;
-    padding: $spacing-xs $spacing-sm;
-    padding-right: 2rem;
-    font-size: $font-size-sm;
-  }
-
-  &__btn {
-    padding: $spacing-sm $spacing-md;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    border-radius: $radius-md;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &--small {
-      padding: $spacing-xs $spacing-sm;
-    }
-
-    &--outline {
-      background: white;
-      border: 1px dashed $gray-300;
-      color: $gray-600;
-
-      &:hover {
-        border-color: $primary-500;
-        color: $primary-500;
-      }
-    }
-
-    &--secondary {
-      background: $gray-200;
-      color: $gray-700;
-      border: none;
-
-      &:hover {
-        background: $gray-300;
-      }
-    }
-  }
-
-  &__payment-day {
+  &__approval-schedule-form-row {
     display: flex;
     align-items: center;
     gap: $spacing-sm;
+    flex-wrap: wrap;
+    font-size: $font-size-sm;
+    color: $gray-600;
+
+    > span {
+      color: $gray-400;
+    }
+  }
+
+  &__approval-schedule-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-sm;
+  }
+
+  &__approval-input-time {
+    padding: 6px 10px;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
     font-size: $font-size-sm;
     color: $gray-700;
+    background: white;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+  }
+
+  &__approval-btn-sm {
+    padding: 6px 12px;
+    background: $gray-800;
+    color: white;
+    border: none;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+
+    &:hover {
+      background: $gray-900;
+    }
+
+    &--secondary {
+      background: white;
+      color: $gray-600;
+      border: 1px solid $gray-300;
+
+      &:hover {
+        background: $gray-50;
+      }
+    }
+  }
+
+  &__approval-add-btn {
+    padding: 6px 10px;
+    background: white;
+    color: $gray-500;
+    border: 1px dashed $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+    align-self: flex-start;
+
+    &:hover {
+      border-color: $gray-400;
+      color: $gray-600;
+    }
+  }
+
+  &__approval-day-picker {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-xs;
+    align-items: center;
+  }
+
+  &__approval-day-btn {
+    padding: 6px 12px;
+    background: white;
+    color: $gray-600;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $gray-400;
+    }
+
+    &.active {
+      background: $primary-500;
+      color: white;
+      border-color: $primary-500;
+    }
+  }
+
+  &__approval-day-custom {
+    display: flex;
+    align-items: center;
+  }
+
+  &__approval-day-input {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid $gray-300;
+    border-radius: $radius-md;
+    font-size: $font-size-sm;
+    text-align: center;
+    -moz-appearance: textfield;
+
+    &::-webkit-outer-spin-button,
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+    }
+
+    &::placeholder {
+      color: $gray-400;
+    }
+  }
+
+  &__approval-hint {
+    font-size: $font-size-xs;
+    color: $gray-500;
+    text-align: center;
+    margin: 0;
   }
 }
-

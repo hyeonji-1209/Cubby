@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { MEMBER_ROLE_LABELS } from '@/constants/labels';
 import { formatDate } from '@/utils/dateFormat';
 import { QRIcon } from '@/components/icons';
+import { Dropdown } from '@/components';
 import type { MembersTabProps } from './types';
 
 // 수업 시작 10분 전부터 수업 종료까지 확인하는 함수
@@ -13,8 +15,18 @@ const isWithinLessonTime = (startAt: Date, endAt: Date): boolean => {
   return now >= tenMinutesBefore && now <= end;
 };
 
+// 교육 타입에서 역할 라벨 (새로운 시스템: owner/member만)
+const getEducationTypeLabel = (role: string): string => {
+  switch (role) {
+    case 'owner': return '원장';
+    case 'member': return '멤버';
+    default: return '';
+  }
+};
+
 const MembersTab: React.FC<MembersTabProps> = ({
   currentGroup,
+  isOwner,
   isAdmin,
   members,
   membersLoading,
@@ -35,9 +47,72 @@ const MembersTab: React.FC<MembersTabProps> = ({
   pendingMembersLoading,
   onApproveMember,
   onRejectMember,
+  userId,
+  onGoToLessonManagement,
 }) => {
   const showInstructorFilter = hasMultipleInstructors && instructorSubGroups && instructorSubGroups.length > 0;
   const hasPendingMembers = pendingMembers && pendingMembers.length > 0;
+
+  // 현재 사용자가 강사인지 확인 (원장이 아닌 경우) - title로 판단
+  const currentUserIsInstructor = useMemo(() => {
+    if (isOwner) return false;
+    const currentMember = members.find(m => m.userId === userId || m.user?.id === userId);
+    return currentMember?.title === '강사';
+  }, [isOwner, members, userId]);
+
+  // 강사의 학생 ID 목록 (강사인 경우)
+  const myStudentIds = useMemo(() => {
+    if (!currentUserIsInstructor || !userId || !instructorSubGroups) return new Set<string>();
+
+    const mySubGroup = instructorSubGroups.find(sg => sg.instructorId === userId);
+    if (!mySubGroup) return new Set<string>();
+
+    // 해당 소그룹의 멤버 ID들을 반환 (실제로는 API 호출 필요하지만, 여기서는 members에서 찾음)
+    // instructorSubGroups에 members 정보가 있다면 사용
+    const studentIds = new Set<string>();
+
+    // 멤버 중에서 해당 강사에게 배정된 학생 찾기 (instructorId 필드가 있다면)
+    members.forEach(m => {
+      const memberWithInstructor = m as typeof m & { instructorId?: string };
+      if (memberWithInstructor.instructorId === userId) {
+        studentIds.add(m.id);
+      }
+    });
+
+    return studentIds;
+  }, [currentUserIsInstructor, userId, instructorSubGroups, members]);
+
+  // 버튼 표시 여부 결정 함수
+  const shouldShowButtons = (memberUserId: string | undefined, memberId: string, memberRole: string, memberTitle?: string) => {
+    // 원장은 owner 제외 모든 멤버에 대해 버튼 표시
+    if (isOwner) {
+      return { showLesson: memberRole !== 'owner', showManage: memberRole !== 'owner' };
+    }
+
+    // 강사인 경우
+    if (currentUserIsInstructor) {
+      const isMyself = memberUserId === userId;
+      const isMyStudent = myStudentIds.has(memberId);
+      const isMemberInstructor = memberTitle === '강사';
+
+      // 본인 행: 수업 버튼만 (관리 버튼 X)
+      if (isMyself) {
+        const hasStudents = instructorSubGroups?.some(sg => sg.instructorId === userId);
+        return { showLesson: hasStudents, showManage: false };
+      }
+
+      // 본인 학생: 둘 다 표시
+      if (isMyStudent && !isMemberInstructor) {
+        return { showLesson: true, showManage: true };
+      }
+
+      // 그 외: 버튼 숨김
+      return { showLesson: false, showManage: false };
+    }
+
+    // 일반 관리자
+    return { showLesson: memberRole !== 'owner', showManage: memberRole !== 'owner' };
+  };
 
   return (
     <div className="group-detail__members">
@@ -108,20 +183,20 @@ const MembersTab: React.FC<MembersTabProps> = ({
               </button>
             )}
           </div>
-          {showInstructorFilter && (
-            <select
+          {showInstructorFilter && isOwner && (
+            <Dropdown
               className="group-detail__instructor-filter"
               value={instructorFilter || 'all'}
-              onChange={(e) => setInstructorFilter?.(e.target.value)}
-            >
-              <option value="all">전체 학생</option>
-              <option value="unassigned">미배정 학생</option>
-              {instructorSubGroups.map((subGroup) => (
-                <option key={subGroup.id} value={subGroup.id}>
-                  {subGroup.instructor?.name || subGroup.name}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setInstructorFilter?.(value)}
+              options={[
+                { value: 'all', label: '전체 학생' },
+                { value: 'unassigned', label: '미배정 학생' },
+                ...instructorSubGroups.map((subGroup) => ({
+                  value: subGroup.id,
+                  label: subGroup.instructor?.name || subGroup.name,
+                })),
+              ]}
+            />
           )}
         </div>
         <span className="group-detail__member-count">
@@ -143,8 +218,13 @@ const MembersTab: React.FC<MembersTabProps> = ({
           </thead>
           <tbody>
             {filteredMembers.map((member) => {
-              const nextSchedule = getMemberNextSchedule?.(member.userId || member.user?.id || '');
+              const memberUserId = member.userId || member.user?.id;
+              const nextSchedule = getMemberNextSchedule?.(memberUserId || '');
               const canShowQR = nextSchedule && isWithinLessonTime(nextSchedule.startAt, nextSchedule.endAt);
+
+              const isInstructor = member.title === '강사';
+              const isMyself = memberUserId === userId;
+              const { showLesson, showManage } = shouldShowButtons(memberUserId, member.id, member.role, member.title);
 
               return (
                 <tr key={member.id}>
@@ -169,7 +249,9 @@ const MembersTab: React.FC<MembersTabProps> = ({
                     </span>
                   </td>
                   <td>
-                    <span className="data-table__text">{member.title || '-'}</span>
+                    <span className="data-table__text">
+                      {member.title || (currentGroup.type === 'education' ? getEducationTypeLabel(member.role) : '-')}
+                    </span>
                   </td>
                   <td>
                     <span className="data-table__date">{formatDate(member.joinedAt)}</span>
@@ -177,14 +259,40 @@ const MembersTab: React.FC<MembersTabProps> = ({
                   <td>
                     <div className="data-table__actions">
                       {/* 수업 버튼 (1:1 교육 그룹) */}
-                      {isAdmin && isOneOnOneEducation && member.role !== 'owner' && (
-                        <button
-                          className={`data-table__lesson-btn ${canShowQR ? 'data-table__lesson-btn--live' : ''}`}
-                          onClick={() => onOpenLessonPanel?.(member)}
-                          title="수업 관리"
-                        >
-                          {canShowQR ? '수업 중' : '수업'}
-                        </button>
+                      {isOneOnOneEducation && showLesson && (
+                        (() => {
+                          // 강사 행 클릭 시
+                          if (isInstructor) {
+                            const hasStudents = instructorSubGroups?.some(sg => sg.instructorId === memberUserId);
+                            // 원장은 학생 배정 여부와 관계없이 버튼 표시, 강사 본인은 학생이 있을 때만
+                            if (!isOwner && !hasStudents) return null;
+
+                            return (
+                              <button
+                                className="data-table__lesson-btn"
+                                onClick={() => {
+                                  // 원장이 강사 클릭 시 해당 강사 ID 전달
+                                  // 본인(강사)이 클릭 시에는 ID 전달 안함 (자동 선택)
+                                  onGoToLessonManagement?.(isOwner ? memberUserId : undefined);
+                                }}
+                                title={isMyself ? '내 학생 수업 관리' : `${member.nickname || member.user?.name} 학생 보기`}
+                              >
+                                수업
+                              </button>
+                            );
+                          }
+
+                          // 학생 행 클릭 시
+                          return (
+                            <button
+                              className={`data-table__lesson-btn ${canShowQR ? 'data-table__lesson-btn--live' : ''}`}
+                              onClick={() => onOpenLessonPanel?.(member)}
+                              title="수업 관리"
+                            >
+                              {canShowQR ? '수업 중' : '수업'}
+                            </button>
+                          );
+                        })()
                       )}
                       {/* 출석 QR 버튼 (수업 10분 전부터 활성화) - 1:1이 아닌 경우 */}
                       {isAdmin && hasAttendance && !isOneOnOneEducation && member.role !== 'owner' && (
@@ -198,7 +306,7 @@ const MembersTab: React.FC<MembersTabProps> = ({
                         </button>
                       )}
                       {/* 관리 버튼 */}
-                      {isAdmin && member.role !== 'owner' && (
+                      {showManage && (
                         <button
                           className="data-table__action-btn"
                           onClick={() => onOpenMemberModal(member)}

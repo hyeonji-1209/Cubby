@@ -28,13 +28,12 @@ export const GROUP_TYPE_ICONS: Record<GroupType, string> = {
 
 /**
  * 멤버 역할 레이블
+ * 새로운 시스템: owner/member 두 가지만 사용
+ * 세부 구분은 title(직책)로 관리
  */
 export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
   owner: '운영자',
-  admin: '관리자',
-  leader: '리더',
   member: '멤버',
-  guardian: '보호자',
 };
 
 /**
@@ -42,18 +41,13 @@ export const MEMBER_ROLE_LABELS: Record<MemberRole, string> = {
  */
 export const MEMBER_ROLE_COLORS: Record<MemberRole, string> = {
   owner: '#6366f1',   // primary
-  admin: '#8b5cf6',   // purple
-  leader: '#10b981',  // green
   member: '#6b7280',  // gray
-  guardian: '#f59e0b', // amber
 };
 
 /**
- * 멤버 역할 옵션 (선택용)
+ * 멤버 역할 옵션 (선택용) - owner로 변경은 별도 기능으로만 가능
  */
 export const ROLE_OPTIONS = [
-  { value: 'admin', label: '관리자' },
-  { value: 'leader', label: '리더' },
   { value: 'member', label: '멤버' },
 ];
 

@@ -194,7 +194,7 @@ export class GroupController {
 
   joinByInviteCode = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { inviteCode, isGuardian, childInfo, positionId } = req.body;
+      const { inviteCode, isGuardian, isInstructor, childInfo, positionId } = req.body;
 
       const group = await this.groupRepository.findOne({
         where: { inviteCode, status: GroupStatus.ACTIVE },
@@ -222,8 +222,10 @@ export class GroupController {
         },
       });
 
-      // 멤버 역할 결정
-      const role = isGuardian ? MemberRole.GUARDIAN : MemberRole.MEMBER;
+      // 멤버 역할 결정 (새로운 시스템: owner/member만 사용)
+      // 모든 새 멤버는 member 역할, 유형(강사/보호자/학생)은 title로 구분
+      const role = MemberRole.MEMBER;
+      const title = isGuardian ? '보호자' : isInstructor ? '강사' : undefined;
 
       // 가입 승인 필요 여부 확인 (보호자는 승인 불필요)
       const needsApproval = group.requiresApproval && !isGuardian;
@@ -253,6 +255,7 @@ export class GroupController {
         // 이전에 탈퇴했다면 다시 활성화/대기
         existingMembership.status = memberStatus;
         existingMembership.role = role;
+        existingMembership.title = title || existingMembership.title;
         if (isGuardian && childInfo) {
           existingMembership.typeData = { children: childInfo };
         }
@@ -267,6 +270,7 @@ export class GroupController {
           userId: req.user!.id,
           role,
           status: memberStatus,
+          title,
           typeData: isGuardian && childInfo ? { children: childInfo } : undefined,
           positionId: positionId || undefined,
         });
@@ -646,10 +650,11 @@ export class GroupController {
     }
   };
 
+  // 멤버 역할/직책 변경 (새로운 시스템: title 기반)
   updateMemberRole = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { groupId, memberId } = req.params;
-      const { role } = req.body;
+      const { role, title } = req.body;
 
       const membership = await this.memberRepository.findOne({
         where: { id: memberId, groupId },
@@ -665,22 +670,33 @@ export class GroupController {
         throw new AppError('Cannot change owner role', 400);
       }
 
-      if (!Object.values(MemberRole).includes(role) || role === MemberRole.OWNER) {
-        throw new AppError('Invalid role', 400);
+      // 새로운 시스템: role은 owner/member만 허용
+      if (role && (role !== MemberRole.OWNER && role !== MemberRole.MEMBER)) {
+        throw new AppError('Invalid role. Only owner or member allowed.', 400);
       }
 
-      const previousRole = membership.role;
-      membership.role = role;
+      // role을 owner로 변경하는 것은 별도의 소유권 이전 기능으로만 가능
+      if (role === MemberRole.OWNER) {
+        throw new AppError('Use ownership transfer to change to owner', 400);
+      }
+
+      const previousTitle = membership.title;
+
+      // title 변경
+      if (title !== undefined) {
+        membership.title = title;
+      }
+
       await this.memberRepository.save(membership);
 
-      // 그룹 수업 모드에서 LEADER(강사)로 역할 변경 시 자동으로 강사별 소그룹 생성
+      // 그룹 수업 모드에서 강사로 직책 변경 시 자동으로 강사별 소그룹 생성
       const group = await this.groupRepository.findOne({ where: { id: groupId } });
       if (
         group &&
         group.type === GroupType.EDUCATION &&
         group.hasClasses === true &&
-        role === MemberRole.LEADER &&
-        previousRole !== MemberRole.LEADER
+        membership.title === '강사' &&
+        previousTitle !== '강사'
       ) {
         // 이미 해당 강사의 소그룹이 있는지 확인
         const existingInstructorSubGroup = await this.subGroupRepository.findOne({
@@ -772,9 +788,10 @@ export class GroupController {
         throw new AppError('Owner cannot leave. Transfer ownership first.', 400);
       }
 
-      // 교육 타입 그룹에서 일반 멤버는 직접 나가기 불가
+      // 교육 타입 그룹에서 학생(보호자/강사가 아닌 일반 멤버)은 직접 나가기 불가
       const group = await this.groupRepository.findOne({ where: { id: groupId } });
-      if (group?.type === GroupType.EDUCATION && membership.role === MemberRole.MEMBER) {
+      const isStudent = membership.title !== '보호자' && membership.title !== '강사';
+      if (group?.type === GroupType.EDUCATION && isStudent) {
         throw new AppError('학생은 직접 모임을 나갈 수 없습니다. 관리자에게 문의해주세요.', 400);
       }
 
@@ -828,13 +845,13 @@ export class GroupController {
       const { groupId, memberId } = req.params;
       const { lessonSchedule, paymentDueDay, instructorId } = req.body;
 
-      // 권한 확인: 관리자만 수정 가능
+      // 권한 확인: owner만 수정 가능
       const currentMembership = await this.memberRepository.findOne({
         where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
       });
 
-      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
-        throw new AppError('Only admins can update member lesson info', 403);
+      if (!currentMembership || currentMembership.role !== MemberRole.OWNER) {
+        throw new AppError('Only owners can update member lesson info', 403);
       }
 
       const membership = await this.memberRepository.findOne({
@@ -846,8 +863,11 @@ export class GroupController {
         throw new AppError('Member not found', 404);
       }
 
-      // typeData를 통해 업데이트
+      // 기존 강사 ID 저장 (소그룹 이동을 위해)
       const currentTypeData = (membership.typeData || {}) as EducationStudentData;
+      const previousInstructorId = currentTypeData.instructorId;
+
+      // typeData를 통해 업데이트
       membership.typeData = {
         ...currentTypeData,
         ...(lessonSchedule !== undefined && { lessonSchedule }),
@@ -856,6 +876,56 @@ export class GroupController {
       };
 
       await this.memberRepository.save(membership);
+
+      // 강사가 변경된 경우, 소그룹 멤버십 업데이트
+      if (instructorId !== undefined && instructorId !== previousInstructorId) {
+        // 이전 강사의 소그룹에서 제거
+        if (previousInstructorId) {
+          const previousSubGroup = await this.subGroupRepository.findOne({
+            where: {
+              parentGroupId: groupId,
+              type: SubGroupType.INSTRUCTOR,
+              instructorId: previousInstructorId,
+            },
+          });
+
+          if (previousSubGroup) {
+            await this.subGroupMemberRepository.delete({
+              subGroupId: previousSubGroup.id,
+              groupMemberId: membership.id,
+            });
+          }
+        }
+
+        // 새 강사의 소그룹에 추가
+        if (instructorId) {
+          const newSubGroup = await this.subGroupRepository.findOne({
+            where: {
+              parentGroupId: groupId,
+              type: SubGroupType.INSTRUCTOR,
+              instructorId: instructorId,
+            },
+          });
+
+          if (newSubGroup) {
+            const existingMember = await this.subGroupMemberRepository.findOne({
+              where: {
+                subGroupId: newSubGroup.id,
+                groupMemberId: membership.id,
+              },
+            });
+
+            if (!existingMember) {
+              const subGroupMember = this.subGroupMemberRepository.create({
+                subGroupId: newSubGroup.id,
+                groupMemberId: membership.id,
+                role: SubGroupMemberRole.MEMBER,
+              });
+              await this.subGroupMemberRepository.save(subGroupMember);
+            }
+          }
+        }
+      }
 
       const typeData = membership.typeData as EducationStudentData;
 
@@ -882,13 +952,13 @@ export class GroupController {
     try {
       const { groupId } = req.params;
 
-      // 권한 확인: 관리자만 조회 가능
+      // 권한 확인: owner만 조회 가능
       const currentMembership = await this.memberRepository.findOne({
         where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
       });
 
-      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
-        throw new AppError('Only admins can view pending members', 403);
+      if (!currentMembership || currentMembership.role !== MemberRole.OWNER) {
+        throw new AppError('Only owners can view pending members', 403);
       }
 
       const pendingMembers = await this.memberRepository.find({
@@ -926,13 +996,13 @@ export class GroupController {
       const { groupId, memberId } = req.params;
       const { instructorId, lessonSchedule, paymentDueDay } = req.body;
 
-      // 권한 확인: 관리자만 승인 가능
+      // 권한 확인: owner만 승인 가능
       const currentMembership = await this.memberRepository.findOne({
         where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
       });
 
-      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
-        throw new AppError('Only admins can approve members', 403);
+      if (!currentMembership || currentMembership.role !== MemberRole.OWNER) {
+        throw new AppError('Only owners can approve members', 403);
       }
 
       const membership = await this.memberRepository.findOne({
@@ -950,10 +1020,18 @@ export class GroupController {
       // 승인 처리
       membership.status = MemberStatus.ACTIVE;
 
+      // 교육 타입인 경우: title이 없으면 기본값으로 '학생' 설정
+      if (group && group.type === GroupType.EDUCATION && !membership.title) {
+        membership.title = '학생';
+      }
+
+      // 새로운 시스템: role은 항상 member (owner로 변경은 별도 기능으로)
+
       // 1:1 교육 그룹인 경우 추가 정보 설정 (typeData 사용)
+      let actualInstructorId: string | null = null;
       if (group && group.type === GroupType.EDUCATION && !group.hasClasses) {
         const currentTypeData = (membership.typeData || {}) as EducationStudentData;
-        const actualInstructorId = instructorId || (group.hasMultipleInstructors ? null : group.ownerId);
+        actualInstructorId = instructorId || (group.hasMultipleInstructors ? null : group.ownerId);
 
         membership.typeData = {
           ...currentTypeData,
@@ -964,6 +1042,36 @@ export class GroupController {
       }
 
       await this.memberRepository.save(membership);
+
+      // 강사가 배정된 경우, 해당 강사의 소그룹에 학생 추가
+      if (actualInstructorId && group && group.type === GroupType.EDUCATION && !group.hasClasses) {
+        const instructorSubGroup = await this.subGroupRepository.findOne({
+          where: {
+            parentGroupId: groupId,
+            type: SubGroupType.INSTRUCTOR,
+            instructorId: actualInstructorId,
+          },
+        });
+
+        if (instructorSubGroup) {
+          // 이미 소그룹에 추가되어 있는지 확인
+          const existingSubGroupMember = await this.subGroupMemberRepository.findOne({
+            where: {
+              subGroupId: instructorSubGroup.id,
+              groupMemberId: membership.id,
+            },
+          });
+
+          if (!existingSubGroupMember) {
+            const subGroupMember = this.subGroupMemberRepository.create({
+              subGroupId: instructorSubGroup.id,
+              groupMemberId: membership.id,
+              role: SubGroupMemberRole.MEMBER,
+            });
+            await this.subGroupMemberRepository.save(subGroupMember);
+          }
+        }
+      }
 
       // 승인 알림 전송
       await notificationService.notifyMemberApproved({
@@ -1001,13 +1109,13 @@ export class GroupController {
       const { groupId, memberId } = req.params;
       const { reason } = req.body;
 
-      // 권한 확인: 관리자만 거부 가능
+      // 권한 확인: owner만 거부 가능
       const currentMembership = await this.memberRepository.findOne({
         where: { groupId, userId: req.user!.id, status: MemberStatus.ACTIVE },
       });
 
-      if (!currentMembership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(currentMembership.role)) {
-        throw new AppError('Only admins can reject members', 403);
+      if (!currentMembership || currentMembership.role !== MemberRole.OWNER) {
+        throw new AppError('Only owners can reject members', 403);
       }
 
       const membership = await this.memberRepository.findOne({
@@ -1054,12 +1162,11 @@ export class GroupController {
         throw new AppError('Not a member of this group', 403);
       }
 
-      // 강사 (OWNER, ADMIN, LEADER) 목록 조회
+      // 강사 (owner 또는 title이 '강사'인 멤버) 목록 조회
       const instructors = await this.memberRepository.find({
         where: [
           { groupId, status: MemberStatus.ACTIVE, role: MemberRole.OWNER },
-          { groupId, status: MemberStatus.ACTIVE, role: MemberRole.ADMIN },
-          { groupId, status: MemberStatus.ACTIVE, role: MemberRole.LEADER },
+          { groupId, status: MemberStatus.ACTIVE, title: '강사' },
         ],
         relations: ['user'],
         order: { role: 'ASC', joinedAt: 'ASC' },

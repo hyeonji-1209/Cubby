@@ -6,11 +6,11 @@ import { groupApi, locationApi, attendanceApi, scheduleApi, subgroupMemberApi, l
 import type { FavoriteLocation, MemberAttendanceStats, LessonQRToken, InstructorSubGroup, SubGroupMemberInfo, LessonRoom } from '@/api';
 import { useToast } from '@/components';
 import { useLoading } from '@/hooks';
-import type { GroupMember, SubGroupRequest, Schedule, LessonSchedule } from '@/types';
+import type { GroupMember, SubGroupRequest, Schedule, LessonSchedule, MemberRole } from '@/types';
 import type { TabType } from '../tabs';
 
 // 유효한 탭 목록
-const VALID_TABS: TabType[] = ['home', 'lesson', 'members', 'subgroups', 'practicerooms', 'lessonrooms', 'announcements', 'schedules', 'settings'];
+const VALID_TABS: TabType[] = ['home', 'lesson', 'members', 'subgroups', 'practicerooms', 'announcements', 'schedules', 'settings'];
 
 type CalendarValue = Date | null | [Date | null, Date | null];
 
@@ -65,8 +65,7 @@ export const useGroupDetail = () => {
   const [subGroupDesc, setSubGroupDesc] = useState('');
   const { loading: subGroupLoading, withLoading: withSubGroupLoading } = useLoading();
 
-  // 멤버 역할 변경
-  const [newRole, setNewRole] = useState('');
+  // 멤버 역할 변경 (로딩 상태만 유지)
   const { loading: roleLoading, withLoading: withRoleLoading } = useLoading();
 
   // 멤버 검색
@@ -101,9 +100,8 @@ export const useGroupDetail = () => {
   const [attendanceQRToken, setAttendanceQRToken] = useState<LessonQRToken | null>(null);
   const [attendanceQRLoading, setAttendanceQRLoading] = useState(false);
 
-  // 수업 패널 상태 (1:1 교육용)
-  const [showLessonPanel, setShowLessonPanel] = useState(false);
-  const [lessonPanelMember, setLessonPanelMember] = useState<GroupMember | null>(null);
+  // 수업 탭용 선택된 멤버 (멤버탭에서 클릭 시)
+  const [selectedLessonMember, setSelectedLessonMember] = useState<GroupMember | null>(null);
 
   // 수업실 목록 (1:1 교육용)
   const [lessonRooms, setLessonRooms] = useState<LessonRoom[]>([]);
@@ -142,7 +140,8 @@ export const useGroupDetail = () => {
   const currentMember = members.find((m) => m.userId === user?.id);
   const myRole = currentGroup?.myRole || currentMember?.role;
   const isOwner = myRole === 'owner';
-  const isAdmin = isOwner || myRole === 'admin';
+  // 새로운 권한 시스템: owner만 admin 권한 보유
+  const isAdmin = isOwner;
   const memberCount = currentGroup?.memberCount ?? members.length;
 
   // 공지/일정 작성 권한
@@ -163,6 +162,32 @@ export const useGroupDetail = () => {
       setInstructors(instructorList);
     } catch (error) {
       console.error('Failed to fetch instructors:', error);
+    }
+  }, [groupId]);
+
+  // 강사 소그룹 조회 (handleApprovalSubmit보다 먼저 정의)
+  const fetchInstructorSubGroups = useCallback(async () => {
+    if (!groupId) return;
+    try {
+      const response = await subgroupMemberApi.getInstructorSubGroups(groupId);
+      setInstructorSubGroups(response.data || []);
+
+      // 각 강사 소그룹의 멤버 목록 조회
+      const memberMap = new Map<string, string[]>();
+      for (const subGroup of response.data || []) {
+        try {
+          const membersResponse = await subgroupMemberApi.getSubGroupMembers(groupId, subGroup.id);
+          const memberIds = (membersResponse.data || [])
+            .filter((m: SubGroupMemberInfo) => m.groupMember)
+            .map((m: SubGroupMemberInfo) => m.groupMemberId);
+          memberMap.set(subGroup.id, memberIds);
+        } catch (error) {
+          console.error('Failed to fetch subgroup members:', error);
+        }
+      }
+      setInstructorSubGroupMembers(memberMap);
+    } catch (error) {
+      console.error('Failed to fetch instructor subgroups:', error);
     }
   }, [groupId]);
 
@@ -217,6 +242,7 @@ export const useGroupDetail = () => {
 
   // 승인 모달에서 승인 제출
   const handleApprovalSubmit = useCallback(async (data: {
+    role?: MemberRole;
     instructorId?: string;
     lessonSchedule?: LessonSchedule[];
     paymentDueDay?: number;
@@ -227,11 +253,15 @@ export const useGroupDetail = () => {
       await groupApi.approveMember(groupId, approvalMember.id, data);
       toast.success(`${approvalMember.user?.name}님의 가입을 승인했습니다.`);
       setPendingMembers((prev) => prev.filter((m) => m.id !== approvalMember.id));
-      fetchMembers(groupId);
+      // 멤버 목록 및 강사 소그룹 새로고침
+      await fetchMembers(groupId);
+      if (currentGroup?.hasMultipleInstructors) {
+        await fetchInstructorSubGroups();
+      }
       setShowApprovalModal(false);
       setApprovalMember(null);
     }).catch(() => toast.error('승인에 실패했습니다.'));
-  }, [groupId, approvalMember, toast, fetchMembers, withApprovalLoading]);
+  }, [groupId, approvalMember, toast, fetchMembers, fetchInstructorSubGroups, currentGroup?.hasMultipleInstructors, withApprovalLoading]);
 
   // 멤버 거부
   const handleRejectMember = useCallback(async (member: GroupMember) => {
@@ -247,32 +277,6 @@ export const useGroupDetail = () => {
     }
   }, [groupId, toast]);
 
-  // 강사 소그룹 조회
-  const fetchInstructorSubGroups = useCallback(async () => {
-    if (!groupId) return;
-    try {
-      const response = await subgroupMemberApi.getInstructorSubGroups(groupId);
-      setInstructorSubGroups(response.data || []);
-
-      // 각 강사 소그룹의 멤버 목록 조회
-      const memberMap = new Map<string, string[]>();
-      for (const subGroup of response.data || []) {
-        try {
-          const membersResponse = await subgroupMemberApi.getSubGroupMembers(groupId, subGroup.id);
-          const memberIds = (membersResponse.data || [])
-            .filter((m: SubGroupMemberInfo) => m.groupMember)
-            .map((m: SubGroupMemberInfo) => m.groupMemberId);
-          memberMap.set(subGroup.id, memberIds);
-        } catch (error) {
-          console.error('Failed to fetch subgroup members:', error);
-        }
-      }
-      setInstructorSubGroupMembers(memberMap);
-    } catch (error) {
-      console.error('Failed to fetch instructor subgroups:', error);
-    }
-  }, [groupId]);
-
   // 필터링된 멤버 목록
   const filteredMembers = useMemo(() => {
     let result = members;
@@ -285,7 +289,7 @@ export const useGroupDetail = () => {
         instructorSubGroupMembers.forEach((memberIds) => {
           memberIds.forEach((id) => allAssignedMemberIds.add(id));
         });
-        result = result.filter((m) => m.role !== 'owner' && m.role !== 'admin' && !allAssignedMemberIds.has(m.id));
+        result = result.filter((m) => m.role !== 'owner' && m.title !== '강사' && !allAssignedMemberIds.has(m.id));
       } else {
         // 특정 강사의 학생
         const memberIds = instructorSubGroupMembers.get(instructorFilter) || [];
@@ -494,7 +498,6 @@ export const useGroupDetail = () => {
 
   const openMemberModal = async (member: GroupMember) => {
     setSelectedMember(member);
-    setNewRole(member.role);
     setMemberAttendanceStats(null);
     setShowMemberModal(true);
 
@@ -514,15 +517,16 @@ export const useGroupDetail = () => {
     }
   };
 
+  // 멤버 정보 업데이트 (역할 변경 기능 제거됨 - 새 시스템에서는 직책으로 관리)
   const handleUpdateRole = async () => {
-    if (!groupId || !selectedMember || !newRole) return;
+    if (!groupId || !selectedMember) return;
 
     await withRoleLoading(async () => {
-      await groupApi.updateMemberRole(groupId, selectedMember.id, newRole);
+      // 직책 변경은 별도 API 필요 (현재는 모달에서 수업 정보만 저장)
       await fetchMembers(groupId);
-      toast.success('역할이 변경되었습니다.');
+      toast.success('저장되었습니다.');
       setShowMemberModal(false);
-    }).catch(() => toast.error('역할 변경에 실패했습니다.'));
+    }).catch(() => toast.error('저장에 실패했습니다.'));
   };
 
   const handleRemoveMember = async () => {
@@ -728,11 +732,11 @@ export const useGroupDetail = () => {
     return () => clearInterval(interval);
   }, [isOneOnOneEducation, isAdmin]);
 
-  // 수업 패널 열기 (1:1 교육용)
+  // 수업 탭으로 이동 (1:1 교육용)
   const openLessonPanel = useCallback((member: GroupMember) => {
-    setLessonPanelMember(member);
-    setShowLessonPanel(true);
-  }, []);
+    setSelectedLessonMember(member);
+    setActiveTab('lesson');
+  }, [setActiveTab]);
 
   // 조퇴 처리 (1:1 교육용)
   const handleEarlyLeave = useCallback(async (attendanceId: string) => {
@@ -820,8 +824,6 @@ export const useGroupDetail = () => {
     setSubGroupDesc,
     subGroupLoading,
     // Member management
-    newRole,
-    setNewRole,
     roleLoading,
     memberSearch,
     setMemberSearch,
@@ -872,14 +874,13 @@ export const useGroupDetail = () => {
     attendanceQRLoading,
     openAttendanceQRModal,
     getMemberNextSchedule,
-    // 수업 패널 (1:1 교육용)
-    showLessonPanel,
-    setShowLessonPanel,
-    lessonPanelMember,
+    // 수업 탭 (1:1 교육용)
     openLessonPanel,
     handleEarlyLeave,
     isOneOnOneEducation,
     activeLessonMember,
+    selectedLessonMember,
+    setSelectedLessonMember,
     // Handlers
     handleLeaveGroup,
     handleDeleteGroup,

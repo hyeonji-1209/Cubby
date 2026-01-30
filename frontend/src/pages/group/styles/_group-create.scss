@@ -1,197 +1,1087 @@
-// Group Create Page
-.group-create {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+// ==============================================
+// 폴더 페이지 - 사이트 스타일에 맞춘 깔끔한 디자인
+// ==============================================
+.folder-page {
+  min-height: calc(100vh - 120px);
+  background: $gray-50;
+  padding: 32px 24px;
+
+  @include mobile {
+    padding: 20px 16px;
+  }
 
   &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: $spacing-lg;
+    text-align: center;
+    margin-bottom: 32px;
 
-    @include mobile {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: $spacing-md;
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: $gray-900;
+      margin: 0 0 8px;
+    }
+
+    p {
+      font-size: 14px;
+      color: $gray-500;
+      margin: 0;
     }
   }
 
-  &__header-left {
-    flex: 1;
-  }
-
-  &__title {
-    font-size: $font-size-xl;
-    font-weight: $font-weight-bold;
-    color: $gray-900;
-    margin-bottom: $spacing-xs;
-  }
-
-  &__subtitle {
-    font-size: $font-size-sm;
-    color: $gray-500;
-    margin: 0;
-  }
-
-  &__actions {
+  &__content {
+    max-width: 720px;
+    margin: 0 auto;
     display: flex;
-    gap: $spacing-sm;
-  }
-
-  &__form {
-    flex: 1;
-    background-color: white;
-    padding: $spacing-xl;
-    border-radius: $radius-lg;
-    box-shadow: $shadow-sm;
-  }
-
-  &__body {
-    display: flex;
-    gap: $spacing-xl;
-    height: 100%;
     flex-direction: column;
+    gap: 12px;
+  }
+}
 
-    @include mobile {
-      flex-direction: column;
+// ==============================================
+// 폴더 카드 - 깔끔한 파일 탭 스타일
+// ==============================================
+.folder {
+  --folder-color: #{$primary-500};
+  position: relative;
+  background: white;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: $shadow-md;
+  }
+
+  &--open {
+    box-shadow: $shadow-md;
+  }
+
+  // 폴더 탭 (클릭 영역)
+  &__tab {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    background: white;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+
+    // 왼쪽 컬러 바 (파일 탭 느낌)
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--folder-color);
+    }
+
+    &:hover {
+      background: $gray-50;
+    }
+
+    .folder--open & {
+      background: $gray-50;
+      border-bottom: 1px solid $gray-100;
     }
   }
 
-  &__left {
+  &__tab-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: $radius-md;
+    @include flex-center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    img {
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+    }
+  }
+
+  &__tab-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__tab-name {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: $gray-900;
+    margin-bottom: 2px;
+  }
+
+  &__tab-desc {
+    display: block;
+    font-size: 13px;
+    color: $gray-500;
+
+    @include mobile {
+      display: none;
+    }
+  }
+
+  &__tab-tags {
+    display: flex;
+    gap: 6px;
     flex-shrink: 0;
 
     @include mobile {
-      width: 100%;
+      display: none;
+    }
+
+    span {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      color: $gray-600;
+      background: $gray-100;
+      border-radius: $radius-full;
     }
   }
 
-  &__right {
+  &__tab-arrow {
+    width: 28px;
+    height: 28px;
+    @include flex-center;
+    background: $gray-100;
+    border-radius: $radius-md;
+    color: $gray-500;
+    transition: all 0.2s;
+    flex-shrink: 0;
+
+    .folder--open & {
+      transform: rotate(180deg);
+      background: $gray-200;
+    }
+  }
+
+  // 폴더 본문 (펼쳐지는 내용)
+  &__body {
+    padding: 24px;
+    background: $gray-50;
+    animation: slideDown 0.2s ease-out;
+
+    @include mobile {
+      padding: 16px;
+    }
+  }
+
+  // 진행 표시 (교육 타입)
+  &__progress {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: $radius-lg;
+    border: 1px solid $gray-100;
+  }
+
+  &__progress-dot {
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0;
-    height: 100%;
-    margin-top: 50px;
-  }
-
-  &__types {
-    display: flex;
-    gap: $spacing-xs;
-  }
-
-  &__type {
+    align-items: center;
+    gap: 6px;
     position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      width: 100%;
+      height: 2px;
+      background: $gray-200;
+    }
+
+    &:last-child::after {
+      display: none;
+    }
+
+    &--active::after,
+    &--done::after {
+      background: $primary-300;
+    }
+
+    > span:first-child {
+      width: 24px;
+      height: 24px;
+      @include flex-center;
+      background: white;
+      border: 2px solid $gray-300;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      color: $gray-400;
+      position: relative;
+      z-index: 1;
+    }
+
+    &--active > span:first-child {
+      background: $primary-500;
+      border-color: $primary-500;
+      color: white;
+    }
+
+    &--done > span:first-child {
+      background: $primary-100;
+      border-color: $primary-500;
+      color: $primary-600;
+    }
+  }
+
+  &__progress-text {
+    font-size: 10px;
+    font-weight: 500;
+    color: $gray-400;
+
+    .folder__progress-dot--active & {
+      color: $primary-600;
+      font-weight: 600;
+    }
+
+    @include mobile {
+      display: none;
+    }
+  }
+
+  // 단계 (교육 타입)
+  &__step {
+    margin-bottom: 20px;
+  }
+
+  &__step-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__step-num {
+    width: 28px;
+    height: 28px;
+    @include flex-center;
+    background: var(--folder-color);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: $radius-md;
+    flex-shrink: 0;
+  }
+
+  &__step-info {
+    h4 {
+      font-size: 16px;
+      font-weight: 600;
+      color: $gray-800;
+      margin: 0 0 2px;
+    }
+
+    p {
+      font-size: 13px;
+      color: $gray-500;
+      margin: 0;
+    }
+  }
+
+  &__step-content {
+    display: block;
+  }
+
+  // 필드
+  &__field {
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &--grow {
+      flex: 1;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: $gray-700;
+      margin-bottom: 8px;
+
+      span {
+        font-weight: 400;
+        color: $gray-400;
+      }
+    }
+
+    input[type="text"],
+    input[type="date"],
+    textarea {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: $gray-900;
+      background: white;
+      border: 1px solid $gray-200;
+      border-radius: $radius-md;
+      transition: all $transition-fast;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+        box-shadow: 0 0 0 3px rgba($primary-500, 0.1);
+      }
+
+      &::placeholder {
+        color: $gray-400;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+  }
+
+  &__field-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+
+  // 옵션 선택 (1:1 / 그룹)
+  &__options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__option {
     display: flex;
     align-items: center;
-    gap: $spacing-sm;
-    padding: $spacing-sm $spacing-md;
+    gap: 12px;
+    padding: 14px;
+    background: white;
     border: 2px solid $gray-200;
-    min-width: 200px;
-    border-radius: $radius-md;
+    border-radius: $radius-lg;
     cursor: pointer;
     transition: all $transition-fast;
+
+    input {
+      display: none;
+    }
+
+    &:hover {
+      border-color: $gray-300;
+      background: $gray-50;
+    }
+
+    &--active {
+      border-color: $primary-500;
+      background: $primary-50;
+    }
+  }
+
+  &__option-icon {
+    width: 40px;
+    height: 40px;
+    @include flex-center;
+    background: $gray-100;
+    border-radius: $radius-md;
+    font-size: 12px;
+    font-weight: 700;
+    color: $gray-500;
+    flex-shrink: 0;
+
+    .folder__option--active & {
+      background: $primary-500;
+      color: white;
+    }
+  }
+
+  &__option-text {
+    strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: $gray-800;
+      margin-bottom: 2px;
+    }
+
+    span {
+      font-size: 12px;
+      color: $gray-500;
+    }
+  }
+
+  // 토글 스위치
+  &__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
     background: white;
+    border: 1px solid $gray-100;
+    border-radius: $radius-lg;
+    margin-bottom: 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__toggle-info {
+    strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: $gray-700;
+      margin-bottom: 2px;
+    }
+
+    span {
+      font-size: 12px;
+      color: $gray-500;
+    }
+  }
+
+  &__switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+
+      &:checked + span {
+        background: $success;
+      }
+
+      &:checked + span::before {
+        transform: translateX(20px);
+      }
+    }
+
+    > span {
+      position: absolute;
+      inset: 0;
+      background: $gray-300;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background $transition-fast;
+
+      &::before {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: transform $transition-fast;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+
+  // 알림 박스
+  &__notice {
+    padding: 12px 14px;
+    background: $primary-50;
+    border-left: 4px solid $primary-500;
+    border-radius: 0 $radius-md $radius-md 0;
+    font-size: 13px;
+    color: $primary-700;
+    margin-top: 12px;
+  }
+
+  // 리스트 (클래스 목록)
+  &__list {
+    background: white;
+    border: 1px solid $gray-100;
+    border-radius: $radius-lg;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  &__list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    > span:first-child {
+      font-size: 13px;
+      font-weight: 600;
+      color: $gray-700;
+    }
+  }
+
+  &__list-hint {
+    font-size: 11px;
+    color: $gray-400;
+  }
+
+  &__list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    background: $gray-50;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+
+    &:focus-within {
+      border-color: $primary-500;
+      background: white;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      color: $gray-900;
+      padding: 0;
+
+      &:focus {
+        outline: none;
+        box-shadow: none;
+      }
+    }
+
+    > button {
+      width: 24px;
+      height: 24px;
+      @include flex-center;
+      background: transparent;
+      border: none;
+      color: $gray-400;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: $radius-sm;
+
+      &:hover {
+        background: rgba($error, 0.1);
+        color: $error;
+      }
+    }
+  }
+
+  &__list-num {
+    width: 24px;
+    height: 24px;
+    @include flex-center;
+    background: $gray-200;
+    color: $gray-600;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: $radius-sm;
+    flex-shrink: 0;
+  }
+
+  &__list-check {
+    position: relative;
+    cursor: pointer;
 
     input {
       position: absolute;
       opacity: 0;
-      pointer-events: none;
-    }
 
-    &:hover {
-      border-color: var(--type-color, $primary-300);
-      background: $gray-50;
-    }
+      &:checked + span {
+        background: $primary-500;
+        border-color: $primary-500;
 
-    &--selected {
-      border-color: var(--type-color, $primary-500);
-      background: $gray-50;
-
-      .group-create__type-icon {
-        background: var(--type-color, $primary-500);
-
-        img {
-          filter: brightness(0) invert(1);
+        &::after {
+          display: block;
         }
       }
+    }
 
-      .group-create__type-label {
-        color: $gray-900;
-        font-weight: $font-weight-semibold;
+    > span {
+      width: 18px;
+      height: 18px;
+      border: 2px solid $gray-300;
+      border-radius: $radius-sm;
+      background: white;
+      display: block;
+      position: relative;
+
+      &::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 10px;
+        color: white;
+        display: none;
       }
     }
   }
 
-  &__type-icon {
-    width: 36px;
-    height: 36px;
+  &__list-add {
+    width: 100%;
+    margin-top: 8px;
+    padding: 10px;
+    background: white;
+    border: 2px dashed $gray-300;
     border-radius: $radius-md;
-    background: $gray-100;
-    @include flex-center;
-    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: $gray-500;
+    cursor: pointer;
     transition: all $transition-fast;
 
-    img {
-      width: 18px;
-      height: 18px;
-      opacity: 0.7;
+    &:hover {
+      border-color: $primary-400;
+      color: $primary-600;
+      background: $primary-50;
     }
   }
 
-  &__type-label {
-    font-size: $font-size-sm;
-    color: $gray-700;
-    font-weight: $font-weight-medium;
-    transition: all $transition-fast;
+  // 서브섹션 (연습실 설정)
+  &__subsection {
+    padding: 14px;
+    background: white;
+    border: 1px solid $gray-200;
+    border-radius: $radius-md;
+    margin-top: 12px;
   }
 
-  &__row {
+  &__subsection-row {
     display: flex;
-    gap: $spacing-md;
-    align-items: flex-end;
-    margin-bottom: $spacing-lg;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
 
-    @include mobile {
-      flex-direction: column;
-      align-items: stretch;
+    &:not(:last-child) {
+      border-bottom: 1px dashed $gray-200;
+    }
+
+    > span {
+      font-size: 13px;
+      font-weight: 500;
+      color: $gray-600;
     }
   }
 
-  &__icon-field {
-    flex-shrink: 0;
+  &__time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input {
+      padding: 8px 10px;
+      border: 1px solid $gray-300;
+      border-radius: $radius-sm;
+      font-size: 13px;
+      color: $gray-700;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-500;
+      }
+    }
+
+    > span {
+      color: $gray-400;
+    }
   }
 
-  &__field {
-    position: relative;
+  &__slot-btns {
+    display: flex;
+    gap: 6px;
 
-    &--grow {
+    button {
+      padding: 8px 14px;
+      background: $gray-100;
+      border: 1px solid $gray-200;
+      border-radius: $radius-sm;
+      font-size: 12px;
+      font-weight: 500;
+      color: $gray-600;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: $gray-200;
+      }
+
+      &.active {
+        background: $primary-500;
+        border-color: $primary-500;
+        color: white;
+      }
+    }
+  }
+
+  // 박스 (직책 표시)
+  &__box {
+    padding: 14px;
+    background: white;
+    border: 1px solid $gray-100;
+    border-radius: $radius-lg;
+    margin-bottom: 16px;
+  }
+
+  &__box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+
+    > span:first-child {
+      font-size: 13px;
+      font-weight: 600;
+      color: $gray-700;
+    }
+  }
+
+  &__box-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    background: $gray-200;
+    color: $gray-500;
+    border-radius: $radius-full;
+  }
+
+  &__box-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    span {
+      padding: 8px 14px;
+      background: $gray-50;
+      border: 1px solid $gray-200;
+      border-radius: $radius-md;
+      font-size: 13px;
+      font-weight: 500;
+      color: $gray-600;
+    }
+  }
+
+  // 카운터 (운영자 수)
+  &__counter {
+    padding: 16px;
+    background: white;
+    border: 1px solid $gray-100;
+    border-radius: $radius-lg;
+    margin-bottom: 16px;
+  }
+
+  &__counter-header {
+    text-align: center;
+    margin-bottom: 14px;
+
+    strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: $gray-700;
+      margin-bottom: 2px;
+    }
+
+    span {
+      font-size: 12px;
+      color: $gray-500;
+    }
+  }
+
+  &__counter-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+
+    button {
+      width: 36px;
+      height: 36px;
+      @include flex-center;
+      background: $gray-100;
+      border: 1px solid $gray-300;
+      border-radius: $radius-md;
+      font-size: 18px;
+      color: $gray-600;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover:not(:disabled) {
+        background: $gray-200;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+
+    > span {
+      font-size: 20px;
+      font-weight: 700;
+      color: $gray-800;
+      min-width: 50px;
+      text-align: center;
+    }
+  }
+
+  // 선택 버튼
+  &__select-btns {
+    display: flex;
+    gap: 10px;
+
+    button {
       flex: 1;
-      min-width: 0;
+      padding: 14px;
+      background: white;
+      border: 2px solid $gray-200;
+      border-radius: $radius-lg;
+      font-size: 15px;
+      font-weight: 600;
+      color: $gray-600;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        border-color: $gray-400;
+        background: $gray-50;
+      }
+
+      &.active {
+        border-color: $primary-500;
+        background: $primary-50;
+        color: $primary-600;
+      }
     }
+  }
+
+  // 폼 (다른 타입용)
+  &__form {
+    display: block;
+  }
+
+  // 커플 전용
+  &__couple {
+    padding: 20px;
+    background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+    border: 1px solid #f9a8d4;
+    border-radius: $radius-lg;
+    margin-bottom: 16px;
+  }
+
+  &__couple-btns {
+    display: flex;
+    gap: 10px;
+
+    button {
+      flex: 1;
+      padding: 12px;
+      background: white;
+      border: 2px solid #f9a8d4;
+      border-radius: $radius-md;
+      font-size: 14px;
+      font-weight: 600;
+      color: $gray-600;
+      cursor: pointer;
+      transition: all $transition-fast;
+
+      &:hover {
+        background: #fdf2f8;
+      }
+
+      &.active {
+        background: #ec4899;
+        border-color: #ec4899;
+        color: white;
+      }
+    }
+  }
+
+  // 푸터 (버튼)
+  &__footer {
+    padding-top: 20px;
+    border-top: 1px solid $gray-200;
+    margin-top: 20px;
+  }
+
+  &__submit {
+    width: 100%;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    background: $primary-500;
+    border: none;
+    border-radius: $radius-lg;
+    cursor: pointer;
+    transition: background $transition-fast;
+
+    &:hover:not(:disabled) {
+      background: $primary-600;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // 네비게이션 (교육 타입)
+  &__nav {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 20px;
+    border-top: 1px solid $gray-200;
+  }
+
+  &__nav-prev,
+  &__nav-next,
+  &__nav-submit {
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: $radius-lg;
+    cursor: pointer;
+    transition: all $transition-fast;
+  }
+
+  &__nav-prev {
+    background: white;
+    border: 1px solid $gray-300;
+    color: $gray-600;
+
+    &:hover:not(:disabled) {
+      background: $gray-50;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__nav-next {
+    background: $gray-800;
+    border: none;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: $gray-900;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__nav-submit {
+    background: $success;
+    border: none;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: $success-700;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// 애니메이션
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ==============================================
+// 기존 group-create 클래스 (PositionSettings 호환)
+// ==============================================
+.group-create {
+  &__positions {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: white;
+    border: 1px solid $gray-100;
+    border-radius: $radius-lg;
+  }
+
+  &__positions-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
   }
 
   &__label {
-    display: block;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
+    font-size: 13px;
+    font-weight: 600;
     color: $gray-700;
-    margin-bottom: $spacing-xs;
   }
 
-  &__optional {
-    font-weight: $font-weight-normal;
+  &__positions-hint {
+    font-size: 11px;
     color: $gray-400;
   }
 
-  &__input,
-  &__textarea {
+  &__positions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__position-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__input {
     width: 100%;
-    padding: $spacing-sm $spacing-md;
-    border: 1px solid $gray-300;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: $gray-900;
+    background: white;
+    border: 1px solid $gray-200;
     border-radius: $radius-md;
-    font-size: $font-size-base;
-    transition: border-color $transition-fast, box-shadow $transition-fast;
+    transition: all $transition-fast;
 
     &:focus {
       outline: none;
@@ -204,691 +1094,15 @@
     }
   }
 
-  &__textarea {
-    min-height: 80px;
-  }
-
-  &__role-info {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    padding: $spacing-md;
-    background: $primary-50;
-    border-radius: $radius-md;
-    margin-bottom: $spacing-lg;
-  }
-
-  &__role-label {
-    font-size: $font-size-sm;
-    color: $gray-600;
-  }
-
-  &__role-badge {
-    padding: $spacing-xs $spacing-sm;
-    background: $primary-500;
-    color: white;
-    font-size: $font-size-xs;
-    font-weight: $font-weight-semibold;
-    border-radius: $radius-sm;
-    text-transform: uppercase;
-  }
-
-  &__role-desc {
-    font-size: $font-size-xs;
-    color: $gray-500;
-    margin-left: auto;
-  }
-
-  &__couple-fields {
-    padding: $spacing-md;
-    background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
-    border-radius: $radius-lg;
-    margin-bottom: $spacing-lg;
-  }
-
-  &__couple-role {
-    display: flex;
-    align-items: center;
-    gap: $spacing-md;
-    margin-bottom: $spacing-md;
-  }
-
-  &__couple-role-label {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: #9d174d;
-    white-space: nowrap;
-  }
-
-  &__couple-toggle {
-    display: flex;
-    background: white;
-    border-radius: $radius-full;
-    padding: 3px;
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
-    flex: 1;
-  }
-
-  &__couple-btn {
-    flex: 1;
-    padding: $spacing-sm $spacing-md;
-    border: none;
-    background: transparent;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-500;
-    border-radius: $radius-full;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover {
-      color: #ec4899;
-    }
-
-    &--active {
-      background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(236, 72, 153, 0.3);
-    }
-  }
-
-  &__couple-dates {
-    display: flex;
-    gap: $spacing-sm;
-  }
-
-  &__couple-date {
-    flex: 1;
-    background: white;
-    border-radius: $radius-md;
-    padding: $spacing-sm;
-  }
-
-  &__couple-date-label {
-    display: block;
-    font-size: $font-size-xs;
-    color: #9d174d;
-    margin-bottom: $spacing-xs;
-  }
-
-  &__couple-date-input {
-    width: 100%;
-    padding: $spacing-xs;
-    border: none;
-    background: transparent;
-    font-size: $font-size-sm;
-    color: $gray-700;
-
-    &:focus {
-      outline: none;
-    }
-  }
-
-  // 큰 인풋 (모임 이름용)
-  &__input--large {
-    font-size: $font-size-lg;
-    font-weight: $font-weight-medium;
-    padding: $spacing-md;
-  }
-
-  // 학원 타입 전용 설정
-  &__academy-settings {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
-    padding: $spacing-md;
-    background: $gray-50;
-    border-radius: $radius-lg;
-    margin-bottom: $spacing-md;
-  }
-
-  &__academy-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    padding-bottom: $spacing-sm;
-    border-bottom: 1px solid $gray-200;
-  }
-
-  &__academy-header-icon {
-    font-size: 16px;
-  }
-
-  &__academy-header-text {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-  }
-
-  &__academy-card {
-    background: white;
-    border-radius: $radius-md;
-    padding: $spacing-md;
-  }
-
-  &__academy-card-question {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__academy-card-options {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: $spacing-sm;
-  }
-
-  &__academy-card-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: $spacing-sm $spacing-md;
-    background: $gray-50;
-    border: 2px solid transparent;
-    border-radius: $radius-md;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover {
-      background: $gray-100;
-    }
-
-    &--active {
-      background: $primary-50;
-      border-color: $primary-500;
-
-      .group-create__academy-card-btn-label {
-        color: $primary-700;
-      }
-    }
-  }
-
-  &__academy-card-btn-icon {
-    font-size: 24px;
-  }
-
-  &__academy-card-btn-label {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-  }
-
-  &__academy-card-btn-desc {
-    font-size: $font-size-xs;
-    color: $gray-500;
-  }
-
-  &__academy-card-toggle {
-    display: flex;
-    gap: $spacing-xs;
-    background: $gray-100;
-    padding: 4px;
-    border-radius: $radius-md;
-  }
-
-  &__academy-toggle-btn {
-    flex: 1;
-    padding: $spacing-sm $spacing-md;
-    background: transparent;
-    border: none;
-    border-radius: $radius-sm;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-500;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover {
-      color: $gray-700;
-    }
-
-    &--active {
-      background: white;
-      color: $primary-600;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-  }
-
-  &__academy-card-note {
-    margin-top: $spacing-sm;
-    font-size: $font-size-xs;
-    color: $primary-600;
-  }
-
-  // 멤버 설정 (직책 만들기 + 내 직책)
-  &__member-settings {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
-    padding: $spacing-md;
-    background: $gray-50;
-    border-radius: $radius-lg;
-    margin-bottom: $spacing-md;
-  }
-
-  &__member-settings-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    padding-bottom: $spacing-sm;
-    border-bottom: 1px solid $gray-200;
-  }
-
-  &__member-settings-header-icon {
-    font-size: 16px;
-  }
-
-  &__member-settings-header-text {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-  }
-
-  &__member-settings-card {
-    background: white;
-    border-radius: $radius-md;
-    padding: $spacing-md;
-  }
-
-  &__member-settings-card-question {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__member-settings-card-note {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    margin-top: $spacing-sm;
-    font-size: $font-size-xs;
-    color: $gray-500;
-  }
-
-  // 연습실 관리 설정
-  &__practice-room-settings {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-md;
-    padding: $spacing-md;
-    background: $gray-50;
-    border-radius: $radius-lg;
-    margin-top: $spacing-sm;
-  }
-
-  &__practice-room-settings-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    padding-bottom: $spacing-sm;
-    border-bottom: 1px solid $gray-200;
-  }
-
-  &__practice-room-settings-header-icon {
-    font-size: 16px;
-  }
-
-  &__practice-room-settings-header-text {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-  }
-
-  &__practice-room-card {
-    background: white;
-    border-radius: $radius-md;
-    padding: $spacing-md;
-  }
-
-  &__practice-room-card-question {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__practice-room-time-row {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-  }
-
-  &__practice-room-time-separator {
-    color: $gray-500;
-    font-size: $font-size-sm;
-  }
-
-  &__practice-room-max-hours {
-    display: flex;
-    align-items: center;
-    gap: $spacing-md;
-  }
-
-  &__practice-room-max-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    background: $gray-100;
-    border: none;
-    border-radius: $radius-md;
-    font-size: $font-size-lg;
-    color: $gray-600;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover {
-      background: $gray-200;
-    }
-
-    &:active {
-      background: $gray-300;
-    }
-  }
-
-  &__practice-room-max-value {
-    min-width: 60px;
-    text-align: center;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-  }
-
-  &__input--time {
-    width: 120px;
-  }
-
-  // 직책 태그 스타일
-  &__positions-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $spacing-xs;
-    margin-top: $spacing-sm;
-  }
-
-  &__positions-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px 4px 12px;
-    background: $primary-100;
-    color: $primary-700;
-    border-radius: $radius-full;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-  }
-
-  &__positions-tag-remove {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    background: transparent;
-    border: none;
-    border-radius: $radius-full;
-    color: $primary-500;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover {
-      background: $primary-200;
-      color: $primary-700;
-    }
-  }
-
-  &__field--half {
-    flex: 1;
-  }
-
-  &__features {
-    padding: $spacing-md;
-    background: $gray-50;
-    border-radius: $radius-md;
-    margin-bottom: $spacing-lg;
-
-    &--all {
-      padding: $spacing-lg;
-      background: $gray-50;
-      height: 100%;
-    }
-  }
-
-  &__features-guide {
-    text-align: center;
-    font-size: $font-size-sm;
-    color: $gray-500;
-    margin: 0 0 $spacing-md 0;
-  }
-
-  &__features-all {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-sm;
-  }
-
-  &__features-group {
-    display: flex;
-    align-items: flex-start;
-    gap: $spacing-md;
-    padding: $spacing-sm $spacing-md;
-    background: white;
-    border-radius: $radius-md;
-  }
-
-  &__features-group-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    min-width: 100px;
-    flex-shrink: 0;
-  }
-
-  &__features-group-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: $radius-sm;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    img {
-      width: 14px;
-      height: 14px;
-      filter: brightness(0) invert(1);
-    }
-  }
-
-  &__features-group-label {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-700;
-  }
-
-  &__features-group-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    flex: 1;
-  }
-
-  &__features-header {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-    margin-bottom: $spacing-md;
-  }
-
-  &__features-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: $radius-md;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    img {
-      width: 18px;
-      height: 18px;
-      filter: brightness(0) invert(1);
-    }
-  }
-
-  &__features-text {
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__features-label {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-semibold;
-    color: $gray-800;
-  }
-
-  &__features-note {
-    font-size: $font-size-xs;
-    color: $gray-400;
-  }
-
-  &__features-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: $spacing-xs;
-  }
-
-  &__feature-tag {
-    padding: $spacing-xs $spacing-sm;
+  &__position-remove {
+    width: 36px;
+    height: 36px;
+    @include flex-center;
     background: white;
     border: 1px solid $gray-200;
-    color: $gray-600;
-    font-size: $font-size-xs;
-    font-weight: $font-weight-medium;
-    border-radius: $radius-full;
-  }
-
-  &__cancel {
-    padding: $spacing-sm $spacing-lg;
-    color: $gray-700;
-    font-weight: $font-weight-medium;
-    border: 1px solid $gray-300;
-    border-radius: $radius-md;
-    transition: background-color $transition-fast;
-
-    &:hover {
-      background-color: $gray-50;
-    }
-  }
-
-  &__submit {
-    padding: $spacing-sm $spacing-lg;
-    background-color: $primary-500;
-    color: white;
-    font-weight: $font-weight-medium;
-    border-radius: $radius-md;
-    transition: background-color $transition-fast;
-
-    &:hover:not(:disabled) {
-      background-color: $primary-600;
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  // 회사 직위/직책 모드 선택
-  &__company-mode {
-    margin-bottom: $spacing-lg;
-  }
-
-  &__company-mode-toggle {
-    display: flex;
-    gap: $spacing-sm;
-    margin-top: $spacing-sm;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__company-mode-btn {
-    flex: 1;
-    padding: $spacing-sm $spacing-md;
-    background: white;
-    border: 1px solid $gray-300;
-    border-radius: $radius-md;
-    font-size: $font-size-sm;
-    color: $gray-600;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover:not(&--active) {
-      border-color: $primary-300;
-      color: $primary-500;
-    }
-
-    &--active {
-      background: $primary-500;
-      border-color: $primary-500;
-      color: white;
-      font-weight: $font-weight-medium;
-    }
-  }
-
-  &__company-mode-hint {
-    display: block;
-    font-size: $font-size-xs;
-    color: $gray-500;
-  }
-
-  // 직책/직분 설정 섹션
-  &__positions {
-    margin-bottom: $spacing-md;
-  }
-
-  &__positions-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: $spacing-md;
-
-    @include mobile {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: $spacing-xs;
-    }
-  }
-
-  &__positions-hint {
-    font-size: $font-size-xs;
-    color: $gray-500;
-  }
-
-  &__positions-list {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-sm;
-  }
-
-  &__position-item {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-  }
-
-  &__position-remove {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    border: 1px solid $gray-300;
     border-radius: $radius-md;
     color: $gray-400;
+    font-size: 14px;
     cursor: pointer;
     transition: all $transition-fast;
 
@@ -901,19 +1115,21 @@
 
   &__position-add {
     width: 100%;
-    margin-top: $spacing-sm;
-    padding: $spacing-sm;
+    margin-top: 12px;
+    padding: 12px;
     background: white;
-    border: 1px dashed $gray-300;
+    border: 2px dashed $gray-300;
     border-radius: $radius-md;
-    font-size: $font-size-sm;
+    font-size: 13px;
+    font-weight: 600;
     color: $gray-500;
     cursor: pointer;
     transition: all $transition-fast;
 
     &:hover:not(:disabled) {
-      border-color: $primary-500;
-      color: $primary-500;
+      border-color: $primary-400;
+      color: $primary-600;
+      background: $primary-50;
     }
 
     &:disabled {
@@ -922,486 +1138,58 @@
     }
   }
 
-  // 본인 직책/직분 설정
   &__my-title {
-    margin-bottom: $spacing-md;
-
-    .group-create__role-info {
-      margin-top: $spacing-sm;
-      margin-bottom: 0;
-      padding: $spacing-sm $spacing-md;
-    }
+    margin-bottom: 16px;
   }
 
   &__my-title-hint {
     display: block;
-    margin-top: $spacing-xs;
-    font-size: $font-size-xs;
-    color: $gray-500;
-  }
-
-  // =============================================
-  // 교육 타입 슬라이드 UI
-  // =============================================
-
-  // 진행 표시 바
-  &__progress {
-    display: flex;
-    justify-content: center;
-    gap: $spacing-md;
-    margin-bottom: $spacing-xl;
-    padding-bottom: $spacing-lg;
-    border-bottom: 1px solid $gray-200;
-  }
-
-  &__progress-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: $spacing-xs;
-
-    &--active {
-      .group-create__progress-number {
-        background: $primary-500;
-        color: white;
-        border-color: $primary-500;
-      }
-
-      .group-create__progress-label {
-        color: $primary-600;
-        font-weight: $font-weight-semibold;
-      }
-    }
-
-    &--done {
-      .group-create__progress-number {
-        background: $success;
-        color: white;
-        border-color: $success;
-      }
-
-      .group-create__progress-label {
-        color: $gray-500;
-      }
-    }
-  }
-
-  &__progress-number {
-    width: 32px;
-    height: 32px;
-    border-radius: $radius-full;
-    border: 2px solid $gray-300;
-    background: white;
+    margin-top: 8px;
+    font-size: 12px;
     color: $gray-400;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-semibold;
-    @include flex-center;
-    transition: all $transition-fast;
   }
 
-  &__progress-label {
-    font-size: $font-size-xs;
-    color: $gray-400;
-    white-space: nowrap;
-    transition: all $transition-fast;
-  }
-
-  // 슬라이드 콘텐츠
-  &__slide {
-    animation: slideIn 0.3s ease;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  &__slide-title {
-    font-size: $font-size-lg;
-    font-weight: $font-weight-bold;
-    color: $gray-900;
-    margin: 0 0 $spacing-xs 0;
-    text-align: center;
-  }
-
-  &__slide-desc {
-    font-size: $font-size-sm;
-    color: $gray-500;
-    margin: 0 0 $spacing-xl 0;
-    text-align: center;
-  }
-
-  &__slide-content {
-    max-width: 500px;
-    margin: 0 auto;
-  }
-
-  &__row--center {
-    justify-content: center;
-    align-items: center;
-
-    @include mobile {
-      flex-direction: row;
-      align-items: center;
-    }
-  }
-
-  // 옵션 카드 (1:1 vs 그룹 수업)
-  &__option-cards {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: $spacing-md;
-    margin-bottom: $spacing-xl;
-  }
-
-  &__option-card {
-    position: relative;
-    display: block;
-    cursor: pointer;
-
-    input {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    &-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: $spacing-sm;
-      padding: $spacing-lg;
-      background: white;
-      border: 2px solid $gray-200;
-      border-radius: $radius-lg;
-      transition: all $transition-fast;
-    }
-
-    &:hover &-content {
-      border-color: $primary-300;
-      background: $gray-50;
-    }
-
-    &--selected &-content {
-      border-color: $primary-500;
-      background: $primary-50;
-    }
-
-    &-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: $radius-lg;
-      background: $gray-100;
-      @include flex-center;
-      font-size: $font-size-lg;
-      font-weight: $font-weight-bold;
-      color: $gray-500;
-      transition: all $transition-fast;
-    }
-
-    &--selected &-icon {
-      background: $primary-500;
-      color: white;
-    }
-
-    &-title {
-      font-size: $font-size-base;
-      font-weight: $font-weight-semibold;
-      color: $gray-800;
-    }
-
-    &-desc {
-      font-size: $font-size-xs;
-      color: $gray-500;
-      text-align: center;
-      line-height: 1.4;
-    }
-  }
-
-  // 토글 행
-  &__toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: $spacing-md;
+  &__company-mode {
+    margin-bottom: 16px;
+    padding: 16px;
     background: white;
-    border: 1px solid $gray-200;
-    border-radius: $radius-md;
-    margin-bottom: $spacing-md;
-  }
-
-  &__toggle-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  &__toggle-label {
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    color: $gray-800;
-  }
-
-  &__toggle-desc {
-    font-size: $font-size-xs;
-    color: $gray-500;
-  }
-
-  // 토글 스위치
-  &__toggle {
-    position: relative;
-    display: inline-block;
-    width: 48px;
-    height: 26px;
-    flex-shrink: 0;
-
-    input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    input:checked+.group-create__toggle-slider {
-      background-color: $primary-500;
-    }
-
-    input:checked+.group-create__toggle-slider::before {
-      transform: translateX(22px);
-    }
-  }
-
-  &__toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: $gray-300;
-    transition: all $transition-fast;
-    border-radius: $radius-full;
-
-    &::before {
-      position: absolute;
-      content: "";
-      height: 20px;
-      width: 20px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: all $transition-fast;
-      border-radius: $radius-full;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-    }
-  }
-
-  // 정보 박스
-  &__info-box {
-    padding: $spacing-md;
-    background: $primary-50;
-    border: 1px solid $primary-200;
-    border-radius: $radius-md;
-    margin-top: $spacing-md;
-
-    p {
-      margin: 0;
-      font-size: $font-size-sm;
-      color: $primary-700;
-      line-height: 1.5;
-    }
-  }
-
-  // 연습실 설정
-  &__practice-settings {
-    margin-top: $spacing-md;
-    padding: $spacing-lg;
-    background: $gray-50;
+    border: 1px solid $gray-100;
     border-radius: $radius-lg;
   }
 
-  &__time-row {
+  &__company-mode-toggle {
     display: flex;
-    align-items: flex-end;
-    gap: $spacing-sm;
-    margin-bottom: $spacing-lg;
+    gap: 10px;
+    margin-top: 12px;
   }
 
-  &__time-field {
+  &__company-mode-btn {
     flex: 1;
-
-    label {
-      display: block;
-      font-size: $font-size-xs;
-      font-weight: $font-weight-medium;
-      color: $gray-600;
-      margin-bottom: $spacing-xs;
-    }
-
-    input[type="time"] {
-      width: 100%;
-      padding: $spacing-sm;
-      border: 1px solid $gray-300;
-      border-radius: $radius-md;
-      font-size: $font-size-sm;
-
-      &:focus {
-        outline: none;
-        border-color: $primary-500;
-      }
-    }
-  }
-
-  &__time-separator {
-    padding-bottom: $spacing-sm;
-    color: $gray-500;
-    font-size: $font-size-lg;
-  }
-
-  // 라디오 그룹
-  &__radio-group {
-    display: flex;
-    gap: $spacing-md;
-  }
-
-  &__radio {
-    display: flex;
-    align-items: center;
-    gap: $spacing-xs;
-    cursor: pointer;
-
-    input[type="radio"] {
-      width: 18px;
-      height: 18px;
-      accent-color: $primary-500;
-    }
-
-    span {
-      font-size: $font-size-sm;
-      color: $gray-700;
-    }
-  }
-
-  // 리스트 (연습실 목록)
-  &__list {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-sm;
-    margin-top: $spacing-sm;
-  }
-
-  &__list-item {
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-  }
-
-  &__list-remove {
-    width: 32px;
-    height: 32px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    border: 1px solid $gray-300;
-    border-radius: $radius-md;
-    color: $gray-400;
-    font-size: $font-size-lg;
+    padding: 12px;
+    background: $gray-50;
+    border: 2px solid $gray-200;
+    border-radius: $radius-lg;
+    font-size: 14px;
+    font-weight: 500;
+    color: $gray-600;
     cursor: pointer;
     transition: all $transition-fast;
 
     &:hover {
-      border-color: $error;
-      color: $error;
-      background: rgba($error, 0.05);
-    }
-  }
-
-  &__list-add {
-    width: 100%;
-    padding: $spacing-sm;
-    background: white;
-    border: 1px dashed $gray-300;
-    border-radius: $radius-md;
-    font-size: $font-size-sm;
-    color: $gray-500;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &:hover {
-      border-color: $primary-500;
-      color: $primary-500;
-    }
-  }
-
-  // 네비게이션 버튼
-  &__nav {
-    display: flex;
-    justify-content: space-between;
-    margin-top: $spacing-xl;
-    padding-top: $spacing-lg;
-    border-top: 1px solid $gray-200;
-  }
-
-  &__nav-btn {
-    padding: $spacing-sm $spacing-xl;
-    font-size: $font-size-sm;
-    font-weight: $font-weight-medium;
-    border-radius: $radius-md;
-    cursor: pointer;
-    transition: all $transition-fast;
-
-    &--prev {
-      background: white;
-      border: 1px solid $gray-300;
-      color: $gray-700;
-
-      &:hover:not(:disabled) {
-        background: $gray-50;
-        border-color: $gray-400;
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
+      border-color: $gray-400;
     }
 
-    &--next {
+    &--active {
       background: $primary-500;
-      border: none;
+      border-color: $primary-500;
       color: white;
-
-      &:hover:not(:disabled) {
-        background: $primary-600;
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
     }
+  }
 
-    &--submit {
-      background: $success;
-      border: none;
-      color: white;
-
-      &:hover:not(:disabled) {
-        background: color.adjust($success, $lightness: -5%);
-      }
-
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
+  &__company-mode-hint {
+    display: block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: $gray-400;
   }
 }

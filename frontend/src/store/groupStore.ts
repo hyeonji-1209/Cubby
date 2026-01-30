@@ -47,7 +47,7 @@ interface GroupState {
   }) => Promise<Group>;
   joinGroup: (
     inviteCode: string,
-    options?: { isGuardian?: boolean; childInfo?: ChildInfo[]; positionId?: string }
+    options?: { isGuardian?: boolean; isInstructor?: boolean; childInfo?: ChildInfo[]; positionId?: string }
   ) => Promise<JoinGroupResponse>;
   leaveGroup: (groupId: string) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;

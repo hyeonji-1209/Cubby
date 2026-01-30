@@ -12,12 +12,11 @@ import { User } from './User';
 import { Group } from './Group';
 
 // ============ 멤버 역할/상태 ============
+// 역할은 owner/member 두 가지만 사용
+// 세부 권한은 직책(Position)으로 관리
 export enum MemberRole {
-  OWNER = 'owner',           // 운영자/관리자
-  ADMIN = 'admin',           // 관리자
-  LEADER = 'leader',         // 리더/담당자/강사
-  MEMBER = 'member',         // 멤버/구성원/학생
-  GUARDIAN = 'guardian',     // 보호자
+  OWNER = 'owner',           // 운영자 (모든 권한)
+  MEMBER = 'member',         // 멤버 (직책에 따른 권한)
 }
 
 export enum MemberStatus {
@@ -58,6 +57,11 @@ export interface EducationGuardianData {
   linkedStudentIds?: string[];        // 연결된 학생 userId 목록
 }
 
+// 학원/교육 타입 - 강사 데이터
+export interface EducationInstructorData {
+  payDay?: number;                    // 급여일 (1-31)
+}
+
 // 교회/종교 타입 멤버 데이터
 export interface ReligiousMemberData {
   baptismDate?: string;               // 세례일
@@ -88,6 +92,7 @@ export interface CoupleMemberData {
 export type MemberTypeData =
   | EducationStudentData
   | EducationGuardianData
+  | EducationInstructorData
   | ReligiousMemberData
   | CommunityMemberData
   | CompanyMemberData
@@ -147,15 +152,24 @@ export class GroupMember {
   // ============ 헬퍼 메서드 ============
 
   // 학원/교육 학생 데이터 가져오기
+  // title이 '보호자'가 아니면 학생 데이터로 취급
   getEducationStudentData(): EducationStudentData | null {
-    if (this.role === MemberRole.GUARDIAN) return null;
+    if (this.title === '보호자') return null;
     return this.typeData as EducationStudentData;
   }
 
   // 학원/교육 보호자 데이터 가져오기
+  // title이 '보호자'인 경우에만 보호자 데이터 반환
   getEducationGuardianData(): EducationGuardianData | null {
-    if (this.role !== MemberRole.GUARDIAN) return null;
+    if (this.title !== '보호자') return null;
     return this.typeData as EducationGuardianData;
+  }
+
+  // 학원/교육 강사 데이터 가져오기
+  // title이 '강사'인 경우에만 강사 데이터 반환
+  getEducationInstructorData(): EducationInstructorData | null {
+    if (this.title !== '강사') return null;
+    return this.typeData as EducationInstructorData;
   }
 
   // 편의 접근자 (하위 호환성)
@@ -164,6 +178,10 @@ export class GroupMember {
   }
 
   get paymentDueDay(): number | null {
+    // 강사는 payDay 사용, 학생은 paymentDueDay 사용
+    if (this.title === '강사') {
+      return (this.typeData as EducationInstructorData)?.payDay ?? null;
+    }
     return (this.typeData as EducationStudentData)?.paymentDueDay ?? null;
   }
 

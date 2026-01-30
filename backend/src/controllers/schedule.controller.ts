@@ -170,10 +170,10 @@ export class ScheduleController {
         },
       });
 
-      // 작성자이거나 관리자인지 확인
+      // 작성자이거나 owner인지 확인
       const canEdit =
         schedule.authorId === req.user!.id ||
-        (membership && [MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER].includes(membership.role));
+        (membership && membership.role === MemberRole.OWNER);
 
       if (!canEdit) {
         throw new AppError('Not authorized to edit this schedule', 403);
@@ -222,7 +222,7 @@ export class ScheduleController {
 
       const canDelete =
         schedule.authorId === req.user!.id ||
-        (membership && [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role));
+        (membership && membership.role === MemberRole.OWNER);
 
       if (!canDelete) {
         throw new AppError('Not authorized to delete this schedule', 403);

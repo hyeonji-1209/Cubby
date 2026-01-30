@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { PositionController } from '../controllers/position.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
-import { requireGroupRole, requireGroupMember } from '../middlewares/role.middleware';
-import { MemberRole } from '../models/GroupMember';
+import { requireGroupMember, requireGroupOwner } from '../middlewares/role.middleware';
 
 const router = Router();
 const positionController = new PositionController();
@@ -15,24 +14,24 @@ router.use(authMiddleware);
 // 직책 목록 조회 (멤버도 조회 가능)
 router.get('/:groupId/positions', requireGroupMember, positionController.getPositions);
 
-// 직책 생성 (운영자, 관리자만)
+// 직책 생성 (운영자만)
 router.post(
   '/:groupId/positions',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   positionController.createPosition
 );
 
-// 직책 수정
+// 직책 수정 (운영자만)
 router.patch(
   '/:groupId/positions/:positionId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   positionController.updatePosition
 );
 
-// 직책 삭제
+// 직책 삭제 (운영자만)
 router.delete(
   '/:groupId/positions/:positionId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN),
+  requireGroupOwner,
   positionController.deletePosition
 );
 
@@ -52,17 +51,17 @@ router.get(
   positionController.getMemberPositions
 );
 
-// 멤버에게 직책 부여
+// 멤버에게 직책 부여 (운영자만)
 router.post(
   '/:groupId/members/:memberId/positions',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER),
+  requireGroupOwner,
   positionController.assignPosition
 );
 
-// 멤버 직책 해제
+// 멤버 직책 해제 (운영자만)
 router.delete(
   '/:groupId/members/:memberId/positions/:positionId',
-  requireGroupRole(MemberRole.OWNER, MemberRole.ADMIN, MemberRole.LEADER),
+  requireGroupOwner,
   positionController.removePosition
 );
 

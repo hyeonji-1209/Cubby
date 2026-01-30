@@ -68,7 +68,7 @@ export const useMemberFilters = (
         instructorSubGroupMembers.forEach((memberIds) => {
           memberIds.forEach((id) => allAssignedMemberIds.add(id));
         });
-        result = result.filter((m) => m.role !== 'owner' && m.role !== 'admin' && !allAssignedMemberIds.has(m.id));
+        result = result.filter((m) => m.role !== 'owner' && m.title !== '강사' && !allAssignedMemberIds.has(m.id));
       } else {
         // 특정 강사의 학생
         const memberIds = instructorSubGroupMembers.get(instructorFilter) || [];

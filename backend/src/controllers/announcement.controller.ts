@@ -5,7 +5,7 @@ import { AnnouncementView } from '../models/AnnouncementView';
 import { GroupMember } from '../models/GroupMember';
 import { Like, LikeTargetType } from '../models/Like';
 import { AppError } from '../middlewares/error.middleware';
-import { requireActiveMember, canEditOrDelete, isLeaderOrAbove } from '../utils/membership';
+import { requireActiveMember, canEditOrDelete, isOwner } from '../utils/membership';
 import fs from 'fs';
 import path from 'path';
 
@@ -287,10 +287,10 @@ export class AnnouncementController {
         throw new AppError('Announcement not found', 404);
       }
 
-      // 리더 이상인지 확인
+      // owner인지 확인
       const membership = await requireActiveMember(this.memberRepository, announcement.groupId, req.user!.id);
 
-      if (!isLeaderOrAbove(membership)) {
+      if (!isOwner(membership)) {
         throw new AppError('Not authorized to pin/unpin announcements', 403);
       }
 

@@ -127,7 +127,8 @@ export const useSubGroupDetail = ({ groupId, subGroupId }: UseSubGroupDetailPara
 
   // 권한 계산
   const currentMember = members.find((m) => m.userId === user?.id);
-  const isGroupAdmin = currentMember?.role === 'owner' || currentMember?.role === 'admin';
+  // 새로운 권한 시스템: owner만 그룹 관리자
+  const isGroupAdmin = currentMember?.role === 'owner';
   const isLeader = subGroup?.leaderId === user?.id;
   const isAdmin = isGroupAdmin || isLeader;
   const pendingRequestsCount = subGroupRequests.length;

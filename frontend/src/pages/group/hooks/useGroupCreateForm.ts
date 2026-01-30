@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGroupStore } from '@/store/groupStore';
 import { useToast } from '@/components';
 import { useListManager, useLoading } from '@/hooks';
-import { positionApi, groupApi, practiceRoomApi } from '@/api';
+import { positionApi, groupApi, practiceRoomApi, lessonRoomApi } from '@/api';
 import { getPositionLabel, GROUP_TYPE_COLORS, GROUP_TYPE_DEFAULT_ICONS } from '@/constants/labels';
 import type { GroupType } from '@/types';
 
@@ -32,6 +32,7 @@ export interface GroupCreateFormState {
   myRank: string;
 
   // 학원 타입 전용
+  ownerCount: number; // 원장 수
   hasClasses: boolean;
   hasPracticeRooms: boolean;
   allowGuardians: boolean;
@@ -44,6 +45,10 @@ export interface GroupCreateFormState {
   practiceRoomSlotMinutes: 30 | 60;
   practiceRoomMaxHours: number;
 }
+
+// 학원 타입 고정 직책
+export const EDUCATION_POSITIONS = ['원장', '강사', '학생', '보호자'] as const;
+export type EducationPosition = typeof EDUCATION_POSITIONS[number];
 
 const initialState: GroupCreateFormState = {
   name: '',
@@ -58,6 +63,7 @@ const initialState: GroupCreateFormState = {
   myTitle: '',
   companyPositionMode: 'title_only',
   myRank: '',
+  ownerCount: 1,
   hasClasses: false,
   hasPracticeRooms: false,
   allowGuardians: false,
@@ -75,9 +81,15 @@ export const EDUCATION_STEPS = {
   1: '기본 정보',
   2: '수업 방식',
   3: '추가 설정',
-  4: '연습실',
+  4: '클래스',
   5: '직책 설정',
 } as const;
+
+// 클래스/연습실 타입
+export interface ClassRoom {
+  name: string;
+  isPracticeRoom: boolean; // 연습실로 사용 여부
+}
 
 export const useGroupCreateForm = () => {
   const navigate = useNavigate();
@@ -91,10 +103,11 @@ export const useGroupCreateForm = () => {
   // 교육 타입 단계 관리
   const [educationStep, setEducationStep] = useState<EducationStep>(1);
 
-  // 리스트 관리 (직책, 직위, 연습실)
+  // 리스트 관리 (직책, 직위, 클래스/연습실)
   const positionList = useListManager<string>([''], { maxLength: 10, minLength: 1 });
   const rankList = useListManager<string>([''], { maxLength: 10, minLength: 1 });
-  const practiceRoomList = useListManager<string>([''], { maxLength: 20, minLength: 1 });
+  // 클래스는 기본적으로 연습실로 사용 (isPracticeRoom: true가 기본)
+  const classRoomList = useListManager<ClassRoom>([{ name: '', isPracticeRoom: true }], { maxLength: 20, minLength: 1 });
 
   // 폼 필드 업데이트
   const updateField = useCallback(<K extends keyof GroupCreateFormState>(
@@ -130,9 +143,9 @@ export const useGroupCreateForm = () => {
         return true;
       case 4: // 연습실: 항상 가능
         return true;
-      case 5: { // 직책 설정: 직책 1개 이상 + 본인 직책 설정
-        const validPositions = positionList.items.filter((p) => p.trim());
-        return validPositions.length > 0 && !!formState.myTitle.trim();
+      case 5: { // 직책 설정: 본인 직책 설정 필수
+        // 학원 타입은 고정 직책 사용, 다른 타입은 직책 목록 필요
+        return !!formState.myTitle.trim();
       }
       default:
         return false;
@@ -158,9 +171,9 @@ export const useGroupCreateForm = () => {
     setFormState(initialState);
     positionList.reset(['']);
     rankList.reset(['']);
-    practiceRoomList.reset(['']);
+    classRoomList.reset([{ name: '', isPracticeRoom: true }]);
     setEducationStep(1);
-  }, [positionList, rankList, practiceRoomList]);
+  }, [positionList, rankList, classRoomList]);
 
   // 유효성 검사
   const validate = useCallback((): boolean => {
@@ -179,7 +192,8 @@ export const useGroupCreateForm = () => {
       return false;
     }
 
-    if (type !== 'couple' && validPositions.length === 0) {
+    // 학원 타입은 고정 직책 사용, 커플 제외, 나머지 타입은 직책 목록 필요
+    if (type !== 'couple' && type !== 'education' && validPositions.length === 0) {
       toast.error(`최소 하나 이상의 ${positionLabel}을 만들어주세요`);
       return false;
     }
@@ -209,7 +223,8 @@ export const useGroupCreateForm = () => {
     const validRanks = rankList.items.filter((r) => r.trim());
 
     if (isLoading || !type || !name.trim()) return false;
-    if (type !== 'couple' && validPositions.length === 0) return false;
+    // 학원 타입은 고정 직책 사용, 커플 제외, 나머지 타입은 직책 목록 필요
+    if (type !== 'couple' && type !== 'education' && validPositions.length === 0) return false;
     if (type !== 'couple' && !myTitle.trim()) return false;
     if (type === 'company' && companyPositionMode === 'both' && validRanks.length === 0) return false;
     if (type === 'company' && companyPositionMode === 'both' && !myRank.trim()) return false;
@@ -230,7 +245,8 @@ export const useGroupCreateForm = () => {
 
     const validPositions = positionList.items.filter((p) => p.trim());
     const validRanks = rankList.items.filter((r) => r.trim());
-    const validRooms = practiceRoomList.items.filter((r) => r.trim());
+    // 클래스 중 연습실로 사용하는 것만 필터링
+    const validPracticeRooms = classRoomList.items.filter((r) => r.name.trim() && r.isPracticeRoom);
 
     await withLoading(async () => {
       // 1. 모임 생성
@@ -261,7 +277,17 @@ export const useGroupCreateForm = () => {
 
       // 2. 직책/직분 생성
       const createdPositions: Array<{ id: string; name: string }> = [];
-      if (type !== 'couple' && validPositions.length > 0) {
+      if (type === 'education') {
+        // 학원 타입은 고정 직책 사용
+        const results = await Promise.all(
+          EDUCATION_POSITIONS.map((positionName) =>
+            positionApi.create(group.id, { name: positionName }).catch(() => null)
+          )
+        );
+        results.forEach((result) => {
+          if (result?.data) createdPositions.push(result.data);
+        });
+      } else if (type !== 'couple' && validPositions.length > 0) {
         const results = await Promise.all(
           validPositions.map((positionName) =>
             positionApi.create(group.id, { name: positionName }).catch(() => null)
@@ -297,11 +323,24 @@ export const useGroupCreateForm = () => {
         }
       }
 
-      // 4. 연습실 생성
-      if (type === 'education' && hasPracticeRooms && validRooms.length > 0) {
+      // 4. 클래스/수업실 생성 (1:1 수업인 경우 lessonRoomApi 사용)
+      const validClassRooms = classRoomList.items.filter((r) => r.name.trim());
+      if (type === 'education' && !hasClasses && validClassRooms.length > 0) {
+        // 1:1 수업: lessonRoomApi 사용
         await Promise.all(
-          validRooms.map((roomName) =>
-            practiceRoomApi.create(group.id, { name: roomName.trim() }).catch(() => null)
+          validClassRooms.map((room) =>
+            lessonRoomApi.create(group.id, {
+              name: room.name.trim(),
+              capacity: 1,
+              excludeFromPractice: !room.isPracticeRoom, // 예약 제외 여부
+            }).catch(() => null)
+          )
+        );
+      } else if (type === 'education' && hasPracticeRooms && validPracticeRooms.length > 0) {
+        // 그룹 수업 + 연습실: practiceRoomApi 사용
+        await Promise.all(
+          validPracticeRooms.map((room) =>
+            practiceRoomApi.create(group.id, { name: room.name.trim() }).catch(() => null)
           )
         );
       }
@@ -311,7 +350,7 @@ export const useGroupCreateForm = () => {
     }).catch(() => {
       toast.error('모임 생성에 실패했습니다.');
     });
-  }, [formState, positionList.items, rankList.items, practiceRoomList.items, validate, withLoading, createGroup, navigate, toast]);
+  }, [formState, positionList.items, rankList.items, classRoomList.items, validate, withLoading, createGroup, navigate, toast]);
 
   return {
     formState,
@@ -324,7 +363,7 @@ export const useGroupCreateForm = () => {
     // 리스트 매니저
     positionList,
     rankList,
-    practiceRoomList,
+    classRoomList,
     // 교육 타입 단계 관리
     educationStep,
     setEducationStep,

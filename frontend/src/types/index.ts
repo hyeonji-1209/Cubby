@@ -157,7 +157,8 @@ export interface Group {
 }
 
 // Member
-export type MemberRole = 'owner' | 'admin' | 'leader' | 'member' | 'guardian';
+// 역할은 owner/member 두 가지만 사용, 세부 권한은 직책(Position)으로 관리
+export type MemberRole = 'owner' | 'member';
 export type MemberStatus = 'active' | 'pending' | 'suspended';
 
 // 보호자의 자녀 정보
@@ -199,10 +200,16 @@ export interface EducationGuardianData {
   linkedStudentIds?: string[];
 }
 
+// 학원/교육 타입 - 강사 데이터
+export interface EducationInstructorData {
+  payDay?: number; // 급여일 (1-31)
+}
+
 // 멤버 타입 데이터 유니온
 export type MemberTypeData =
   | EducationStudentData
-  | EducationGuardianData;
+  | EducationGuardianData
+  | EducationInstructorData;
 
 export interface GroupMember {
   id: string;

@@ -198,7 +198,7 @@ export class CommentController {
         throw new AppError('댓글을 찾을 수 없습니다.', 404);
       }
 
-      // 권한 확인: 본인 또는 관리자/오너
+      // 권한 확인: 본인 또는 오너
       const isAuthor = comment.authorId === req.user!.id;
 
       if (!isAuthor) {
@@ -206,10 +206,7 @@ export class CommentController {
           where: { groupId: comment.announcement.groupId, userId: req.user!.id },
         });
 
-        const isAdminOrOwner = membership &&
-          (membership.role === MemberRole.OWNER || membership.role === MemberRole.ADMIN);
-
-        if (!isAdminOrOwner) {
+        if (!membership || membership.role !== MemberRole.OWNER) {
           throw new AppError('수정 권한이 없습니다.', 403);
         }
       }
@@ -245,7 +242,7 @@ export class CommentController {
         throw new AppError('댓글을 찾을 수 없습니다.', 404);
       }
 
-      // 권한 확인: 본인 또는 관리자/오너
+      // 권한 확인: 본인 또는 오너
       const isAuthor = comment.authorId === req.user!.id;
 
       if (!isAuthor) {
@@ -253,10 +250,7 @@ export class CommentController {
           where: { groupId: comment.announcement.groupId, userId: req.user!.id },
         });
 
-        const isAdminOrOwner = membership &&
-          (membership.role === MemberRole.OWNER || membership.role === MemberRole.ADMIN);
-
-        if (!isAdminOrOwner) {
+        if (!membership || membership.role !== MemberRole.OWNER) {
           throw new AppError('삭제 권한이 없습니다.', 403);
         }
       }

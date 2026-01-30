@@ -162,7 +162,7 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     }
   };
 
-  // 수업실 추가
+  // 클래스 추가
   const handleAddLessonRoom = async () => {
     if (!newLessonRoomName.trim()) return;
     try {
@@ -173,9 +173,9 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
       setNewLessonRoomName('');
       setNewLessonRoomCapacity(1);
       fetchLessonRooms();
-      showToast('success', '수업실이 추가되었습니다.');
+      showToast('success', '클래스가 추가되었습니다.');
     } catch {
-      showToast('error', '수업실 추가에 실패했습니다.');
+      showToast('error', '클래스 추가에 실패했습니다.');
     }
   };
 
@@ -195,10 +195,24 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
       try {
         await lessonRoomApi.delete(groupId, room.id);
         fetchLessonRooms();
-        showToast('success', '수업실이 삭제되었습니다.');
+        showToast('success', '룸이 삭제되었습니다.');
       } catch {
-        showToast('error', '수업실 삭제에 실패했습니다.');
+        showToast('error', '룸 삭제에 실패했습니다.');
       }
+    }
+  };
+
+  // 클래스 예약 제외 토글
+  const handleTogglePracticeExclusion = async (roomId: string, exclude: boolean) => {
+    try {
+      await lessonRoomApi.update(groupId, roomId, { excludeFromPractice: exclude });
+      // 로컬 상태 즉시 업데이트
+      setLessonRooms((prev) =>
+        prev.map((r) => (r.id === roomId ? { ...r, excludeFromPractice: exclude } : r))
+      );
+      showToast('success', exclude ? '예약에서 제외되었습니다.' : '예약 가능합니다.');
+    } catch {
+      showToast('error', '설정 변경에 실패했습니다.');
     }
   };
 
@@ -348,7 +362,7 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     setLocationForm,
     handleSaveLocation,
     handleDeleteLocation,
-    // Lesson rooms (1:1 수업용)
+    // Lesson rooms (1:1 수업용) - 클래스 예약 통합
     lessonRooms,
     lessonRoomsLoading,
     newLessonRoomName,
@@ -358,5 +372,12 @@ export const useSettingsTab = ({ groupId, currentGroup }: UseSettingsTabProps) =
     handleAddLessonRoom,
     handleUpdateLessonRoomCapacity,
     handleDeleteLessonRoom,
+    handleTogglePracticeExclusion,
+    // 클래스 예약 설정 (practiceRoomSettings를 재사용)
+    reservationSettings: practiceRoomSettings,
+    reservationSettingsChanged: practiceRoomSettingsChanged,
+    reservationSettingsSaving: practiceRoomSaving,
+    updateReservationSetting: updatePracticeRoomSetting,
+    handleSaveReservationSettings: handleSavePracticeRoomSettings,
   };
 };

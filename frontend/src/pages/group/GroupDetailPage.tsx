@@ -1,8 +1,9 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
 import { QRCodeSVG } from 'qrcode.react';
 import { useGroupDetail } from './hooks';
-import { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal, LessonPanel, MemberApprovalModal } from './components';
+import { GroupDetailHeader, GroupDetailTabs, SubGroupModal, MemberModal, ConfirmModal, MemberApprovalModal } from './components';
 import { Modal } from '@/components';
 import {
   HomeTab,
@@ -11,9 +12,9 @@ import {
   AnnouncementsTab,
   SchedulesTab,
   PracticeRoomsTab,
-  LessonRoomReservationsTab,
   SettingsTab,
   LessonTab,
+  LessonManagementTab,
 } from './tabs';
 import './GroupPages.scss';
 
@@ -58,8 +59,6 @@ const GroupDetailPage = () => {
     setSubGroupDesc,
     subGroupLoading,
     // Member management
-    newRole,
-    setNewRole,
     roleLoading,
     memberSearch,
     setMemberSearch,
@@ -110,14 +109,12 @@ const GroupDetailPage = () => {
     attendanceQRLoading,
     openAttendanceQRModal,
     getMemberNextSchedule,
-    // 수업 패널 (1:1 교육용)
-    showLessonPanel,
-    setShowLessonPanel,
-    lessonPanelMember,
+    // 수업 탭 (1:1 교육용)
     openLessonPanel,
     handleEarlyLeave,
     isOneOnOneEducation,
     activeLessonMember,
+    selectedLessonMember,
     // Handlers
     handleLeaveGroup,
     handleDeleteGroup,
@@ -132,6 +129,29 @@ const GroupDetailPage = () => {
     handleUpdateRole,
     handleRemoveMember,
   } = useGroupDetail();
+
+  // 수업 관리 탭에서 선택된 강사 ID
+  const [selectedInstructorId, setSelectedInstructorId] = useState<string | undefined>(undefined);
+
+  // 수업 관리 탭으로 이동 (강사 ID 선택 포함)
+  const handleGoToLessonManagement = (instructorId?: string) => {
+    setSelectedInstructorId(instructorId);
+    setActiveTab('lesson-management');
+  };
+
+  // 선택된 강사의 학생 수 계산
+  const selectedInstructorStudentCount = useMemo(() => {
+    if (!selectedMember || selectedMember.title !== '강사') return 0;
+    const memberUserId = selectedMember.userId || selectedMember.user?.id;
+    const subGroup = instructorSubGroups.find(sg => sg.instructorId === memberUserId);
+    return subGroup?.memberCount ?? 0;
+  }, [selectedMember, instructorSubGroups]);
+
+  // 설정탭으로 이동
+  const handleGoToSettings = () => {
+    setShowMemberModal(false);
+    setActiveTab('settings');
+  };
 
   if (currentGroupLoading) {
     return (
@@ -169,17 +189,23 @@ const GroupDetailPage = () => {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isAdmin={isAdmin}
+        isOwner={isOwner}
         membersCount={members.length}
         subGroupsCount={subGroups.length}
         activeLessonMember={activeLessonMember}
+        isInstructorWithStudents={
+          // 현재 사용자가 강사이면서 학생이 배정되어 있는지 확인
+          isOneOnOneEducation &&
+          instructorSubGroups.some(sg => sg.instructorId === user?.id)
+        }
       />
 
       {/* 탭 컨텐츠 */}
       <div className="group-detail__content">
-        {activeTab === 'lesson' && groupId && activeLessonMember && (
+        {activeTab === 'lesson' && groupId && (selectedLessonMember || activeLessonMember) && (
           <LessonTab
             groupId={groupId}
-            member={activeLessonMember}
+            member={(selectedLessonMember || activeLessonMember)!}
             onEarlyLeave={handleEarlyLeave}
           />
         )}
@@ -230,6 +256,8 @@ const GroupDetailPage = () => {
             pendingMembersLoading={pendingMembersLoading}
             onApproveMember={handleApproveMember}
             onRejectMember={handleRejectMember}
+            userId={user?.id}
+            onGoToLessonManagement={handleGoToLessonManagement}
           />
         )}
 
@@ -280,11 +308,17 @@ const GroupDetailPage = () => {
           />
         )}
 
-        {activeTab === 'lessonrooms' && currentGroup?.type === 'education' && !currentGroup?.hasClasses && groupId && (
-          <LessonRoomReservationsTab
+        {activeTab === 'lesson-management' && isOneOnOneEducation && groupId && (
+          <LessonManagementTab
             groupId={groupId}
+            isOwner={isOwner}
             isAdmin={isAdmin}
-            operatingHours={currentGroup.operatingHours}
+            myRole={myRole}
+            userId={user?.id}
+            instructorSubGroups={instructorSubGroups}
+            members={members}
+            onOpenLessonPanel={openLessonPanel}
+            initialInstructorId={selectedInstructorId}
           />
         )}
 
@@ -321,8 +355,6 @@ const GroupDetailPage = () => {
         isOpen={showMemberModal}
         onClose={() => setShowMemberModal(false)}
         selectedMember={selectedMember}
-        newRole={newRole}
-        setNewRole={setNewRole}
         roleLoading={roleLoading}
         onUpdateRole={handleUpdateRole}
         onRemoveMember={handleRemoveMember}
@@ -336,6 +368,10 @@ const GroupDetailPage = () => {
         onSaveLessonInfo={handleSaveLessonInfo}
         lessonInfoLoading={lessonInfoLoading}
         lessonRooms={lessonRooms}
+        operatingHours={currentGroup.operatingHours}
+        instructorStudentCount={selectedInstructorStudentCount}
+        onGoToSettings={handleGoToSettings}
+        isOwner={isOwner}
       />
 
       <ConfirmModal
@@ -364,6 +400,7 @@ const GroupDetailPage = () => {
         instructors={instructors}
         lessonRooms={lessonRooms}
         hasMultipleInstructors={currentGroup.hasMultipleInstructors}
+        operatingHours={currentGroup.operatingHours}
         onApprove={handleApprovalSubmit}
         loading={approvalLoading}
       />
@@ -422,16 +459,6 @@ const GroupDetailPage = () => {
         </div>
       </Modal>
 
-      {/* 수업 패널 (1:1 교육용) */}
-      {isOneOnOneEducation && groupId && (
-        <LessonPanel
-          isOpen={showLessonPanel}
-          onClose={() => setShowLessonPanel(false)}
-          groupId={groupId}
-          member={lessonPanelMember}
-          onEarlyLeave={handleEarlyLeave}
-        />
-      )}
     </div>
   );
 };

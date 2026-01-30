@@ -32,15 +32,15 @@ export class SubGroupMemberController {
         throw new AppError('다중 강사 모드가 활성화되지 않았습니다.', 400);
       }
 
-      // owner/admin 권한 확인
+      // owner 권한 확인
       const membership = await this.memberRepository.findOne({
         where: { groupId, userId, status: MemberStatus.ACTIVE },
       });
-      if (!membership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role)) {
+      if (!membership || membership.role !== MemberRole.OWNER) {
         throw new AppError('권한이 없습니다.', 403);
       }
 
-      // 강사 확인 (admin 역할)
+      // 강사 확인 (title이 '강사'인 멤버)
       const instructorMembership = await this.memberRepository.findOne({
         where: { groupId, userId: instructorId, status: MemberStatus.ACTIVE },
         relations: ['user'],
@@ -48,8 +48,8 @@ export class SubGroupMemberController {
       if (!instructorMembership) {
         throw new AppError('강사를 찾을 수 없습니다.', 404);
       }
-      if (instructorMembership.role !== MemberRole.ADMIN && instructorMembership.role !== MemberRole.OWNER) {
-        throw new AppError('관리자 또는 소유자만 강사로 지정할 수 있습니다.', 400);
+      if (instructorMembership.title !== '강사' && instructorMembership.role !== MemberRole.OWNER) {
+        throw new AppError('강사 또는 소유자만 강사로 지정할 수 있습니다.', 400);
       }
 
       // 이미 해당 강사의 소그룹이 있는지 확인
@@ -128,7 +128,7 @@ export class SubGroupMemberController {
       const membership = await this.memberRepository.findOne({
         where: { groupId, userId, status: MemberStatus.ACTIVE },
       });
-      if (!membership || ![MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role)) {
+      if (!membership || membership.role !== MemberRole.OWNER) {
         throw new AppError('권한이 없습니다.', 403);
       }
 
@@ -291,7 +291,7 @@ export class SubGroupMemberController {
         throw new AppError('권한이 없습니다.', 403);
       }
 
-      const isOwnerOrAdmin = [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role);
+      const isOwnerOrAdmin = membership.role === MemberRole.OWNER;
       const isInstructor = subGroup.instructorId === userId;
       if (!isOwnerOrAdmin && !isInstructor) {
         throw new AppError('권한이 없습니다.', 403);
@@ -430,7 +430,7 @@ export class SubGroupMemberController {
         throw new AppError('권한이 없습니다.', 403);
       }
 
-      const isOwnerOrAdmin = [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role);
+      const isOwnerOrAdmin = membership.role === MemberRole.OWNER;
       const isInstructor = subGroup.instructorId === userId;
       if (!isOwnerOrAdmin && !isInstructor) {
         throw new AppError('권한이 없습니다.', 403);
@@ -508,7 +508,7 @@ export class SubGroupMemberController {
         throw new AppError('권한이 없습니다.', 403);
       }
 
-      const isOwnerOrAdmin = [MemberRole.OWNER, MemberRole.ADMIN].includes(membership.role);
+      const isOwnerOrAdmin = membership.role === MemberRole.OWNER;
       const isInstructor = subGroup.instructorId === userId;
       if (!isOwnerOrAdmin && !isInstructor) {
         throw new AppError('권한이 없습니다.', 403);
@@ -636,8 +636,9 @@ export class SubGroupMemberController {
         relations: ['user'],
       });
 
+      // 학생 멤버 필터링 (owner가 아니고 강사가 아닌 멤버)
       const studentMembers = allMembers.filter(
-        (m) => m.role === MemberRole.MEMBER || m.role === MemberRole.GUARDIAN
+        (m) => m.role !== MemberRole.OWNER && m.title !== '강사'
       );
 
       // 이미 강사 소그룹에 배정된 멤버 ID들

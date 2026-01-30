@@ -24,9 +24,9 @@ export class AbsenceRequestController {
       // 멤버 확인
       const membership = await requireActiveMember(this.memberRepository, groupId, req.user!.id);
 
-      // 보호자가 대신 신청하는 경우 검증
+      // 보호자가 대신 신청하는 경우 검증 (title이 '보호자'인 경우)
       const actualStudentId = studentId || req.user!.id;
-      if (studentId && membership.role !== MemberRole.GUARDIAN) {
+      if (studentId && membership.title !== '보호자') {
         throw new AppError('보호자만 자녀를 대신해 결석 신청을 할 수 있습니다.', 403);
       }
 
