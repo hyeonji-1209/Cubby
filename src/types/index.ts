@@ -276,12 +276,26 @@ export interface CalendarEvent {
   description?: string;
   start_at: string;
   end_at: string;
-  all_day: boolean;
+  all_day?: boolean;
   color?: string;
-  event_type: 'personal' | 'shared' | 'lesson' | 'reservation' | 'academy_holiday';
-  visibility: 'private' | 'partner' | 'all'; // 연인/가족용
-  is_academy_holiday?: boolean; // 학원 휴일 처리 (교육 타입 전용)
-  created_at: string;
+  event_type: 'personal' | 'shared' | 'lesson' | 'reservation' | 'academy_holiday' | string;
+  visibility?: 'private' | 'partner' | 'all';
+  is_academy_holiday?: boolean;
+  group_name?: string; // 캘린더 표시용
+  created_at?: string;
+}
+
+// 조합 타입
+export type GroupMemberWithUser = GroupMember & { user: User };
+export type GroupMemberWithInstructor = GroupMember & {
+  instructor: (GroupMember & { user: User }) | null;
+};
+
+// 모달 기본 Props
+export interface ModalBaseProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
 }
 
 // ============================================

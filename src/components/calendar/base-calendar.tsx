@@ -21,17 +21,10 @@ import {
 import { ko } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, Plus, Clock } from "lucide-react";
 import { getHolidaysForMonth, Holiday } from "@/lib/holidays";
+import { CalendarEvent } from "@/types";
+import { WEEK_DAYS } from "@/lib/constants";
 
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  start_at: string;
-  end_at: string;
-  color?: string;
-  event_type: string;
-  group_name?: string;
-  is_academy_holiday?: boolean;
-}
+export type { CalendarEvent };
 
 interface EventPosition {
   event: CalendarEvent;
@@ -109,9 +102,9 @@ export function BaseCalendar({ events, renderAddButton }: BaseCalendarProps) {
   };
 
   // 주별 이벤트 위치 계산
-  const getWeekEventPositions = (weekDays: Date[]): EventPosition[] => {
-    const weekStart = weekDays[0];
-    const weekEnd = weekDays[6];
+  const getWeekEventPositions = (daysInWeek: Date[]): EventPosition[] => {
+    const weekStart = daysInWeek[0];
+    const weekEnd = daysInWeek[6];
     const positions: EventPosition[] = [];
     const rows: boolean[][] = [];
 
@@ -135,8 +128,8 @@ export function BaseCalendar({ events, renderAddButton }: BaseCalendarProps) {
       const displayStart = isBefore(eventStart, weekStart) ? weekStart : eventStart;
       const displayEnd = isAfter(eventEnd, weekEnd) ? weekEnd : eventEnd;
 
-      const startCol = weekDays.findIndex((d) => isSameDay(d, displayStart));
-      const endCol = weekDays.findIndex((d) => isSameDay(d, displayEnd));
+      const startCol = daysInWeek.findIndex((d) => isSameDay(d, displayStart));
+      const endCol = daysInWeek.findIndex((d) => isSameDay(d, displayEnd));
       const span = endCol - startCol + 1;
 
       const isStart = isSameDay(eventStart, displayStart);
@@ -179,7 +172,6 @@ export function BaseCalendar({ events, renderAddButton }: BaseCalendarProps) {
     return positions;
   };
 
-  const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
   const selectedDateHoliday = getHolidayForDate(selectedDate);
 
   const defaultAddButton = () => (
@@ -234,7 +226,7 @@ export function BaseCalendar({ events, renderAddButton }: BaseCalendarProps) {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Week Days Header */}
           <div className="grid grid-cols-7 border-b">
-            {weekDays.map((day, i) => (
+            {WEEK_DAYS.map((day, i) => (
               <div
                 key={day}
                 className={`py-3 text-center text-xs font-medium ${
@@ -248,13 +240,13 @@ export function BaseCalendar({ events, renderAddButton }: BaseCalendarProps) {
 
           {/* Weeks */}
           <div className="flex-1 flex flex-col">
-            {weeks.map((weekDays, weekIndex) => {
-              const eventPositions = getWeekEventPositions(weekDays);
+            {weeks.map((daysInWeek, weekIndex) => {
+              const eventPositions = getWeekEventPositions(daysInWeek);
 
               return (
                 <div key={weekIndex} className="flex-1 relative grid grid-cols-7 border-b last:border-b-0">
                   {/* 날짜 셀들 */}
-                  {weekDays.map((day, dayIndex) => {
+                  {daysInWeek.map((day, dayIndex) => {
                     const holiday = getHolidayForDate(day);
                     const isSelected = isSameDay(day, selectedDate);
                     const isCurrentMonth = isSameMonth(day, currentMonth);

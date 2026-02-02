@@ -52,7 +52,7 @@ export function EventModal({
         setEndDate(format(new Date(event.end_at), "yyyy-MM-dd"));
         setStartTime(format(new Date(event.start_at), "HH:mm"));
         setEndTime(format(new Date(event.end_at), "HH:mm"));
-        setAllDay(event.all_day);
+        setAllDay(event.all_day ?? false);
         setIsAcademyHoliday(event.is_academy_holiday || false);
       } else if (initialDate) {
         // 생성 모드: 초기 날짜로 설정

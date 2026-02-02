@@ -51,13 +51,13 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
       .eq("id", params.id)
       .single();
 
+    // 사용 가능한 클래스 필터링 (연습실 제외 클래스 제외)
+    const allClasses = groupData?.settings?.classes || [];
+    const excluded = groupData?.settings?.excluded_practice_classes || [];
+    const available = allClasses.filter((c: ClassRoom) => !excluded.includes(c.name));
+
     if (groupData) {
       setGroup(groupData as Group);
-
-      // 사용 가능한 클래스 필터링 (연습실 제외 클래스 제외)
-      const allClasses = groupData.settings?.classes || [];
-      const excluded = groupData.settings?.excluded_practice_classes || [];
-      const available = allClasses.filter((c: ClassRoom) => !excluded.includes(c.name));
       setAvailableRooms(available);
     }
 
@@ -86,7 +86,7 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
 
     // 클래스 정보 매핑
     const reservationsWithRoom = (reservationData || []).map((res) => {
-      const room = allClasses?.find((c: ClassRoom) => c.id === res.room_id);
+      const room = allClasses.find((c: ClassRoom) => c.id === res.room_id);
       return { ...res, room };
     });
 
