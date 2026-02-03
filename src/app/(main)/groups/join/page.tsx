@@ -177,7 +177,7 @@ export default function JoinGroupPage() {
       </form>
 
       {/* Info */}
-      <div className="mt-8 p-4 rounded-xl bg-muted/50">
+      <div className="mt-8 p-4 rounded-lg bg-muted/50">
         <h3 className="font-medium text-sm mb-2">초대 코드란?</h3>
         <p className="text-xs text-muted-foreground leading-relaxed">
           초대 코드는 모임 관리자가 생성하는 고유한 코드입니다.

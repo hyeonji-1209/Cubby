@@ -75,7 +75,11 @@ export default async function GroupPage({ params }: GroupPageProps) {
     <div className="h-full flex flex-col lg:flex-row">
       {/* Calendar - 패딩 없이 꽉 참 */}
       <div className="flex-1 h-full">
-        <GroupCalendar events={events || []} groupId={params.id} />
+        <GroupCalendar
+          events={events || []}
+          groupId={params.id}
+          classes={typedGroup.settings?.classes || []}
+        />
       </div>
 
       {/* Right Sidebar */}
@@ -84,7 +88,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
           <div className="grid grid-cols-2 gap-3">
             <Link
               href={`/groups/${params.id}/members`}
-              className="p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
+              className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
             >
               <Users className="h-5 w-5 text-muted-foreground mb-2" />
               <p className="text-2xl font-bold">{memberCount || 0}</p>
@@ -94,7 +98,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
             {isEducationType ? (
               <Link
                 href={`/groups/${params.id}/lessons`}
-                className="p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
+                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
               >
                 <GraduationCap className="h-5 w-5 text-muted-foreground mb-2" />
                 <p className="text-2xl font-bold">-</p>
@@ -103,7 +107,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
             ) : (
               <Link
                 href={`/groups/${params.id}/subgroups`}
-                className="p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
+                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
               >
                 <UsersRound className="h-5 w-5 text-muted-foreground mb-2" />
                 <p className="text-2xl font-bold">-</p>
@@ -131,7 +135,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
                   <Link
                     key={announcement.id}
                     href={`/groups/${params.id}/announcements`}
-                    className="flex items-start gap-3 p-3 rounded-xl border hover:bg-muted/50 transition-colors"
+                    className="flex items-start gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     {announcement.is_pinned && (
                       <Pin className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
@@ -146,7 +150,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 border rounded-xl">
+              <div className="text-center py-8 border rounded-lg">
                 <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
                 <p className="text-sm text-muted-foreground">공지사항이 없습니다</p>
               </div>
@@ -168,7 +172,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
           {isOwnerOrAdmin && (
             <Link
               href={`/groups/${params.id}/settings`}
-              className="flex items-center justify-between p-3 rounded-xl border hover:bg-muted/50 transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
             >
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-muted-foreground" />

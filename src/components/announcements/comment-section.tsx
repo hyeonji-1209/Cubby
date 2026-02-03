@@ -11,6 +11,9 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { formatRelativeTime } from "@/lib/date-utils";
 
 interface CommentSectionProps {
   announcementId: string;
@@ -31,6 +34,9 @@ const getRoleLabel = (role: string): string => {
 };
 
 export function CommentSection({ announcementId, groupId, onCommentCountChange }: CommentSectionProps) {
+  const toast = useToast();
+  const { confirm } = useConfirm();
+
   const [comments, setComments] = useState<AnnouncementComment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
@@ -187,7 +193,7 @@ export function CommentSection({ announcementId, groupId, onCommentCountChange }
       }
     } else {
       console.error("Failed to add comment:", error);
-      alert("댓글 작성에 실패했습니다.");
+      toast.error("댓글 작성에 실패했습니다.");
     }
 
     setIsSubmitting(false);
@@ -214,7 +220,13 @@ export function CommentSection({ announcementId, groupId, onCommentCountChange }
   };
 
   const handleDelete = async (commentId: string) => {
-    if (!confirm("댓글을 삭제하시겠습니까?")) return;
+    const confirmed = await confirm({
+      title: "댓글 삭제",
+      message: "댓글을 삭제하시겠습니까?",
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     const supabase = createClient();
 
@@ -234,25 +246,6 @@ export function CommentSection({ announcementId, groupId, onCommentCountChange }
         // RPC가 없으면 무시
       }
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return "방금 전";
-    if (minutes < 60) return `${minutes}분 전`;
-    if (hours < 24) return `${hours}시간 전`;
-    if (days < 7) return `${days}일 전`;
-
-    return date.toLocaleDateString("ko-KR", {
-      month: "short",
-      day: "numeric",
-    });
   };
 
   const CommentItem = ({ comment, isReply = false }: { comment: AnnouncementComment; isReply?: boolean }) => {
@@ -286,7 +279,7 @@ export function CommentSection({ announcementId, groupId, onCommentCountChange }
                   {comment.author.role}
                 </span>
               )}
-              <span className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</span>
+              <span className="text-xs text-muted-foreground">{formatRelativeTime(comment.created_at)}</span>
               {comment.updated_at !== comment.created_at && (
                 <span className="text-xs text-muted-foreground">(수정됨)</span>
               )}

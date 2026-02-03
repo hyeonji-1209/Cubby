@@ -23,29 +23,17 @@ import {
   ChevronRight,
   Loader2,
   Clock,
-  MapPin,
-  List,
-  AlignJustify,
 } from "lucide-react";
 import { CalendarEvent, Group } from "@/types";
 import { cn } from "@/lib/utils";
 import { getHolidaysForMonth, Holiday } from "@/lib/holidays";
 import { EventModal } from "@/components/calendar/event-modal";
-
-// 장소별 색상 팔레트
-const LOCATION_COLORS = [
-  { bg: "bg-blue-500", light: "bg-blue-200 dark:bg-blue-900/60", text: "text-blue-700 dark:text-blue-300" },
-  { bg: "bg-emerald-500", light: "bg-emerald-200 dark:bg-emerald-900/60", text: "text-emerald-700 dark:text-emerald-300" },
-  { bg: "bg-amber-500", light: "bg-amber-200 dark:bg-amber-900/60", text: "text-amber-700 dark:text-amber-300" },
-  { bg: "bg-purple-500", light: "bg-purple-200 dark:bg-purple-900/60", text: "text-purple-700 dark:text-purple-300" },
-  { bg: "bg-pink-500", light: "bg-pink-200 dark:bg-pink-900/60", text: "text-pink-700 dark:text-pink-300" },
-  { bg: "bg-cyan-500", light: "bg-cyan-200 dark:bg-cyan-900/60", text: "text-cyan-700 dark:text-cyan-300" },
-  { bg: "bg-orange-500", light: "bg-orange-200 dark:bg-orange-900/60", text: "text-orange-700 dark:text-orange-300" },
-  { bg: "bg-indigo-500", light: "bg-indigo-200 dark:bg-indigo-900/60", text: "text-indigo-700 dark:text-indigo-300" },
-];
-
-// 기본 색상 (장소 미지정)
-const DEFAULT_COLOR = { bg: "bg-primary", light: "bg-primary/25", text: "text-primary" };
+import {
+  CALENDAR_COLORS,
+  DEFAULT_EVENT_COLOR,
+  HOLIDAY_COLOR,
+  CalendarColor,
+} from "@/lib/calendar-colors";
 
 interface CalendarPageProps {
   params: { id: string };
@@ -59,7 +47,7 @@ export default function CalendarPage({ params }: CalendarPageProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   // 사이드 패널 뷰 모드 상태 (list: 리스트, timeline: 타임라인)
-  const [sidePanelView, setSidePanelView] = useState<"list" | "timeline">("list");
+  const [sidePanelView, setSidePanelView] = useState<"list" | "timeline">("timeline");
 
   // 모달 상태
   const [showEventModal, setShowEventModal] = useState(false);
@@ -85,15 +73,22 @@ export default function CalendarPage({ params }: CalendarPageProps) {
       setMaxLabels(calculatedMax);
     };
 
-    calculateMaxLabels();
+    // 로딩 완료 후 계산
+    if (!isLoading) {
+      // 렌더링 완료 후 계산을 위해 약간 딜레이
+      const timer = setTimeout(calculateMaxLabels, 100);
 
-    const resizeObserver = new ResizeObserver(calculateMaxLabels);
-    if (cellRef.current) {
-      resizeObserver.observe(cellRef.current);
+      const resizeObserver = new ResizeObserver(calculateMaxLabels);
+      if (cellRef.current) {
+        resizeObserver.observe(cellRef.current);
+      }
+
+      return () => {
+        clearTimeout(timer);
+        resizeObserver.disconnect();
+      };
     }
-
-    return () => resizeObserver.disconnect();
-  }, []);
+  }, [isLoading]);
 
   // 현재 월의 공휴일
   const holidays = useMemo(() => {
@@ -115,9 +110,9 @@ export default function CalendarPage({ params }: CalendarPageProps) {
   // 장소별 색상 매핑 (장소 ID를 인덱스로 변환)
   const locationColorMap = useMemo(() => {
     const locations = group?.settings?.classes || [];
-    const map = new Map<string, typeof LOCATION_COLORS[0]>();
+    const map = new Map<string, CalendarColor>();
     locations.forEach((loc, idx) => {
-      map.set(loc.id, LOCATION_COLORS[idx % LOCATION_COLORS.length]);
+      map.set(loc.id, CALENDAR_COLORS[idx % CALENDAR_COLORS.length]);
     });
     return map;
   }, [group?.settings?.classes]);
@@ -125,12 +120,12 @@ export default function CalendarPage({ params }: CalendarPageProps) {
   // 이벤트의 색상 가져오기
   const getEventColor = (event: CalendarEvent) => {
     if (event.is_academy_holiday) {
-      return { bg: "bg-red-500", light: "bg-red-200 dark:bg-red-900/60", text: "text-red-600 dark:text-red-400" };
+      return HOLIDAY_COLOR;
     }
     if (event.location_id) {
-      return locationColorMap.get(event.location_id) || DEFAULT_COLOR;
+      return locationColorMap.get(event.location_id) || DEFAULT_EVENT_COLOR;
     }
-    return DEFAULT_COLOR;
+    return DEFAULT_EVENT_COLOR;
   };
 
   useEffect(() => {
@@ -444,19 +439,23 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                                       handleEventClick(event);
                                     }}
                                     className={cn(
-                                      "flex items-center gap-1.5 text-xs leading-tight truncate px-1.5 py-0.5 rounded cursor-pointer",
-                                      "bg-muted/60 hover:bg-muted text-foreground/90"
+                                      "flex items-center gap-1.5 text-xs leading-tight truncate px-1.5 py-0.5 cursor-pointer",
+                                      event.all_day ? eventColor.light : "bg-muted/50",
+                                      event.all_day ? eventColor.text : "text-foreground",
+                                      "hover:opacity-80"
                                     )}
                                   >
+                                    {/* 컬러 닷 */}
                                     <span
                                       className={cn(
-                                        "w-2 h-2 rounded-full shrink-0",
+                                        "w-1.5 h-1.5 rounded-full shrink-0",
                                         eventColor.bg
                                       )}
                                     />
                                     {!event.all_day && (
-                                      <span className="text-muted-foreground shrink-0">
+                                      <span className="text-[10px] text-muted-foreground shrink-0">
                                         {format(new Date(event.start_at), "HH:mm")}
+                                        {event.location && ` [${event.location}]`}
                                       </span>
                                     )}
                                     <span className="truncate">{event.title}</span>
@@ -481,11 +480,12 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                           }}
                           className={cn(
                             "absolute h-[19px] flex items-center cursor-pointer z-10",
-                            "text-xs text-foreground/90 truncate",
+                            "text-xs truncate",
                             eventColor.light,
+                            eventColor.text,
                             "hover:opacity-80",
-                            isStart ? "rounded-l-sm pl-1.5" : "pl-0.5",
-                            isEnd ? "rounded-r-sm pr-1.5" : "pr-0.5"
+                            isStart ? "pl-1.5" : "pl-0.5",
+                            isEnd ? "pr-1.5" : "pr-0.5"
                           )}
                           style={{
                             top: `${28 + idx * 21}px`,
@@ -496,7 +496,7 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                         >
                           <span
                             className={cn(
-                              "w-2 h-2 rounded-full shrink-0 mr-1",
+                              "w-1.5 h-1.5 rounded-full shrink-0 mr-1",
                               eventColor.bg
                             )}
                           />
@@ -511,189 +511,300 @@ export default function CalendarPage({ params }: CalendarPageProps) {
           </div>
 
           {/* Side Panel */}
-          <div className="w-full md:w-80 border-t md:border-t-0 md:border-l flex flex-col bg-muted/10">
+          <div className="w-full md:w-80 border-t md:border-t-0 md:border-l flex flex-col bg-background">
             {/* Selected Date Header */}
-            <div className="p-4 border-b">
-              <p className="text-xs text-muted-foreground">
-                {selectedDate
-                  ? format(selectedDate, "yyyy년", { locale: ko })
-                  : format(new Date(), "yyyy년", { locale: ko })}
-              </p>
-              <p className="text-lg font-bold">
-                {selectedDate
-                  ? format(selectedDate, "M월 d일 EEEE", { locale: ko })
-                  : format(new Date(), "M월 d일 EEEE", { locale: ko })}
-              </p>
+            <div className="px-4 py-3 border-b bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                    {selectedDate
+                      ? format(selectedDate, "yyyy년", { locale: ko })
+                      : format(new Date(), "yyyy년", { locale: ko })}
+                  </p>
+                  <p className="text-base font-semibold mt-0.5">
+                    {selectedDate
+                      ? format(selectedDate, "M월 d일 (EEE)", { locale: ko })
+                      : format(new Date(), "M월 d일 (EEE)", { locale: ko })}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5"
+                  onClick={handleAddClick}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  추가
+                </Button>
+              </div>
               {selectedDateHoliday && (
-                <p className="text-sm text-red-500 mt-1">
+                <p className="text-xs text-red-500 mt-1.5 font-medium">
                   {selectedDateHoliday.name}
                 </p>
               )}
             </div>
 
-            {/* Events List/Timeline */}
-            <div className="flex-1 overflow-auto p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">일정</span>
-                  {/* 뷰 모드 토글 */}
-                  <div className="flex items-center rounded-md border p-0.5">
-                    <button
-                      onClick={() => setSidePanelView("list")}
-                      className={cn(
-                        "p-1 rounded transition-colors",
-                        sidePanelView === "list"
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
-                      )}
-                      title="리스트"
-                    >
-                      <List className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => setSidePanelView("timeline")}
-                      className={cn(
-                        "p-1 rounded transition-colors",
-                        sidePanelView === "timeline"
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:bg-muted"
-                      )}
-                      title="타임라인"
-                    >
-                      <AlignJustify className="h-3 w-3" />
-                    </button>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  onClick={handleAddClick}
+            {/* View Toggle */}
+            <div className="px-4 py-2 border-b flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">보기</span>
+              <div className="flex items-center bg-muted/50 rounded p-0.5">
+                <button
+                  onClick={() => setSidePanelView("timeline")}
+                  className={cn(
+                    "px-2.5 py-1 text-xs rounded transition-colors",
+                    sidePanelView === "timeline"
+                      ? "bg-background shadow-sm font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
                 >
-                  <Plus className="h-3 w-3" />
-                  추가
-                </Button>
+                  타임라인
+                </button>
+                <button
+                  onClick={() => setSidePanelView("list")}
+                  className={cn(
+                    "px-2.5 py-1 text-xs rounded transition-colors",
+                    sidePanelView === "list"
+                      ? "bg-background shadow-sm font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  리스트
+                </button>
               </div>
+            </div>
 
+            {/* Events List/Timeline */}
+            <div className="flex-1 overflow-auto p-3">
               {sidePanelView === "list" ? (
                 /* 리스트 뷰 */
                 selectedDateEvents.length > 0 ? (
-                  <div className="space-y-2">
-                    {selectedDateEvents.map((event) => (
-                      <button
-                        key={event.id}
-                        onClick={() => handleEventClick(event)}
-                        className={cn(
-                          "w-full p-3 rounded-lg border transition-colors text-left",
-                          event.is_academy_holiday
-                            ? "bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900 hover:border-red-300 dark:hover:border-red-800"
-                            : "bg-card hover:border-primary/30"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <p
-                            className={cn(
-                              "font-medium text-sm",
-                              event.is_academy_holiday &&
-                                "text-red-600 dark:text-red-400"
-                            )}
-                          >
-                            {event.title}
-                          </p>
-                          {event.is_academy_holiday && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400">
-                              휴일
-                            </span>
-                          )}
-                        </div>
-                        {!event.all_day && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(event.start_at), "HH:mm")} -{" "}
-                            {format(new Date(event.end_at), "HH:mm")}
+                  <div className="space-y-1.5">
+                    {selectedDateEvents.map((event) => {
+                      const eventColor = getEventColor(event);
+                      return (
+                        <button
+                          key={event.id}
+                          onClick={() => handleEventClick(event)}
+                          className="w-full p-2.5 rounded border border-border/40 hover:border-border hover:bg-muted/30 transition-colors text-left group"
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div
+                              className={cn(
+                                "w-1 h-full min-h-[36px] rounded-full shrink-0 mt-0.5",
+                                eventColor.bg
+                              )}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-sm truncate flex-1">
+                                  {event.title}
+                                </p>
+                                {event.is_academy_holiday && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 shrink-0">
+                                    휴일
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                {event.all_day ? (
+                                  <span>하루 종일</span>
+                                ) : (
+                                  <span>
+                                    {format(new Date(event.start_at), "HH:mm")} - {format(new Date(event.end_at), "HH:mm")}
+                                  </span>
+                                )}
+                                {event.location && (
+                                  <>
+                                    <span className="text-muted-foreground/50">·</span>
+                                    <span className="truncate">{event.location}</span>
+                                  </>
+                                )}
+                              </div>
+                              {event.description && (
+                                <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
+                                  {event.description}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        {event.location && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                            <MapPin className="h-3 w-3" />
-                            {event.location}
-                          </div>
-                        )}
-                        {event.description && (
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {event.description}
-                          </p>
-                        )}
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-10 h-10 rounded-md bg-muted/50 flex items-center justify-center mb-2">
                       <Clock className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <p className="text-sm text-muted-foreground">
                       일정이 없습니다
                     </p>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="mt-2"
+                    <button
                       onClick={handleAddClick}
+                      className="text-xs text-primary hover:underline mt-1.5"
                     >
                       일정 추가하기
-                    </Button>
+                    </button>
                   </div>
                 )
               ) : (
-                /* 타임라인 뷰 (24시간) */
+                /* 타임라인 뷰 */
                 <div className="relative">
-                  {/* 시간 그리드 */}
-                  <div className="space-y-0">
-                    {Array.from({ length: 24 }, (_, hour) => {
-                      // 해당 시간에 시작하는 이벤트들
-                      const hourEvents = selectedDateEvents.filter((event) => {
-                        if (event.all_day) return hour === 0;
-                        const eventHour = new Date(event.start_at).getHours();
-                        return eventHour === hour;
-                      });
+                  {/* 하루종일 이벤트 */}
+                  {selectedDateEvents.filter(e => e.all_day).length > 0 && (
+                    <div className="mb-3 pb-3 border-b space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">하루 종일</p>
+                      {selectedDateEvents.filter(e => e.all_day).map((event) => {
+                        const eventColor = getEventColor(event);
+                        return (
+                          <button
+                            key={event.id}
+                            onClick={() => handleEventClick(event)}
+                            className={cn(
+                              "w-full text-left text-xs px-2 py-1.5 rounded-sm flex items-center gap-2 border border-border/30",
+                              eventColor.light,
+                              "hover:opacity-80"
+                            )}
+                          >
+                            <span className="font-medium truncate">{event.title}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                      return (
-                        <div key={hour} className="flex min-h-[40px] border-b border-dashed border-muted">
-                          <div className="w-12 shrink-0 text-[10px] text-muted-foreground py-1 pr-2 text-right">
-                            {hour.toString().padStart(2, "0")}:00
-                          </div>
-                          <div className="flex-1 py-1 space-y-1">
-                            {hourEvents.map((event) => (
-                              <button
-                                key={event.id}
-                                onClick={() => handleEventClick(event)}
-                                className={cn(
-                                  "w-full text-left text-xs px-2 py-1 rounded truncate",
-                                  event.is_academy_holiday
-                                    ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400"
-                                    : "bg-primary/20 text-primary hover:bg-primary/30"
-                                )}
-                              >
-                                {event.all_day ? (
-                                  <span className="font-medium">하루종일 - {event.title}</span>
-                                ) : (
-                                  <>
-                                    <span className="opacity-70">
-                                      {format(new Date(event.start_at), "HH:mm")}
-                                    </span>
-                                    {" "}{event.title}
-                                    {event.location && (
-                                      <span className="opacity-50"> · {event.location}</span>
-                                    )}
-                                  </>
-                                )}
-                              </button>
-                            ))}
-                          </div>
+                  {/* 시간 그리드 + 이벤트 바 */}
+                  <div className="relative flex">
+                    {/* 시간 라벨 */}
+                    <div className="w-12 shrink-0">
+                      {Array.from({ length: 15 }, (_, i) => i + 7).map((hour) => (
+                        <div
+                          key={hour}
+                          className="h-10 text-[10px] text-muted-foreground pr-2 text-right"
+                        >
+                          {hour.toString().padStart(2, "0")}:00
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+
+                    {/* 그리드 라인 + 이벤트 */}
+                    <div className="flex-1 relative">
+                      {/* 그리드 라인 */}
+                      {Array.from({ length: 15 }, (_, i) => i + 7).map((hour) => (
+                        <div
+                          key={hour}
+                          className="h-10 border-b border-dashed border-muted"
+                        />
+                      ))}
+
+                      {/* 현재 시간 표시선 (오늘만) */}
+                      {selectedDate && isToday(selectedDate) && (() => {
+                        const now = new Date();
+                        const currentHour = now.getHours() + now.getMinutes() / 60;
+                        if (currentHour >= 7 && currentHour < 22) {
+                          const topOffset = (currentHour - 7) * 40;
+                          return (
+                            <div
+                              className="absolute left-0 right-0 flex items-center z-20 pointer-events-none"
+                              style={{ top: `${topOffset}px` }}
+                            >
+                              <div className="w-2 h-2 rounded-full bg-red-500" />
+                              <div className="flex-1 h-0.5 bg-red-500" />
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {/* 이벤트 바 (절대 위치) - 겹치는 이벤트 처리 */}
+                      {(() => {
+                        const timeEvents = selectedDateEvents.filter(e => !e.all_day);
+                        // 각 이벤트의 열(column) 계산
+                        const eventColumns: { event: CalendarEvent; col: number; totalCols: number }[] = [];
+
+                        timeEvents.forEach((event) => {
+                          const startDate = new Date(event.start_at);
+                          const endDate = new Date(event.end_at);
+                          const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                          const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+
+                          // 겹치는 이벤트들 찾기
+                          let col = 0;
+                          const overlapping = eventColumns.filter(ec => {
+                            const ecStart = new Date(ec.event.start_at);
+                            const ecEnd = new Date(ec.event.end_at);
+                            const ecStartHour = ecStart.getHours() + ecStart.getMinutes() / 60;
+                            const ecEndHour = ecEnd.getHours() + ecEnd.getMinutes() / 60;
+                            return startHour < ecEndHour && endHour > ecStartHour;
+                          });
+
+                          // 사용 가능한 열 찾기
+                          const usedCols = overlapping.map(o => o.col);
+                          while (usedCols.includes(col)) col++;
+
+                          eventColumns.push({ event, col, totalCols: 1 });
+                        });
+
+                        // totalCols 업데이트
+                        eventColumns.forEach(ec => {
+                          const startDate = new Date(ec.event.start_at);
+                          const endDate = new Date(ec.event.end_at);
+                          const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                          const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+
+                          const overlapping = eventColumns.filter(other => {
+                            const otherStart = new Date(other.event.start_at);
+                            const otherEnd = new Date(other.event.end_at);
+                            const otherStartHour = otherStart.getHours() + otherStart.getMinutes() / 60;
+                            const otherEndHour = otherEnd.getHours() + otherEnd.getMinutes() / 60;
+                            return startHour < otherEndHour && endHour > otherStartHour;
+                          });
+
+                          ec.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
+                        });
+
+                        return eventColumns.map(({ event, col, totalCols }) => {
+                          const eventColor = getEventColor(event);
+                          const startDate = new Date(event.start_at);
+                          const endDate = new Date(event.end_at);
+                          const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                          const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+                          const duration = endHour - startHour;
+
+                          const topOffset = (startHour - 7) * 40;
+                          const height = Math.max(duration * 40, 24);
+
+                          if (startHour < 7 || startHour >= 22) return null;
+
+                          const width = `calc((100% - 8px) / ${totalCols})`;
+                          const left = `calc(4px + (100% - 8px) / ${totalCols} * ${col})`;
+
+                          return (
+                            <button
+                              key={event.id}
+                              onClick={() => handleEventClick(event)}
+                              className={cn(
+                                "absolute text-left text-xs px-1.5 py-1 rounded overflow-hidden border border-border/30",
+                                eventColor.light,
+                                "hover:opacity-80 border-l-2",
+                                eventColor.bg.replace("bg-", "border-l-")
+                              )}
+                              style={{
+                                top: `${topOffset}px`,
+                                height: `${height}px`,
+                                width,
+                                left,
+                              }}
+                            >
+                              <div className="font-medium truncate text-[11px]">{event.title}</div>
+                              <div className="text-[9px] opacity-70 truncate">
+                                {format(startDate, "HH:mm")}-{format(endDate, "HH:mm")}
+                              </div>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}

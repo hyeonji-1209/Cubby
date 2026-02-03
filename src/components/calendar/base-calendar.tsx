@@ -23,22 +23,15 @@ import { ChevronLeft, ChevronRight, Plus, Clock } from "lucide-react";
 import { getHolidaysForMonth, Holiday } from "@/lib/holidays";
 import { CalendarEvent, Group } from "@/types";
 import { WEEK_DAYS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import {
+  CALENDAR_COLORS,
+  DEFAULT_EVENT_COLOR,
+  HOLIDAY_COLOR,
+  CalendarColor,
+} from "@/lib/calendar-colors";
 
 export type { CalendarEvent };
-
-// 모임별 색상 팔레트
-const GROUP_COLORS = [
-  { bg: "bg-blue-500", light: "bg-blue-100 dark:bg-blue-950/50", text: "text-blue-600 dark:text-blue-400" },
-  { bg: "bg-emerald-500", light: "bg-emerald-100 dark:bg-emerald-950/50", text: "text-emerald-600 dark:text-emerald-400" },
-  { bg: "bg-amber-500", light: "bg-amber-100 dark:bg-amber-950/50", text: "text-amber-600 dark:text-amber-400" },
-  { bg: "bg-purple-500", light: "bg-purple-100 dark:bg-purple-950/50", text: "text-purple-600 dark:text-purple-400" },
-  { bg: "bg-pink-500", light: "bg-pink-100 dark:bg-pink-950/50", text: "text-pink-600 dark:text-pink-400" },
-  { bg: "bg-cyan-500", light: "bg-cyan-100 dark:bg-cyan-950/50", text: "text-cyan-600 dark:text-cyan-400" },
-  { bg: "bg-orange-500", light: "bg-orange-100 dark:bg-orange-950/50", text: "text-orange-600 dark:text-orange-400" },
-  { bg: "bg-indigo-500", light: "bg-indigo-100 dark:bg-indigo-950/50", text: "text-indigo-600 dark:text-indigo-400" },
-];
-
-const DEFAULT_COLOR = { bg: "bg-primary", light: "bg-primary/20", text: "text-primary" };
 
 interface EventPosition {
   event: CalendarEvent;
@@ -53,19 +46,22 @@ interface BaseCalendarProps {
   events: CalendarEvent[];
   groups?: Group[]; // 모임별 색상 매핑용
   renderAddButton?: () => ReactNode;
+  onEventClick?: (event: CalendarEvent) => void;
+  onAddClick?: (date: Date) => void;
 }
 
-export function BaseCalendar({ events, groups = [], renderAddButton }: BaseCalendarProps) {
+export function BaseCalendar({ events, groups = [], renderAddButton, onEventClick, onAddClick }: BaseCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [maxLabels, setMaxLabels] = useState(3);
+  const [sidePanelView, setSidePanelView] = useState<"list" | "timeline">("timeline");
   const cellRef = useRef<HTMLButtonElement>(null);
 
   // 모임별 색상 매핑
   const groupColorMap = useMemo(() => {
-    const map = new Map<string, typeof GROUP_COLORS[0]>();
+    const map = new Map<string, CalendarColor>();
     groups.forEach((group, idx) => {
-      map.set(group.id, GROUP_COLORS[idx % GROUP_COLORS.length]);
+      map.set(group.id, CALENDAR_COLORS[idx % CALENDAR_COLORS.length]);
     });
     return map;
   }, [groups]);
@@ -73,12 +69,12 @@ export function BaseCalendar({ events, groups = [], renderAddButton }: BaseCalen
   // 이벤트 색상 가져오기 (모임 기반)
   const getEventColor = (event: CalendarEvent) => {
     if (event.is_academy_holiday) {
-      return { bg: "bg-red-500", light: "bg-red-100 dark:bg-red-950/50", text: "text-red-600 dark:text-red-400" };
+      return HOLIDAY_COLOR;
     }
     if (event.group_id) {
-      return groupColorMap.get(event.group_id) || DEFAULT_COLOR;
+      return groupColorMap.get(event.group_id) || DEFAULT_EVENT_COLOR;
     }
-    return DEFAULT_COLOR;
+    return DEFAULT_EVENT_COLOR;
   };
 
   // 셀 높이에 따라 최대 라벨 수 계산
@@ -236,8 +232,13 @@ export function BaseCalendar({ events, groups = [], renderAddButton }: BaseCalen
   const selectedDateHoliday = getHolidayForDate(selectedDate);
 
   const defaultAddButton = () => (
-    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
-      <Plus className="h-3 w-3" />
+    <Button
+      variant="outline"
+      size="sm"
+      className="h-8 text-xs gap-1.5"
+      onClick={() => onAddClick?.(selectedDate)}
+    >
+      <Plus className="h-3.5 w-3.5" />
       추가
     </Button>
   );
@@ -418,87 +419,432 @@ export function BaseCalendar({ events, groups = [], renderAddButton }: BaseCalen
           </div>
         </div>
 
-        {/* Selected Date Panel - Desktop */}
-        <div className="hidden md:flex w-72 border-l flex-col bg-muted/20">
-          <div className="p-4 border-b">
-            <p className="text-xs text-muted-foreground">
-              {format(selectedDate, "yyyy년", { locale: ko })}
-            </p>
-            <p className="text-lg font-bold">
-              {format(selectedDate, "M월 d일 EEEE", { locale: ko })}
-            </p>
+        {/* Side Panel - Desktop */}
+        <div className="hidden md:flex w-80 border-l flex-col bg-background">
+          {/* Selected Date Header */}
+          <div className="px-4 py-3 border-b bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                  {format(selectedDate, "yyyy년", { locale: ko })}
+                </p>
+                <p className="text-base font-semibold mt-0.5">
+                  {format(selectedDate, "M월 d일 (EEE)", { locale: ko })}
+                </p>
+              </div>
+              {renderAddButton ? renderAddButton() : defaultAddButton()}
+            </div>
             {selectedDateHoliday && (
-              <p className="text-sm text-red-400 mt-1">{selectedDateHoliday.name}</p>
+              <p className="text-xs text-red-500 mt-1.5 font-medium">
+                {selectedDateHoliday.name}
+              </p>
             )}
           </div>
 
-          <div className="flex-1 p-4 overflow-auto">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">일정</span>
-              {renderAddButton ? renderAddButton() : defaultAddButton()}
+          {/* View Toggle */}
+          <div className="px-4 py-2 border-b flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">보기</span>
+            <div className="flex items-center bg-muted/50 rounded p-0.5">
+              <button
+                onClick={() => setSidePanelView("timeline")}
+                className={cn(
+                  "px-2.5 py-1 text-xs rounded transition-colors",
+                  sidePanelView === "timeline"
+                    ? "bg-background shadow-sm font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                타임라인
+              </button>
+              <button
+                onClick={() => setSidePanelView("list")}
+                className={cn(
+                  "px-2.5 py-1 text-xs rounded transition-colors",
+                  sidePanelView === "list"
+                    ? "bg-background shadow-sm font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                리스트
+              </button>
             </div>
+          </div>
 
-            {selectedDateEvents.length > 0 ? (
-              <div className="space-y-2">
-                {selectedDateEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className="p-3 rounded-lg bg-card border hover:border-primary/30 transition-colors cursor-pointer"
-                  >
-                    <p className="font-medium text-sm">{event.title}</p>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {format(new Date(event.start_at), "HH:mm")} -{" "}
-                      {format(new Date(event.end_at), "HH:mm")}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                  <Clock className="h-5 w-5 text-muted-foreground" />
+          {/* Events List/Timeline */}
+          <div className="flex-1 overflow-auto p-3">
+            {sidePanelView === "list" ? (
+              /* 리스트 뷰 */
+              selectedDateEvents.length > 0 ? (
+                <div className="space-y-1.5">
+                  {selectedDateEvents.map((event) => {
+                    const eventColor = getEventColor(event);
+                    const isPersonalEvent = !event.group_id;
+                    const isClickable = onEventClick && isPersonalEvent;
+                    const groupName = event.group_id ? groups.find(g => g.id === event.group_id)?.name : null;
+
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={() => isClickable && onEventClick(event)}
+                        disabled={!isClickable}
+                        className={cn(
+                          "w-full p-2.5 rounded border border-border/40 transition-colors text-left",
+                          isClickable
+                            ? "hover:border-border hover:bg-muted/30 cursor-pointer"
+                            : "cursor-default"
+                        )}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div
+                            className={cn(
+                              "w-1 h-full min-h-[36px] rounded-full shrink-0 mt-0.5",
+                              eventColor.bg
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm truncate flex-1">
+                                {event.title}
+                              </p>
+                              {event.is_academy_holiday && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 shrink-0">
+                                  휴일
+                                </span>
+                              )}
+                              {groupName && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground shrink-0">
+                                  {groupName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              {event.all_day ? (
+                                <span>하루 종일</span>
+                              ) : (
+                                <span>
+                                  {format(new Date(event.start_at), "HH:mm")} - {format(new Date(event.end_at), "HH:mm")}
+                                </span>
+                              )}
+                              {event.location && (
+                                <>
+                                  <span className="text-muted-foreground/50">·</span>
+                                  <span className="truncate">{event.location}</span>
+                                </>
+                              )}
+                            </div>
+                            {event.description && (
+                              <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
+                                {event.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  일정이 없습니다
-                </p>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-10 h-10 rounded-md bg-muted/50 flex items-center justify-center mb-2">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    일정이 없습니다
+                  </p>
+                </div>
+              )
+            ) : (
+              /* 타임라인 뷰 */
+              <div className="relative">
+                {/* 하루종일 이벤트 */}
+                {selectedDateEvents.filter(e => e.all_day).length > 0 && (
+                  <div className="mb-3 pb-3 border-b space-y-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">하루 종일</p>
+                    {selectedDateEvents.filter(e => e.all_day).map((event) => {
+                      const eventColor = getEventColor(event);
+                      const isPersonalEvent = !event.group_id;
+                      const isClickable = onEventClick && isPersonalEvent;
+                      const groupName = event.group_id ? groups.find(g => g.id === event.group_id)?.name : null;
+
+                      return (
+                        <button
+                          key={event.id}
+                          onClick={() => isClickable && onEventClick(event)}
+                          disabled={!isClickable}
+                          className={cn(
+                            "w-full text-left text-xs px-2 py-1.5 rounded-sm flex items-center gap-2 border border-border/30",
+                            eventColor.light,
+                            isClickable ? "hover:opacity-80 cursor-pointer" : "cursor-default"
+                          )}
+                        >
+                          <span className="font-medium truncate flex-1">{event.title}</span>
+                          {groupName && (
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-background/50 text-muted-foreground shrink-0">
+                              {groupName}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* 시간 그리드 + 이벤트 바 */}
+                <div className="relative flex">
+                  {/* 시간 라벨 */}
+                  <div className="w-12 shrink-0">
+                    {Array.from({ length: 15 }, (_, i) => i + 7).map((hour) => (
+                      <div
+                        key={hour}
+                        className="h-10 text-[10px] text-muted-foreground pr-2 text-right"
+                      >
+                        {hour.toString().padStart(2, "0")}:00
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 그리드 라인 + 이벤트 */}
+                  <div className="flex-1 relative">
+                    {/* 그리드 라인 */}
+                    {Array.from({ length: 15 }, (_, i) => i + 7).map((hour) => (
+                      <div
+                        key={hour}
+                        className="h-10 border-b border-dashed border-muted"
+                      />
+                    ))}
+
+                    {/* 현재 시간 표시선 (오늘만) */}
+                    {isToday(selectedDate) && (() => {
+                      const now = new Date();
+                      const currentHour = now.getHours() + now.getMinutes() / 60;
+                      if (currentHour >= 7 && currentHour < 22) {
+                        const topOffset = (currentHour - 7) * 40;
+                        return (
+                          <div
+                            className="absolute left-0 right-0 flex items-center z-20 pointer-events-none"
+                            style={{ top: `${topOffset}px` }}
+                          >
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <div className="flex-1 h-0.5 bg-red-500" />
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* 이벤트 바 (절대 위치) */}
+                    {(() => {
+                      const timeEvents = selectedDateEvents.filter(e => !e.all_day);
+                      const eventColumns: { event: CalendarEvent; col: number; totalCols: number }[] = [];
+
+                      timeEvents.forEach((event) => {
+                        const startDate = new Date(event.start_at);
+                        const endDate = new Date(event.end_at);
+                        const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                        const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+
+                        let col = 0;
+                        const overlapping = eventColumns.filter(ec => {
+                          const ecStart = new Date(ec.event.start_at);
+                          const ecEnd = new Date(ec.event.end_at);
+                          const ecStartHour = ecStart.getHours() + ecStart.getMinutes() / 60;
+                          const ecEndHour = ecEnd.getHours() + ecEnd.getMinutes() / 60;
+                          return startHour < ecEndHour && endHour > ecStartHour;
+                        });
+
+                        const usedCols = overlapping.map(o => o.col);
+                        while (usedCols.includes(col)) col++;
+
+                        eventColumns.push({ event, col, totalCols: 1 });
+                      });
+
+                      eventColumns.forEach(ec => {
+                        const startDate = new Date(ec.event.start_at);
+                        const endDate = new Date(ec.event.end_at);
+                        const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                        const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+
+                        const overlapping = eventColumns.filter(other => {
+                          const otherStart = new Date(other.event.start_at);
+                          const otherEnd = new Date(other.event.end_at);
+                          const otherStartHour = otherStart.getHours() + otherStart.getMinutes() / 60;
+                          const otherEndHour = otherEnd.getHours() + otherEnd.getMinutes() / 60;
+                          return startHour < otherEndHour && endHour > otherStartHour;
+                        });
+
+                        ec.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
+                      });
+
+                      return eventColumns.map(({ event, col, totalCols }) => {
+                        const eventColor = getEventColor(event);
+                        const startDate = new Date(event.start_at);
+                        const endDate = new Date(event.end_at);
+                        const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+                        const endHour = endDate.getHours() + endDate.getMinutes() / 60;
+                        const duration = endHour - startHour;
+
+                        const topOffset = (startHour - 7) * 40;
+                        const height = Math.max(duration * 40, 24);
+
+                        if (startHour < 7 || startHour >= 22) return null;
+
+                        const width = `calc((100% - 8px) / ${totalCols})`;
+                        const left = `calc(4px + (100% - 8px) / ${totalCols} * ${col})`;
+
+                        const isPersonalEvent = !event.group_id;
+                        const isClickable = onEventClick && isPersonalEvent;
+
+                        return (
+                          <button
+                            key={event.id}
+                            onClick={() => isClickable && onEventClick(event)}
+                            disabled={!isClickable}
+                            className={cn(
+                              "absolute text-left text-xs px-1.5 py-1 rounded overflow-hidden border border-border/30",
+                              eventColor.light,
+                              isClickable ? "hover:opacity-80 cursor-pointer" : "cursor-default"
+                            )}
+                            style={{
+                              top: `${topOffset}px`,
+                              height: `${height}px`,
+                              width,
+                              left,
+                            }}
+                          >
+                            <div className="font-medium truncate text-[11px]">{event.title}</div>
+                            <div className="text-[9px] opacity-70 truncate">
+                              {format(startDate, "HH:mm")}-{format(endDate, "HH:mm")}
+                            </div>
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* 일정 없을 때 */}
+                {selectedDateEvents.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-10 h-10 rounded-md bg-muted/50 flex items-center justify-center mb-2">
+                      <Clock className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      일정이 없습니다
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Selected Date Panel - Mobile */}
-      <div className="md:hidden border-t p-3 bg-muted/20">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <p className="text-sm font-medium">
-              {format(selectedDate, "M월 d일 (EEE)", { locale: ko })}
+      {/* Side Panel - Mobile */}
+      <div className="md:hidden border-t bg-background">
+        {/* Header */}
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wide">
+                {format(selectedDate, "yyyy년", { locale: ko })}
+              </p>
+              <p className="text-base font-semibold mt-0.5">
+                {format(selectedDate, "M월 d일 (EEE)", { locale: ko })}
+              </p>
+            </div>
+            {renderAddButton ? renderAddButton() : defaultAddButton()}
+          </div>
+          {selectedDateHoliday && (
+            <p className="text-xs text-red-500 mt-1.5 font-medium">
+              {selectedDateHoliday.name}
             </p>
-            {selectedDateHoliday && (
-              <p className="text-xs text-red-400">{selectedDateHoliday.name}</p>
-            )}
-          </div>
-          {renderAddButton ? renderAddButton() : defaultAddButton()}
+          )}
         </div>
-        {selectedDateEvents.length > 0 ? (
-          <div className="space-y-2">
-            {selectedDateEvents.map((event) => (
-              <div
-                key={event.id}
-                className="p-2.5 rounded-lg bg-card border text-sm"
-              >
-                <p className="font-medium">{event.title}</p>
-                <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {format(new Date(event.start_at), "HH:mm")} - {format(new Date(event.end_at), "HH:mm")}
-                </div>
-              </div>
-            ))}
+
+        {/* View Toggle */}
+        <div className="px-4 py-2 border-b flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">보기</span>
+          <div className="flex items-center bg-muted/50 rounded p-0.5">
+            <button
+              onClick={() => setSidePanelView("timeline")}
+              className={cn(
+                "px-2.5 py-1 text-xs rounded transition-colors",
+                sidePanelView === "timeline"
+                  ? "bg-background shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              타임라인
+            </button>
+            <button
+              onClick={() => setSidePanelView("list")}
+              className={cn(
+                "px-2.5 py-1 text-xs rounded transition-colors",
+                sidePanelView === "list"
+                  ? "bg-background shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              리스트
+            </button>
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-4">일정이 없습니다</p>
-        )}
+        </div>
+
+        {/* Events */}
+        <div className="p-3 max-h-60 overflow-auto">
+          {selectedDateEvents.length > 0 ? (
+            <div className="space-y-1.5">
+              {selectedDateEvents.map((event) => {
+                const eventColor = getEventColor(event);
+                const isPersonalEvent = !event.group_id;
+                const isClickable = onEventClick && isPersonalEvent;
+                const groupName = event.group_id ? groups.find(g => g.id === event.group_id)?.name : null;
+
+                return (
+                  <button
+                    key={event.id}
+                    onClick={() => isClickable && onEventClick(event)}
+                    disabled={!isClickable}
+                    className={cn(
+                      "w-full p-2.5 rounded border border-border/40 text-left",
+                      isClickable ? "hover:bg-muted/30 cursor-pointer" : "cursor-default"
+                    )}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <div
+                        className={cn(
+                          "w-1 h-full min-h-[28px] rounded-full shrink-0 mt-0.5",
+                          eventColor.bg
+                        )}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm truncate flex-1">{event.title}</p>
+                          {groupName && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground shrink-0">
+                              {groupName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
+                          {event.all_day ? (
+                            <span>하루 종일</span>
+                          ) : (
+                            <span>
+                              {format(new Date(event.start_at), "HH:mm")} - {format(new Date(event.end_at), "HH:mm")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-4">일정이 없습니다</p>
+          )}
+        </div>
       </div>
     </div>
   );

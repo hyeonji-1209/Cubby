@@ -65,7 +65,7 @@ export function Modal({
       {/* Modal Content */}
       <div
         className={`
-          relative bg-background rounded-2xl shadow-xl w-full mx-4 overflow-hidden
+          relative bg-background rounded-lg shadow-xl w-full mx-4 overflow-hidden
           animate-in fade-in zoom-in-95 duration-200
           ${maxWidthClasses[maxWidth]}
         `}
@@ -78,7 +78,7 @@ export function Modal({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-full"
+                className="h-8 w-8 rounded-md"
                 onClick={onClose}
               >
                 <X className="h-4 w-4" />

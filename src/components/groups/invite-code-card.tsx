@@ -21,7 +21,7 @@ export function InviteCodeCard({ inviteCode }: InviteCodeCardProps) {
   };
 
   return (
-    <div className="rounded-xl border p-4 bg-muted/30">
+    <div className="rounded-lg border p-4 bg-muted/30">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium mb-1">초대 코드</p>

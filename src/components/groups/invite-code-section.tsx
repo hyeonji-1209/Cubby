@@ -87,7 +87,7 @@ export function InviteCodeSection({
   };
 
   return (
-    <div className="p-4 rounded-xl border bg-muted/30">
+    <div className="p-4 rounded-lg border bg-muted/30">
       <div className="flex items-center justify-between mb-1">
         <p className="text-xs text-muted-foreground">초대 코드</p>
         <span className={cn(

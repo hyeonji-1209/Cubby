@@ -7,15 +7,14 @@ import { Input } from "@/components/ui/input";
 import {
   X,
   Loader2,
-  GraduationCap,
-  Users,
-  ShieldCheck,
   Plus,
   Trash2,
   Clock,
 } from "lucide-react";
-import { GroupMember, User, Group, LessonSchedule } from "@/types";
+import { GroupMember, User, Group, LessonSchedule, MemberRole } from "@/types";
 import { cn } from "@/lib/utils";
+import { ROLE_LABELS, ROLE_ICONS, ROLE_BG_COLORS, ROLE_ICON_COLORS } from "@/lib/role-utils";
+import { WEEKDAYS_KO } from "@/lib/date-utils";
 
 interface MemberApprovalModalProps {
   isOpen: boolean;
@@ -26,7 +25,6 @@ interface MemberApprovalModalProps {
   instructors: (GroupMember & { user: User })[];
 }
 
-const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
 
 export function MemberApprovalModal({
   isOpen,
@@ -200,26 +198,15 @@ export function MemberApprovalModal({
     setChildren(updated);
   };
 
-  const getRoleIcon = () => {
-    switch (role) {
-      case "instructor":
-        return <Users className="h-5 w-5 text-green-600 dark:text-green-400" />;
-      case "guardian":
-        return <ShieldCheck className="h-5 w-5 text-purple-600 dark:text-purple-400" />;
-      default:
-        return <GraduationCap className="h-5 w-5 text-blue-600 dark:text-blue-400" />;
-    }
+  const getRoleIconComponent = () => {
+    const Icon = ROLE_ICONS[role as MemberRole] || ROLE_ICONS.member;
+    const iconColor = ROLE_ICON_COLORS[role as MemberRole] || ROLE_ICON_COLORS.member;
+    return <Icon className={cn("h-5 w-5", iconColor)} />;
   };
 
   const getRoleLabel = () => {
-    switch (role) {
-      case "instructor":
-        return "강사";
-      case "guardian":
-        return "보호자";
-      default:
-        return "학생/수강생";
-    }
+    if (role === "member") return "학생/수강생";
+    return ROLE_LABELS[role as MemberRole] || ROLE_LABELS.member;
   };
 
   return (
@@ -231,17 +218,15 @@ export function MemberApprovalModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-background rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-background rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center",
-              role === "instructor" && "bg-green-100 dark:bg-green-900/30",
-              role === "guardian" && "bg-purple-100 dark:bg-purple-900/30",
-              role === "member" && "bg-blue-100 dark:bg-blue-900/30"
+              ROLE_BG_COLORS[role as MemberRole] || ROLE_BG_COLORS.member
             )}>
-              {getRoleIcon()}
+              {getRoleIconComponent()}
             </div>
             <div>
               <h2 className="text-lg font-semibold">가입 승인</h2>
@@ -342,7 +327,7 @@ export function MemberApprovalModal({
                         }
                         className="h-9 px-2 rounded border bg-background text-sm"
                       >
-                        {weekDays.map((day, i) => (
+                        {WEEKDAYS_KO.map((day, i) => (
                           <option key={i} value={i}>
                             {day}
                           </option>
@@ -420,7 +405,7 @@ export function MemberApprovalModal({
               {children.map((child, childIndex) => (
                 <div
                   key={childIndex}
-                  className="p-4 rounded-xl border space-y-3"
+                  className="p-4 rounded-lg border space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
@@ -498,7 +483,7 @@ export function MemberApprovalModal({
                           }}
                           className="h-8 px-2 rounded border bg-background text-xs"
                         >
-                          {weekDays.map((day, i) => (
+                          {WEEKDAYS_KO.map((day, i) => (
                             <option key={i} value={i}>
                               {day}
                             </option>

@@ -89,7 +89,7 @@ export default async function DashboardPage() {
                     <Link
                       key={group.id}
                       href={`/groups/${group.id}`}
-                      className="flex items-center gap-3 p-3 rounded-xl border hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
                       <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
                         <IconComponent className="h-5 w-5 text-muted-foreground" />
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 border rounded-xl">
+              <div className="text-center py-8 border rounded-lg">
                 <p className="text-sm text-muted-foreground mb-3">
                   참여 중인 모임이 없어요
                 </p>
@@ -121,11 +121,11 @@ export default async function DashboardPage() {
 
           {/* Quick Info */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-xl border">
+            <div className="p-4 rounded-lg border">
               <p className="text-2xl font-bold">{groups.length}</p>
               <p className="text-xs text-muted-foreground">모임</p>
             </div>
-            <div className="p-4 rounded-xl border">
+            <div className="p-4 rounded-lg border">
               <p className="text-2xl font-bold">{events?.length || 0}</p>
               <p className="text-xs text-muted-foreground">일정</p>
             </div>

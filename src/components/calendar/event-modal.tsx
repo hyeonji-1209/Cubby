@@ -15,6 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface EventModalProps {
   isOpen: boolean;
@@ -39,6 +41,9 @@ export function EventModal({
   locations = [],
   existingEvents = [],
 }: EventModalProps) {
+  const toast = useToast();
+  const { confirm } = useConfirm();
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -51,8 +56,25 @@ export function EventModal({
   const [conflictWarning, setConflictWarning] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteExistingEventsOnHoliday, setDeleteExistingEventsOnHoliday] = useState(false);
 
   const isEditMode = !!event;
+
+  // 선택한 날짜에 있는 기존 이벤트 찾기
+  const getEventsOnDate = (dateStr: string): CalendarEvent[] => {
+    if (!dateStr) return [];
+    const targetDate = new Date(dateStr);
+    return existingEvents.filter((e) => {
+      // 자기 자신은 제외
+      if (event && e.id === event.id) return false;
+      const eventDate = new Date(e.start_at);
+      return (
+        eventDate.getFullYear() === targetDate.getFullYear() &&
+        eventDate.getMonth() === targetDate.getMonth() &&
+        eventDate.getDate() === targetDate.getDate()
+      );
+    });
+  };
 
   // 충돌 감지 함수
   const checkConflict = (
@@ -184,7 +206,7 @@ export function EventModal({
     // 충돌 체크 (block 유형이면 저장 불가)
     const conflict = checkConflict(startAt, endAt, locationId);
     if (conflict.type === "block") {
-      alert(conflict.message);
+      toast.error(conflict.message || "일정 충돌이 발생했습니다.");
       return;
     }
 
@@ -193,6 +215,15 @@ export function EventModal({
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    // 휴일 처리 시 기존 일정 삭제
+    if (isAcademyHoliday && deleteExistingEventsOnHoliday) {
+      const eventsToDelete = getEventsOnDate(startDate);
+      if (eventsToDelete.length > 0) {
+        const eventIds = eventsToDelete.map((e) => e.id);
+        await supabase.from("calendar_events").delete().in("id", eventIds);
+      }
+    }
 
     const selectedLocation = locations.find((l) => l.id === locationId);
 
@@ -206,8 +237,7 @@ export function EventModal({
       visibility: "all" as const,
       location_id: locationId || null,
       location: selectedLocation?.name || null,
-      // is_academy_holiday 컬럼이 DB에 있으면 주석 해제
-      // is_academy_holiday: isAcademyHoliday,
+      is_academy_holiday: isAcademyHoliday,
     };
 
     if (isEditMode && event) {
@@ -231,7 +261,16 @@ export function EventModal({
   };
 
   const handleDelete = async () => {
-    if (!event || !confirm("일정을 삭제하시겠습니까?")) return;
+    if (!event) return;
+
+    const confirmed = await confirm({
+      title: "일정 삭제",
+      message: "일정을 삭제하시겠습니까?",
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+
+    if (!confirmed) return;
 
     setIsDeleting(true);
     const supabase = createClient();
@@ -255,6 +294,7 @@ export function EventModal({
     setConflictWarning(null);
     setIsSubmitting(false);
     setIsDeleting(false);
+    setDeleteExistingEventsOnHoliday(false);
   };
 
   const handleClose = () => {
@@ -281,7 +321,7 @@ export function EventModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-background rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-background rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">
@@ -425,7 +465,31 @@ export function EventModal({
               <input
                 type="checkbox"
                 checked={isAcademyHoliday}
-                onChange={(e) => setIsAcademyHoliday(e.target.checked)}
+                onChange={async (e) => {
+                  const checked = e.target.checked;
+                  if (checked && startDate) {
+                    const eventsOnDate = getEventsOnDate(startDate);
+                    if (eventsOnDate.length > 0) {
+                      const confirmed = await confirm({
+                        title: "휴일 처리",
+                        message: `해당 날짜에 ${eventsOnDate.length}개의 일정이 있습니다.\n모든 일정을 삭제하고 휴일 처리하시겠습니까?`,
+                        confirmText: "삭제 후 휴일 처리",
+                        variant: "destructive",
+                      });
+                      if (!confirmed) {
+                        return; // 취소하면 체크 안함
+                      }
+                      setDeleteExistingEventsOnHoliday(true);
+                    }
+                  } else {
+                    setDeleteExistingEventsOnHoliday(false);
+                  }
+                  setIsAcademyHoliday(checked);
+                  if (checked) {
+                    setAllDay(true);
+                    setLocationId("");
+                  }
+                }}
                 className="rounded accent-red-500"
               />
               <div>

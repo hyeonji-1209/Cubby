@@ -1,95 +1,96 @@
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+// 날짜 포맷 유틸리티
 
-// 날짜 포맷 상수
-export const DATE_FORMATS = {
-  monthYear: "yyyy년 M월",
-  fullDateWithDay: "M월 d일 EEEE",
-  shortDateWithDay: "M월 d일 (EEE)",
-  fullDate: "yyyy년 M월 d일",
-  yearOnly: "yyyy년",
-  time: "HH:mm",
-  dateTime: "yyyy-MM-dd HH:mm",
-  isoDate: "yyyy-MM-dd",
-} as const;
-
-// 포맷 함수들
-export function formatMonthYear(date: Date): string {
-  return format(date, DATE_FORMATS.monthYear, { locale: ko });
+/**
+ * 간단한 날짜 포맷 (YY.MM.DD)
+ */
+export function formatDateShort(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("ko-KR", {
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
-export function formatFullDateWithDay(date: Date): string {
-  return format(date, DATE_FORMATS.fullDateWithDay, { locale: ko });
+/**
+ * 월/일만 표시 (MM.DD)
+ */
+export function formatDateMonthDay(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
-export function formatShortDateWithDay(date: Date): string {
-  return format(date, DATE_FORMATS.shortDateWithDay, { locale: ko });
+/**
+ * 월/일 + 요일 (MM.DD (요일))
+ */
+export function formatDateWithWeekday(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  });
 }
 
-export function formatYearOnly(date: Date): string {
-  return format(date, DATE_FORMATS.yearOnly, { locale: ko });
+/**
+ * 상대적 시간 표시 (방금 전, 5분 전, 3시간 전 등)
+ */
+export function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  if (hours < 24) return `${hours}시간 전`;
+  if (days < 7) return `${days}일 전`;
+
+  return date.toLocaleDateString("ko-KR", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
-export function formatTime(date: Date): string {
-  return format(date, DATE_FORMATS.time);
+/**
+ * 시간만 표시 (HH:mm)
+ */
+export function formatTime(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
-export function formatIsoDate(date: Date): string {
-  return format(date, DATE_FORMATS.isoDate);
+/**
+ * 전체 날짜 + 시간 표시 (YYYY년 M월 D일 HH:mm)
+ */
+export function formatDateTimeFull(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-// 날짜/시간 범위 생성 (이벤트 생성용)
-export function buildDateTimeRange(
-  startDate: string,
-  endDate: string,
-  startTime: string,
-  endTime: string,
-  allDay: boolean
-): { start_at: string; end_at: string } {
-  const startAt = new Date(startDate);
-  const endAt = new Date(endDate);
+/**
+ * 요일 배열 (한국어)
+ */
+export const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
-  if (!allDay) {
-    const [startHour, startMin] = startTime.split(":").map(Number);
-    const [endHour, endMin] = endTime.split(":").map(Number);
-    startAt.setHours(startHour, startMin, 0, 0);
-    endAt.setHours(endHour, endMin, 0, 0);
-  } else {
-    startAt.setHours(0, 0, 0, 0);
-    endAt.setHours(23, 59, 59, 999);
-  }
-
-  return {
-    start_at: startAt.toISOString(),
-    end_at: endAt.toISOString(),
-  };
-}
-
-// 날짜가 특정 범위 내에 있는지 확인
-export function isDateInRange(date: Date, startAt: string, endAt: string): boolean {
-  const startDate = new Date(startAt);
-  const endDate = new Date(endAt);
-  startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
-  const checkDate = new Date(date);
-  checkDate.setHours(12, 0, 0, 0);
-  return checkDate >= startDate && checkDate <= endDate;
-}
-
-// 시간 문자열에서 Date 객체 생성
-export function parseTimeToDate(baseDate: Date, timeString: string): Date {
-  const [hours, minutes] = timeString.split(":").map(Number);
-  const result = new Date(baseDate);
-  result.setHours(hours, minutes, 0, 0);
-  return result;
-}
-
-// 오늘 날짜인지 확인
-export function isToday(date: Date): boolean {
-  const today = new Date();
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
+/**
+ * 요일 인덱스로 한국어 요일 가져오기
+ */
+export function getWeekdayKo(dayIndex: number): string {
+  return WEEKDAYS_KO[dayIndex % 7];
 }

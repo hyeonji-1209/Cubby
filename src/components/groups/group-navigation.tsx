@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Group, GroupMember } from "@/types";
+import { Group, GroupMember, Lesson } from "@/types";
 import {
   ArrowLeft,
   Bell,
@@ -14,23 +14,51 @@ import {
   Clock,
   UsersRound,
   Home,
+  Radio,
 } from "lucide-react";
+
+interface ActiveLesson {
+  id: string;
+  title?: string;
+  student_name?: string;
+  scheduled_at: string;
+  status: string;
+}
 
 interface GroupNavigationProps {
   group: Group;
   membership: GroupMember;
+  activeLesson?: ActiveLesson | null;
 }
 
-export function GroupNavigation({ group, membership }: GroupNavigationProps) {
+export function GroupNavigation({ group, membership, activeLesson }: GroupNavigationProps) {
   const pathname = usePathname();
   const baseUrl = `/groups/${group.id}`;
 
   const isOwnerOrAdmin = membership.role === "owner" || membership.role === "admin";
+  const isInstructor = membership.role === "instructor";
   const isEducationType = group.type === "education";
   const hasPracticeRoom = group.settings?.has_practice_room;
 
-  // 탭 순서: 홈, 수업관리, 클래스예약, 공지사항, 일정, 멤버, 소그룹, 설정
+  // 활성 수업 탭 라벨 생성
+  const activeLessonLabel = activeLesson
+    ? activeLesson.status === "in_progress"
+      ? `${activeLesson.student_name || "수업"} 진행중`
+      : `${activeLesson.student_name || "수업"} 곧 시작`
+    : "";
+
+  // 탭 순서: (활성수업), 홈, 수업관리, 클래스예약, 공지사항, 일정, 멤버, 소그룹, 설정
   const navItems = [
+    // 활성 수업 탭 (수업 중 또는 5분 전)
+    ...(activeLesson && isEducationType
+      ? [{
+          href: `${baseUrl}/active-lesson`,
+          label: activeLessonLabel,
+          icon: Radio,
+          isActive: true,
+          pulse: activeLesson.status === "in_progress",
+        }]
+      : []),
     { href: baseUrl, label: "홈", icon: Home, exact: true },
     // 교육 타입 전용 항목
     ...(isEducationType
@@ -76,11 +104,13 @@ export function GroupNavigation({ group, membership }: GroupNavigationProps) {
 
         {/* Navigation Tabs */}
         <div className="flex overflow-x-auto scrollbar-hide">
-          {navItems.map((item) => {
+          {navItems.map((item: any) => {
             const isActive = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href);
             const Icon = item.icon;
+            const isActiveLessonTab = item.isActive;
+            const hasPulse = item.pulse;
 
             return (
               <Link
@@ -88,12 +118,19 @@ export function GroupNavigation({ group, membership }: GroupNavigationProps) {
                 href={item.href}
                 className={cn(
                   "flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
-                  isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
+                  isActiveLessonTab
+                    ? "border-green-500 text-green-600 dark:text-green-400 bg-green-50/50 dark:bg-green-950/20"
+                    : isActive
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/50"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <span className="relative">
+                  <Icon className={cn("h-4 w-4", isActiveLessonTab && "text-green-500")} />
+                  {hasPulse && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  )}
+                </span>
                 {item.label}
               </Link>
             );

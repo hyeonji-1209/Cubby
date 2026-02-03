@@ -83,7 +83,7 @@ export default function GroupsPage() {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href="/groups/create?type=education"
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 transition-colors"
+          className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 transition-colors"
         >
           <span className="text-2xl">📚</span>
           <span className="text-sm font-medium">교육/학원</span>
@@ -92,7 +92,7 @@ export default function GroupsPage() {
         {!hasCoupleGroup && (
           <Link
             href="/groups/create?type=couple"
-            className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-pink-500/30 hover:border-pink-500 hover:bg-pink-500/5 transition-colors"
+            className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-pink-500/30 hover:border-pink-500 hover:bg-pink-500/5 transition-colors"
           >
             <span className="text-2xl">❤️</span>
             <span className="text-sm font-medium">연인</span>
@@ -101,7 +101,7 @@ export default function GroupsPage() {
 
         <Link
           href="/groups/create?type=family"
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-green-500/30 hover:border-green-500 hover:bg-green-500/5 transition-colors"
+          className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-green-500/30 hover:border-green-500 hover:bg-green-500/5 transition-colors"
         >
           <span className="text-2xl">👨‍👩‍👧‍👦</span>
           <span className="text-sm font-medium">가족</span>
@@ -109,7 +109,7 @@ export default function GroupsPage() {
 
         <Link
           href="/groups/create?type=hobby"
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-orange-500/30 hover:border-orange-500 hover:bg-orange-500/5 transition-colors"
+          className="flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-orange-500/30 hover:border-orange-500 hover:bg-orange-500/5 transition-colors"
         >
           <span className="text-2xl">🎯</span>
           <span className="text-sm font-medium">동호회</span>
@@ -124,7 +124,7 @@ export default function GroupsPage() {
               <Card className="hover:bg-muted/50 transition-colors">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-2xl">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-2xl">
                       {group.icon || groupTypeIcons[group.type]}
                     </div>
                     <div className="flex-1 min-w-0">

@@ -276,12 +276,47 @@ CREATE TABLE announcements (
   is_pinned BOOLEAN DEFAULT FALSE,
   is_instructor_only BOOLEAN DEFAULT FALSE,
   attachments JSONB DEFAULT '[]',
+  view_count INTEGER DEFAULT 0,
+  like_count INTEGER DEFAULT 0,
+  comment_count INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_announcements_group ON announcements(group_id);
 CREATE INDEX idx_announcements_pinned ON announcements(is_pinned);
+
+-- ============================================
+-- Announcement Likes Table
+-- ============================================
+
+CREATE TABLE announcement_likes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  announcement_id UUID NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(announcement_id, user_id)
+);
+
+CREATE INDEX idx_announcement_likes_announcement ON announcement_likes(announcement_id);
+CREATE INDEX idx_announcement_likes_user ON announcement_likes(user_id);
+
+-- ============================================
+-- Announcement Comments Table
+-- ============================================
+
+CREATE TABLE announcement_comments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  announcement_id UUID NOT NULL REFERENCES announcements(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  parent_id UUID REFERENCES announcement_comments(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_announcement_comments_announcement ON announcement_comments(announcement_id);
+CREATE INDEX idx_announcement_comments_parent ON announcement_comments(parent_id);
 
 -- ============================================
 -- Calendar Events Table
@@ -385,6 +420,25 @@ CREATE INDEX idx_payments_member ON payments(member_id);
 CREATE INDEX idx_payments_status ON payments(status);
 
 -- ============================================
+-- Attendance QR Codes Table (수업당 하나, 수업 종료시 만료)
+-- ============================================
+
+CREATE TABLE attendance_qr_codes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  lesson_id UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+  code TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(lesson_id) -- 수업당 하나의 QR 코드만 존재
+);
+
+CREATE INDEX idx_attendance_qr_lesson ON attendance_qr_codes(lesson_id);
+CREATE INDEX idx_attendance_qr_code ON attendance_qr_codes(code);
+CREATE INDEX idx_attendance_qr_expires ON attendance_qr_codes(expires_at);
+
+-- ============================================
 -- Functions & Triggers
 -- ============================================
 
@@ -421,6 +475,80 @@ CREATE TRIGGER update_lessons_updated_at
 CREATE TRIGGER update_announcements_updated_at
   BEFORE UPDATE ON announcements
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER update_announcement_comments_updated_at
+  BEFORE UPDATE ON announcement_comments
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Increment view count function
+CREATE OR REPLACE FUNCTION increment_view_count(announcement_id UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE announcements
+  SET view_count = view_count + 1
+  WHERE id = announcement_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update like count on insert
+CREATE OR REPLACE FUNCTION update_announcement_like_count_on_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE announcements
+  SET like_count = like_count + 1
+  WHERE id = NEW.announcement_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Update like count on delete
+CREATE OR REPLACE FUNCTION update_announcement_like_count_on_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE announcements
+  SET like_count = GREATEST(0, like_count - 1)
+  WHERE id = OLD.announcement_id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_announcement_like_insert
+  AFTER INSERT ON announcement_likes
+  FOR EACH ROW EXECUTE FUNCTION update_announcement_like_count_on_insert();
+
+CREATE TRIGGER on_announcement_like_delete
+  AFTER DELETE ON announcement_likes
+  FOR EACH ROW EXECUTE FUNCTION update_announcement_like_count_on_delete();
+
+-- Update comment count on insert
+CREATE OR REPLACE FUNCTION update_announcement_comment_count_on_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE announcements
+  SET comment_count = comment_count + 1
+  WHERE id = NEW.announcement_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Update comment count on delete
+CREATE OR REPLACE FUNCTION update_announcement_comment_count_on_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE announcements
+  SET comment_count = GREATEST(0, comment_count - 1)
+  WHERE id = OLD.announcement_id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER on_announcement_comment_insert
+  AFTER INSERT ON announcement_comments
+  FOR EACH ROW EXECUTE FUNCTION update_announcement_comment_count_on_insert();
+
+CREATE TRIGGER on_announcement_comment_delete
+  AFTER DELETE ON announcement_comments
+  FOR EACH ROW EXECUTE FUNCTION update_announcement_comment_count_on_delete();
 
 -- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -584,6 +712,90 @@ CREATE POLICY "Users can view announcements in their groups"
       SELECT 1 FROM group_members
       WHERE group_members.group_id = announcements.group_id
       AND group_members.user_id = auth.uid()
+      AND group_members.status = 'approved'
+    )
+  );
+
+CREATE POLICY "Users can create announcements"
+  ON announcements FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "Users can update their announcements"
+  ON announcements FOR UPDATE
+  USING (auth.uid() = author_id);
+
+CREATE POLICY "Users can delete their announcements"
+  ON announcements FOR DELETE
+  USING (auth.uid() = author_id);
+
+-- Announcement likes policies
+ALTER TABLE announcement_likes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view likes"
+  ON announcement_likes FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can like announcements"
+  ON announcement_likes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can unlike announcements"
+  ON announcement_likes FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Announcement comments policies
+ALTER TABLE announcement_comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view comments"
+  ON announcement_comments FOR SELECT
+  USING (true);
+
+CREATE POLICY "Users can create comments"
+  ON announcement_comments FOR INSERT
+  WITH CHECK (auth.uid() = author_id);
+
+CREATE POLICY "Users can update their comments"
+  ON announcement_comments FOR UPDATE
+  USING (auth.uid() = author_id);
+
+CREATE POLICY "Users can delete their comments"
+  ON announcement_comments FOR DELETE
+  USING (auth.uid() = author_id);
+
+-- Attendance QR codes policies
+ALTER TABLE attendance_qr_codes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view QR codes in their groups"
+  ON attendance_qr_codes FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = attendance_qr_codes.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.status = 'approved'
+    )
+  );
+
+CREATE POLICY "Instructors can create QR codes"
+  ON attendance_qr_codes FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = attendance_qr_codes.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.role IN ('owner', 'admin', 'instructor')
+      AND group_members.status = 'approved'
+    )
+  );
+
+CREATE POLICY "Instructors can delete QR codes"
+  ON attendance_qr_codes FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = attendance_qr_codes.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.role IN ('owner', 'admin', 'instructor')
       AND group_members.status = 'approved'
     )
   );

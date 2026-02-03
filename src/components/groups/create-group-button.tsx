@@ -74,7 +74,7 @@ export function CreateGroupButton() {
         >
           {/* Modal Content */}
           <div
-            className="bg-background rounded-2xl w-full max-w-md max-h-[80vh] overflow-auto"
+            className="bg-background rounded-xl w-full max-w-md max-h-[80vh] overflow-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -94,7 +94,7 @@ export function CreateGroupButton() {
                 <button
                   key={item.type}
                   onClick={() => handleSelect(item.type)}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${item.color}`}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors ${item.color}`}
                 >
                   <span className="text-3xl">{item.icon}</span>
                   <span className="font-medium">{item.title}</span>

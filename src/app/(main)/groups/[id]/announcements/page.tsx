@@ -24,6 +24,8 @@ import {
   X,
 } from "lucide-react";
 import { Announcement } from "@/types";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { formatDateShort, formatDateTimeFull } from "@/lib/date-utils";
 
 interface AnnouncementsPageProps {
   params: { id: string };
@@ -31,6 +33,8 @@ interface AnnouncementsPageProps {
 
 export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
   const router = useRouter();
+  const { confirm } = useConfirm();
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("member");
@@ -167,7 +171,13 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
+    const confirmed = await confirm({
+      title: "공지사항 삭제",
+      message: "정말 삭제하시겠습니까?",
+      confirmText: "삭제",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     const supabase = createClient();
 
@@ -202,26 +212,6 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
       .eq("id", announcement.id);
     loadData();
     setOpenMenuId(null);
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("ko-KR", {
-      year: "2-digit",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  };
-
-  const formatFullDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   const getFileIcon = (type: string) => {
@@ -288,7 +278,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
                           </span>
                         )}
                         <span className="text-xs text-muted-foreground">
-                          {formatDate(announcement.created_at)}
+                          {formatDateShort(announcement.created_at)}
                         </span>
                         {announcement.attachments && announcement.attachments.length > 0 && (
                           <Paperclip className="h-3 w-3 text-muted-foreground shrink-0 ml-auto" />
@@ -375,7 +365,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
                           {announcement.comment_count || 0}
                         </td>
                         <td className="py-3 px-4 text-center text-muted-foreground hidden md:table-cell whitespace-nowrap">
-                          {formatDate(announcement.created_at)}
+                          {formatDateShort(announcement.created_at)}
                         </td>
                         {canManage && (
                           <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
@@ -495,7 +485,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
               <div className="p-4">
                 <h3 className="text-lg font-semibold mb-2">{selectedAnnouncement.title}</h3>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
-                  <span>{formatFullDate(selectedAnnouncement.created_at)}</span>
+                  <span>{formatDateTimeFull(selectedAnnouncement.created_at)}</span>
                   <span className="flex items-center gap-1">
                     <Eye className="h-3.5 w-3.5" />
                     {selectedAnnouncement.view_count || 0}

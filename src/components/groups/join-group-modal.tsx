@@ -224,7 +224,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative bg-background rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative bg-background rounded-xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
@@ -299,7 +299,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
               </Button>
 
               {/* Info */}
-              <div className="p-3 rounded-xl bg-muted/50">
+              <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   초대 코드는 모임 관리자가 생성하는 고유한 코드입니다.
                   코드를 입력하면 해당 모임에 가입 신청이 되며,
@@ -334,7 +334,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
                   onClick={() => handleRoleSelect("student")}
                   disabled={isLoading}
                   className={cn(
-                    "w-full p-4 rounded-xl border-2 text-left transition-all",
+                    "w-full p-4 rounded-lg border-2 text-left transition-all",
                     "hover:border-primary hover:bg-primary/5",
                     isLoading && selectedRole === "student" && "border-primary bg-primary/5"
                   )}
@@ -360,7 +360,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
                   onClick={() => handleRoleSelect("instructor")}
                   disabled={isLoading}
                   className={cn(
-                    "w-full p-4 rounded-xl border-2 text-left transition-all",
+                    "w-full p-4 rounded-lg border-2 text-left transition-all",
                     "hover:border-primary hover:bg-primary/5",
                     isLoading && selectedRole === "instructor" && "border-primary bg-primary/5"
                   )}
@@ -386,7 +386,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
                   onClick={() => handleRoleSelect("guardian")}
                   disabled={isLoading}
                   className={cn(
-                    "w-full p-4 rounded-xl border-2 text-left transition-all",
+                    "w-full p-4 rounded-lg border-2 text-left transition-all",
                     "hover:border-primary hover:bg-primary/5",
                     isLoading && selectedRole === "guardian" && "border-primary bg-primary/5"
                   )}

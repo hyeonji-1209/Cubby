@@ -187,9 +187,9 @@ export default function CreateGroupPage() {
           <button
             key={item.type}
             onClick={() => handleTypeSelect(item.type as GroupType)}
-            className="flex flex-col items-center p-4 rounded-xl border hover:border-primary hover:bg-primary/5 transition-all text-center group"
+            className="flex flex-col items-center p-4 rounded-lg border hover:border-primary hover:bg-primary/5 transition-all text-center group"
           >
-            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3 group-hover:bg-primary/10 transition-colors">
+            <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center mb-3 group-hover:bg-primary/10 transition-colors">
               <ItemIcon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
             <span className="font-medium text-sm">{item.title}</span>
@@ -271,7 +271,7 @@ export default function CreateGroupPage() {
               type="button"
               onClick={() => setIsMarried(false)}
               className={cn(
-                "p-4 rounded-xl border text-center transition-all",
+                "p-4 rounded-lg border text-center transition-all",
                 !isMarried ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:border-muted-foreground"
               )}
             >
@@ -282,7 +282,7 @@ export default function CreateGroupPage() {
               type="button"
               onClick={() => setIsMarried(true)}
               className={cn(
-                "p-4 rounded-xl border text-center transition-all",
+                "p-4 rounded-lg border text-center transition-all",
                 isMarried ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:border-muted-foreground"
               )}
             >
@@ -304,7 +304,7 @@ export default function CreateGroupPage() {
               type="button"
               onClick={() => setLessonType("individual")}
               className={cn(
-                "p-4 rounded-xl border text-center transition-all",
+                "p-4 rounded-lg border text-center transition-all",
                 lessonType === "individual" ? "border-primary bg-primary/5 ring-1 ring-primary" : ""
               )}
             >
@@ -315,7 +315,7 @@ export default function CreateGroupPage() {
               type="button"
               onClick={() => setLessonType("group")}
               className={cn(
-                "p-4 rounded-xl border text-center transition-all",
+                "p-4 rounded-lg border text-center transition-all",
                 lessonType === "group" ? "border-primary bg-primary/5 ring-1 ring-primary" : ""
               )}
             >
@@ -522,11 +522,11 @@ export default function CreateGroupPage() {
         <div className="relative z-10 text-center px-8">
           <div className="mb-8">
             {step === 1 ? (
-              <div className="w-24 h-24 mx-auto rounded-2xl bg-background border shadow-sm flex items-center justify-center">
+              <div className="w-24 h-24 mx-auto rounded-xl bg-background border shadow-sm flex items-center justify-center">
                 <Plus className="h-12 w-12 text-primary/70" />
               </div>
             ) : IconComponent ? (
-              <div className="w-24 h-24 mx-auto rounded-2xl bg-background border shadow-sm flex items-center justify-center">
+              <div className="w-24 h-24 mx-auto rounded-xl bg-background border shadow-sm flex items-center justify-center">
                 <IconComponent className="h-12 w-12 text-primary/70" />
               </div>
             ) : null}

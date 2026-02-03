@@ -18,6 +18,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Announcement, AnnouncementAttachment } from "@/types";
+import { useToast } from "@/components/ui/toast";
 
 interface WriteAnnouncementPageProps {
   params: { id: string };
@@ -42,6 +43,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
+  const toast = useToast();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -91,7 +93,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
 
     for (const file of fileArray) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`${file.name}은(는) 10MB를 초과합니다.`);
+        toast.error(`${file.name}은(는) 10MB를 초과합니다.`);
         continue;
       }
 
@@ -122,7 +124,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
         setAttachments(prev => [...prev, newAttachment]);
       } catch (error) {
         console.error("File upload error:", error);
-        alert(`${file.name} 업로드에 실패했습니다.`);
+        toast.error(`${file.name} 업로드에 실패했습니다.`);
       } finally {
         setUploadingFiles(prev => prev.filter(name => name !== file.name));
       }
@@ -184,7 +186,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 입력해주세요.");
+      toast.warning("제목과 내용을 입력해주세요.");
       return;
     }
 
@@ -219,7 +221,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
       router.push(`/groups/${params.id}/announcements`);
     } catch (error) {
       console.error("Announcement save error:", error);
-      alert("공지사항 저장에 실패했습니다. 권한을 확인해주세요.");
+      toast.error("공지사항 저장에 실패했습니다. 권한을 확인해주세요.");
       setIsSubmitting(false);
     }
   };
@@ -389,7 +391,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
             onDrop={handleDrop}
             className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm z-20"
           >
-            <div className="flex flex-col items-center gap-3 p-8 rounded-2xl border-2 border-dashed border-primary bg-primary/5">
+            <div className="flex flex-col items-center gap-3 p-8 rounded-xl border-2 border-dashed border-primary bg-primary/5">
               <Upload className="h-12 w-12 text-primary" />
               <div className="text-center">
                 <p className="text-base font-medium text-primary">파일을 여기에 놓으세요</p>

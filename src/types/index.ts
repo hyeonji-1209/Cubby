@@ -14,6 +14,7 @@ export type MemberRole =
   | 'owner'        // 소유자
   | 'admin'        // 관리자
   | 'instructor'   // 강사 (교육 타입)
+  | 'student'      // 학생 (교육 타입)
   | 'guardian'     // 보호자 (교육 타입)
   | 'member';      // 일반 멤버
 
@@ -88,6 +89,7 @@ export interface GroupSettings {
     start: string;
     end: string;
   };
+  practice_room_slot_unit?: 30 | 60; // 예약 단위 (30분/1시간)
   excluded_practice_classes?: string[]; // 연습실로 사용 안하는 클래스 이름들
 
   // 레거시 (이전 버전 호환)
@@ -110,6 +112,7 @@ export interface GroupSettings {
 export interface ClassRoom {
   id: string;
   name: string;
+  capacity?: number; // 수용 인원
 }
 
 export interface PracticeRoom {
