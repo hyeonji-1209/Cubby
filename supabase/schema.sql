@@ -274,6 +274,8 @@ CREATE TABLE announcements (
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   is_pinned BOOLEAN DEFAULT FALSE,
+  is_instructor_only BOOLEAN DEFAULT FALSE,
+  attachments JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -297,6 +299,9 @@ CREATE TABLE calendar_events (
   color TEXT,
   event_type event_type NOT NULL DEFAULT 'personal',
   visibility event_visibility NOT NULL DEFAULT 'all',
+  location_id TEXT,
+  location TEXT,
+  is_academy_holiday BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

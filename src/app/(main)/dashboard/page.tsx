@@ -63,7 +63,7 @@ export default async function DashboardPage() {
     <div className="h-full flex flex-col lg:flex-row">
       {/* Calendar - 패딩 없이 꽉 참 */}
       <div className="flex-1 h-full">
-        <DashboardCalendar events={events || []} />
+        <DashboardCalendar events={events || []} groups={groups} />
       </div>
 
       {/* Right Sidebar */}

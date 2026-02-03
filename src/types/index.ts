@@ -252,6 +252,14 @@ export interface RoomReservation {
 // 공지사항 타입
 // ============================================
 
+export interface AnnouncementAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string; // mime type
+  size: number; // bytes
+}
+
 export interface Announcement {
   id: string;
   group_id: string;
@@ -260,8 +268,38 @@ export interface Announcement {
   title: string;
   content: string;
   is_pinned: boolean;
+  is_instructor_only: boolean; // 강사만 볼 수 있는 공지
+  attachments?: AnnouncementAttachment[];
+  view_count: number;
+  like_count: number;
+  comment_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface AnnouncementComment {
+  id: string;
+  announcement_id: string;
+  author_id: string;
+  parent_id?: string; // 대댓글인 경우 부모 댓글 ID
+  content: string;
+  created_at: string;
+  updated_at: string;
+  // 조인된 데이터
+  author?: {
+    id: string;
+    name: string;
+    avatar_url?: string;
+    role?: string; // 직책/역할
+  };
+  replies?: AnnouncementComment[];
+}
+
+export interface AnnouncementLike {
+  id: string;
+  announcement_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 // ============================================
@@ -282,6 +320,8 @@ export interface CalendarEvent {
   visibility?: 'private' | 'partner' | 'all';
   is_academy_holiday?: boolean;
   group_name?: string; // 캘린더 표시용
+  location_id?: string; // 장소 ID
+  location?: string;    // 장소 이름
   created_at?: string;
 }
 
