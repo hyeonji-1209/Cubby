@@ -23,8 +23,10 @@ import {
   ChevronRight,
   Loader2,
   Clock,
+  BookOpen,
+  Calendar as CalendarIcon,
 } from "lucide-react";
-import { CalendarEvent, Group } from "@/types";
+import { CalendarEvent, Lesson, RoomReservation } from "@/types";
 import { cn } from "@/lib/utils";
 import { getHolidaysForMonth, Holiday } from "@/lib/holidays";
 import { EventModal } from "@/components/calendar/event-modal";
@@ -34,17 +36,39 @@ import {
   HOLIDAY_COLOR,
   CalendarColor,
 } from "@/lib/calendar-colors";
+import { useGroup } from "@/lib/contexts/group-context";
+import { useUser } from "@/lib/contexts/user-context";
 
 interface CalendarPageProps {
   params: { id: string };
 }
 
+// Unified schedule item type for display
+interface ScheduleItem {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  type: "event" | "lesson" | "reservation";
+  all_day?: boolean;
+  location?: string;
+  location_id?: string;
+  is_academy_holiday?: boolean;
+  original?: CalendarEvent | Lesson | RoomReservation;
+}
+
 export default function CalendarPage({ params }: CalendarPageProps) {
+  const { group, isStudent, isGuardian } = useGroup();
+  const { user } = useUser();
+
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [group, setGroup] = useState<Group | null>(null);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [reservations, setReservations] = useState<RoomReservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+
+  const isStudentOrGuardian = isStudent || isGuardian;
 
   // 사이드 패널 뷰 모드 상태 (list: 리스트, timeline: 타임라인)
   const [sidePanelView, setSidePanelView] = useState<"list" | "timeline">("timeline");
@@ -54,7 +78,7 @@ export default function CalendarPage({ params }: CalendarPageProps) {
   const [modalInitialDate, setModalInitialDate] = useState<Date | undefined>();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
-  const isEducationType = group?.type === "education";
+  const isEducationType = group.type === "education";
 
   // 셀 높이 기반 라벨 수 계산
   const [maxLabels, setMaxLabels] = useState(5);
@@ -129,25 +153,8 @@ export default function CalendarPage({ params }: CalendarPageProps) {
   };
 
   useEffect(() => {
-    loadGroup();
-  }, [params.id]);
-
-  useEffect(() => {
-    if (group) {
-      loadEvents();
-    }
-  }, [params.id, currentMonth, group]);
-
-  const loadGroup = async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("id", params.id)
-      .single();
-
-    setGroup(data as Group);
-  };
+    loadEvents();
+  }, [params.id, currentMonth, user?.id]);
 
   const loadEvents = async () => {
     const supabase = createClient();
@@ -155,7 +162,8 @@ export default function CalendarPage({ params }: CalendarPageProps) {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
 
-    const { data } = await supabase
+    // Load calendar events
+    const { data: eventData } = await supabase
       .from("calendar_events")
       .select("*")
       .eq("group_id", params.id)
@@ -163,7 +171,37 @@ export default function CalendarPage({ params }: CalendarPageProps) {
       .lte("start_at", monthEnd.toISOString())
       .order("start_at");
 
-    setEvents((data as CalendarEvent[]) || []);
+    setEvents((eventData as CalendarEvent[]) || []);
+
+    // Load student's lessons and reservations if student/guardian
+    if (isStudentOrGuardian && user?.id) {
+      // Load lessons where user is the student
+      const { data: lessonData } = await supabase
+        .from("lessons")
+        .select("*")
+        .eq("group_id", params.id)
+        .eq("student_id", user.id)
+        .gte("scheduled_at", monthStart.toISOString())
+        .lte("scheduled_at", monthEnd.toISOString())
+        .in("status", ["scheduled", "in_progress", "completed"])
+        .order("scheduled_at");
+
+      setLessons((lessonData as Lesson[]) || []);
+
+      // Load user's reservations
+      const { data: reservationData } = await supabase
+        .from("room_reservations")
+        .select("*")
+        .eq("group_id", params.id)
+        .eq("reserved_by", user.id)
+        .gte("start_at", monthStart.toISOString())
+        .lte("start_at", monthEnd.toISOString())
+        .eq("status", "approved")
+        .order("start_at");
+
+      setReservations((reservationData as RoomReservation[]) || []);
+    }
+
     setIsLoading(false);
   };
 
@@ -206,6 +244,78 @@ export default function CalendarPage({ params }: CalendarPageProps) {
     });
   };
 
+  // Get all schedule items for a date (events + lessons + reservations)
+  const getScheduleItemsForDate = (date: Date): ScheduleItem[] => {
+    const items: ScheduleItem[] = [];
+
+    // Add calendar events
+    const dateEvents = getEventsForDate(date);
+    dateEvents.forEach((event) => {
+      items.push({
+        id: event.id,
+        title: event.title,
+        start_at: event.start_at,
+        end_at: event.end_at,
+        type: "event",
+        all_day: event.all_day,
+        location: event.location,
+        location_id: event.location_id,
+        is_academy_holiday: event.is_academy_holiday,
+        original: event,
+      });
+    });
+
+    // Add lessons for students
+    if (isStudentOrGuardian) {
+      const dateLessons = lessons.filter((lesson) => {
+        const lessonDate = new Date(lesson.scheduled_at);
+        return isSameDay(lessonDate, date);
+      });
+
+      dateLessons.forEach((lesson) => {
+        const startAt = new Date(lesson.scheduled_at);
+        const endAt = new Date(startAt.getTime() + (lesson.duration_minutes || 60) * 60 * 1000);
+
+        items.push({
+          id: `lesson-${lesson.id}`,
+          title: `수업 (${lesson.duration_minutes || 60}분)`,
+          start_at: lesson.scheduled_at,
+          end_at: endAt.toISOString(),
+          type: "lesson",
+          all_day: false,
+          original: lesson,
+        });
+      });
+
+      // Add reservations
+      const dateReservations = reservations.filter((res) => {
+        const resDate = new Date(res.start_at);
+        return isSameDay(resDate, date);
+      });
+
+      dateReservations.forEach((res) => {
+        items.push({
+          id: `res-${res.id}`,
+          title: `연습실 예약`,
+          start_at: res.start_at,
+          end_at: res.end_at,
+          type: "reservation",
+          all_day: false,
+          original: res,
+        });
+      });
+    }
+
+    // Sort by time
+    items.sort((a, b) => {
+      if (a.all_day && !b.all_day) return -1;
+      if (!a.all_day && b.all_day) return 1;
+      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+    });
+
+    return items;
+  };
+
   const getHolidayForDate = (date: Date): Holiday | null => {
     const dateStr = format(date, "yyyy-MM-dd");
     return holidayMap.get(dateStr) || null;
@@ -237,7 +347,7 @@ export default function CalendarPage({ params }: CalendarPageProps) {
     );
   }
 
-  const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
+  const selectedDateScheduleItems = selectedDate ? getScheduleItemsForDate(selectedDate) : [];
   const selectedDateHoliday = selectedDate
     ? getHolidayForDate(selectedDate)
     : null;
@@ -577,54 +687,83 @@ export default function CalendarPage({ params }: CalendarPageProps) {
             <div className="flex-1 overflow-auto p-3">
               {sidePanelView === "list" ? (
                 /* 리스트 뷰 */
-                selectedDateEvents.length > 0 ? (
+                selectedDateScheduleItems.length > 0 ? (
                   <div className="space-y-1.5">
-                    {selectedDateEvents.map((event) => {
-                      const eventColor = getEventColor(event);
+                    {selectedDateScheduleItems.map((item) => {
+                      // Get color based on item type
+                      const getItemColor = () => {
+                        if (item.type === "lesson") {
+                          return { bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" };
+                        }
+                        if (item.type === "reservation") {
+                          return { bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" };
+                        }
+                        // Calendar event
+                        if (item.original && "is_academy_holiday" in item.original) {
+                          return getEventColor(item.original as CalendarEvent);
+                        }
+                        return DEFAULT_EVENT_COLOR;
+                      };
+                      const itemColor = getItemColor();
+
                       return (
                         <button
-                          key={event.id}
-                          onClick={() => handleEventClick(event)}
-                          className="w-full p-2.5 rounded border border-border/40 hover:border-border hover:bg-muted/30 transition-colors text-left group"
+                          key={item.id}
+                          onClick={() => {
+                            if (item.type === "event" && item.original) {
+                              handleEventClick(item.original as CalendarEvent);
+                            }
+                          }}
+                          className={cn(
+                            "w-full p-2.5 rounded border border-border/40 hover:border-border hover:bg-muted/30 transition-colors text-left group",
+                            item.type !== "event" && "cursor-default"
+                          )}
                         >
                           <div className="flex items-start gap-2.5">
                             <div
                               className={cn(
                                 "w-1 h-full min-h-[36px] rounded-full shrink-0 mt-0.5",
-                                eventColor.bg
+                                itemColor.bg
                               )}
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="font-medium text-sm truncate flex-1">
-                                  {event.title}
+                                  {item.title}
                                 </p>
-                                {event.is_academy_holiday && (
+                                {item.type === "lesson" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 shrink-0 flex items-center gap-0.5">
+                                    <BookOpen className="h-2.5 w-2.5" />
+                                    수업
+                                  </span>
+                                )}
+                                {item.type === "reservation" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 shrink-0 flex items-center gap-0.5">
+                                    <CalendarIcon className="h-2.5 w-2.5" />
+                                    예약
+                                  </span>
+                                )}
+                                {item.is_academy_holiday && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 shrink-0">
                                     휴일
                                   </span>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                {event.all_day ? (
+                                {item.all_day ? (
                                   <span>하루 종일</span>
                                 ) : (
                                   <span>
-                                    {format(new Date(event.start_at), "HH:mm")} - {format(new Date(event.end_at), "HH:mm")}
+                                    {format(new Date(item.start_at), "HH:mm")} - {format(new Date(item.end_at), "HH:mm")}
                                   </span>
                                 )}
-                                {event.location && (
+                                {item.location && (
                                   <>
                                     <span className="text-muted-foreground/50">·</span>
-                                    <span className="truncate">{event.location}</span>
+                                    <span className="truncate">{item.location}</span>
                                   </>
                                 )}
                               </div>
-                              {event.description && (
-                                <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
-                                  {event.description}
-                                </p>
-                              )}
                             </div>
                           </div>
                         </button>
@@ -639,34 +778,38 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                     <p className="text-sm text-muted-foreground">
                       일정이 없습니다
                     </p>
-                    <button
-                      onClick={handleAddClick}
-                      className="text-xs text-primary hover:underline mt-1.5"
-                    >
-                      일정 추가하기
-                    </button>
+                    {!isStudentOrGuardian && (
+                      <button
+                        onClick={handleAddClick}
+                        className="text-xs text-primary hover:underline mt-1.5"
+                      >
+                        일정 추가하기
+                      </button>
+                    )}
                   </div>
                 )
               ) : (
                 /* 타임라인 뷰 */
                 <div className="relative">
                   {/* 하루종일 이벤트 */}
-                  {selectedDateEvents.filter(e => e.all_day).length > 0 && (
+                  {selectedDateScheduleItems.filter(e => e.all_day).length > 0 && (
                     <div className="mb-3 pb-3 border-b space-y-1">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">하루 종일</p>
-                      {selectedDateEvents.filter(e => e.all_day).map((event) => {
-                        const eventColor = getEventColor(event);
+                      {selectedDateScheduleItems.filter(e => e.all_day).map((item) => {
+                        const itemColor = item.type === "event" && item.original
+                          ? getEventColor(item.original as CalendarEvent)
+                          : DEFAULT_EVENT_COLOR;
                         return (
                           <button
-                            key={event.id}
-                            onClick={() => handleEventClick(event)}
+                            key={item.id}
+                            onClick={() => item.type === "event" && item.original && handleEventClick(item.original as CalendarEvent)}
                             className={cn(
                               "w-full text-left text-xs px-2 py-1.5 rounded-sm flex items-center gap-2 border border-border/30",
-                              eventColor.light,
+                              itemColor.light,
                               "hover:opacity-80"
                             )}
                           >
-                            <span className="font-medium truncate">{event.title}</span>
+                            <span className="font-medium truncate">{item.title}</span>
                           </button>
                         );
                       })}
@@ -718,55 +861,69 @@ export default function CalendarPage({ params }: CalendarPageProps) {
 
                       {/* 이벤트 바 (절대 위치) - 겹치는 이벤트 처리 */}
                       {(() => {
-                        const timeEvents = selectedDateEvents.filter(e => !e.all_day);
-                        // 각 이벤트의 열(column) 계산
-                        const eventColumns: { event: CalendarEvent; col: number; totalCols: number }[] = [];
+                        const timeItems = selectedDateScheduleItems.filter(e => !e.all_day);
+                        // 각 아이템의 열(column) 계산
+                        const itemColumns: { item: ScheduleItem; col: number; totalCols: number }[] = [];
 
-                        timeEvents.forEach((event) => {
-                          const startDate = new Date(event.start_at);
-                          const endDate = new Date(event.end_at);
+                        timeItems.forEach((item) => {
+                          const startDate = new Date(item.start_at);
+                          const endDate = new Date(item.end_at);
                           const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                           const endHour = endDate.getHours() + endDate.getMinutes() / 60;
 
-                          // 겹치는 이벤트들 찾기
+                          // 겹치는 아이템들 찾기
                           let col = 0;
-                          const overlapping = eventColumns.filter(ec => {
-                            const ecStart = new Date(ec.event.start_at);
-                            const ecEnd = new Date(ec.event.end_at);
-                            const ecStartHour = ecStart.getHours() + ecStart.getMinutes() / 60;
-                            const ecEndHour = ecEnd.getHours() + ecEnd.getMinutes() / 60;
-                            return startHour < ecEndHour && endHour > ecStartHour;
+                          const overlapping = itemColumns.filter(ic => {
+                            const icStart = new Date(ic.item.start_at);
+                            const icEnd = new Date(ic.item.end_at);
+                            const icStartHour = icStart.getHours() + icStart.getMinutes() / 60;
+                            const icEndHour = icEnd.getHours() + icEnd.getMinutes() / 60;
+                            return startHour < icEndHour && endHour > icStartHour;
                           });
 
                           // 사용 가능한 열 찾기
                           const usedCols = overlapping.map(o => o.col);
                           while (usedCols.includes(col)) col++;
 
-                          eventColumns.push({ event, col, totalCols: 1 });
+                          itemColumns.push({ item, col, totalCols: 1 });
                         });
 
                         // totalCols 업데이트
-                        eventColumns.forEach(ec => {
-                          const startDate = new Date(ec.event.start_at);
-                          const endDate = new Date(ec.event.end_at);
+                        itemColumns.forEach(ic => {
+                          const startDate = new Date(ic.item.start_at);
+                          const endDate = new Date(ic.item.end_at);
                           const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                           const endHour = endDate.getHours() + endDate.getMinutes() / 60;
 
-                          const overlapping = eventColumns.filter(other => {
-                            const otherStart = new Date(other.event.start_at);
-                            const otherEnd = new Date(other.event.end_at);
+                          const overlapping = itemColumns.filter(other => {
+                            const otherStart = new Date(other.item.start_at);
+                            const otherEnd = new Date(other.item.end_at);
                             const otherStartHour = otherStart.getHours() + otherStart.getMinutes() / 60;
                             const otherEndHour = otherEnd.getHours() + otherEnd.getMinutes() / 60;
                             return startHour < otherEndHour && endHour > otherStartHour;
                           });
 
-                          ec.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
+                          ic.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
                         });
 
-                        return eventColumns.map(({ event, col, totalCols }) => {
-                          const eventColor = getEventColor(event);
-                          const startDate = new Date(event.start_at);
-                          const endDate = new Date(event.end_at);
+                        return itemColumns.map(({ item, col, totalCols }) => {
+                          // Get color based on item type
+                          const getItemColor = () => {
+                            if (item.type === "lesson") {
+                              return { bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" };
+                            }
+                            if (item.type === "reservation") {
+                              return { bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" };
+                            }
+                            if (item.type === "event" && item.original) {
+                              return getEventColor(item.original as CalendarEvent);
+                            }
+                            return DEFAULT_EVENT_COLOR;
+                          };
+                          const itemColor = getItemColor();
+
+                          const startDate = new Date(item.start_at);
+                          const endDate = new Date(item.end_at);
                           const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                           const endHour = endDate.getHours() + endDate.getMinutes() / 60;
                           const duration = endHour - startHour;
@@ -781,13 +938,14 @@ export default function CalendarPage({ params }: CalendarPageProps) {
 
                           return (
                             <button
-                              key={event.id}
-                              onClick={() => handleEventClick(event)}
+                              key={item.id}
+                              onClick={() => item.type === "event" && item.original && handleEventClick(item.original as CalendarEvent)}
                               className={cn(
                                 "absolute text-left text-xs px-1.5 py-1 rounded overflow-hidden border border-border/30",
-                                eventColor.light,
+                                itemColor.light,
                                 "hover:opacity-80 border-l-2",
-                                eventColor.bg.replace("bg-", "border-l-")
+                                itemColor.bg.replace("bg-", "border-l-"),
+                                item.type !== "event" && "cursor-default"
                               )}
                               style={{
                                 top: `${topOffset}px`,
@@ -796,7 +954,11 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                                 left,
                               }}
                             >
-                              <div className="font-medium truncate text-[11px]">{event.title}</div>
+                              <div className="font-medium truncate text-[11px] flex items-center gap-1">
+                                {item.type === "lesson" && <BookOpen className="h-2.5 w-2.5 shrink-0" />}
+                                {item.type === "reservation" && <CalendarIcon className="h-2.5 w-2.5 shrink-0" />}
+                                {item.title}
+                              </div>
                               <div className="text-[9px] opacity-70 truncate">
                                 {format(startDate, "HH:mm")}-{format(endDate, "HH:mm")}
                               </div>

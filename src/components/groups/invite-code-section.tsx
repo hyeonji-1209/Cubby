@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Copy, Check, RefreshCw, Loader2 } from "lucide-react";
-import { generateInviteCode } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import Link from "next/link";
+import { generateInviteCode, cn } from "@/lib/utils";
+import { useClipboard } from "@/hooks";
 
 interface InviteCodeSectionProps {
   groupId: string;
@@ -24,22 +23,14 @@ export function InviteCodeSection({
 }: InviteCodeSectionProps) {
   const [code, setCode] = useState(inviteCode);
   const [currentIsUsed, setCurrentIsUsed] = useState(isUsed);
-  const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { copied, copy } = useClipboard();
 
   const isExpired = codeType === 'expiry' && expiryDate && new Date(expiryDate) < new Date();
   const isInvalid = (codeType === 'one_time' && currentIsUsed) || isExpired;
 
-  const handleCopy = async () => {
-    if (isInvalid) return;
-
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
+  const handleCopy = () => {
+    if (!isInvalid) copy(code);
   };
 
   const handleRegenerate = async () => {

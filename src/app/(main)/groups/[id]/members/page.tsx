@@ -16,15 +16,24 @@ import {
   Clock,
   BookOpen,
   GraduationCap,
+  Trash2,
 } from "lucide-react";
-import { GroupMember, User, MemberRole, Group, Lesson, LessonSchedule } from "@/types";
+import { GroupMember, User, MemberRole, Lesson, LessonSchedule, Attendance } from "@/types";
 import { Input } from "@/components/ui/input";
 import { MemberApprovalModal } from "@/components/groups/member-approval-modal";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/role-utils";
-import { formatDateShort, WEEKDAYS_KO } from "@/lib/date-utils";
+import { formatDateShort, WEEKDAYS_KO, addMinutesToTime } from "@/lib/date-utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useUser } from "@/lib/contexts/user-context";
+import { useGroup } from "@/lib/contexts/group-context";
 
 interface MembersPageProps {
   params: { id: string };
@@ -33,14 +42,13 @@ interface MembersPageProps {
 export default function MembersPage({ params }: MembersPageProps) {
   const { confirm } = useConfirm();
   const { user: currentUser } = useUser();
+  const { group, membership, isOwner, canManage } = useGroup();
 
   const [members, setMembers] = useState<(GroupMember & { user: User })[]>([]);
   const [pendingMembers, setPendingMembers] = useState<(GroupMember & { user: User })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isOwner, setIsOwner] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [group, setGroup] = useState<Group | null>(null);
   const [approvalMember, setApprovalMember] = useState<(GroupMember & { user: User }) | null>(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<(GroupMember & { user: User }) | null>(null);
@@ -48,8 +56,26 @@ export default function MembersPage({ params }: MembersPageProps) {
   // 선택된 멤버 관련 데이터
   const [assignedStudents, setAssignedStudents] = useState<(GroupMember & { user: User })[]>([]);
   const [instructorInfo, setInstructorInfo] = useState<(GroupMember & { user: User }) | null>(null);
-  const [lessonHistory, setLessonHistory] = useState<Lesson[]>([]);
+  const [lessonHistory, setLessonHistory] = useState<(Lesson & { attendance?: Attendance })[]>([]);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [attendanceStats, setAttendanceStats] = useState({
+    total: 0,
+    present: 0,
+    late: 0,
+    early_leave: 0,
+    absent: 0,
+    excused: 0,
+  });
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
+  // 강사가 관리할 수 있는 학생 ID 목록
+  const [myAssignedStudentIds, setMyAssignedStudentIds] = useState<string[]>([]);
+
+  // 수업 시간 편집 상태
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<LessonSchedule[]>([]);
+  const [editingInstructorId, setEditingInstructorId] = useState<string>("");
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -60,6 +86,7 @@ export default function MembersPage({ params }: MembersPageProps) {
   // 선택된 멤버가 변경되면 관련 데이터 로드
   useEffect(() => {
     if (selectedMember) {
+      setSelectedLessonId(null); // 수업 선택 초기화
       loadMemberDetail(selectedMember);
     }
   }, [selectedMember?.id]);
@@ -69,14 +96,8 @@ export default function MembersPage({ params }: MembersPageProps) {
 
     const supabase = createClient();
 
-    // 멤버 데이터만 조회 (group은 layout에서 이미 조회됨)
-    const [membershipResult, approvedResult, pendingResult] = await Promise.all([
-      supabase
-        .from("group_members")
-        .select("is_owner, group:groups(*)")
-        .eq("group_id", params.id)
-        .eq("user_id", currentUser.id)
-        .single(),
+    // 멤버 목록만 조회 (group, membership은 context에서 제공)
+    const [approvedResult, pendingResult] = await Promise.all([
       supabase
         .from("group_members")
         .select(`*, user:profiles!user_id(*)`)
@@ -91,15 +112,18 @@ export default function MembersPage({ params }: MembersPageProps) {
         .order("created_at"),
     ]);
 
-    if (membershipResult.data) {
-      setIsOwner(membershipResult.data.is_owner || false);
-      if (membershipResult.data.group) {
-        setGroup(membershipResult.data.group as Group);
-      }
+    const allMembers = (approvedResult.data as (GroupMember & { user: User })[]) || [];
+    setMembers(allMembers);
+    setPendingMembers((pendingResult.data as (GroupMember & { user: User })[]) || []);
+
+    // 강사인 경우 담당 학생 ID 목록 저장
+    if (membership.role === "instructor" && !isOwner) {
+      const assignedIds = allMembers
+        .filter(m => m.instructor_id === currentUser.id)
+        .map(m => m.user_id);
+      setMyAssignedStudentIds(assignedIds);
     }
 
-    setMembers((approvedResult.data as (GroupMember & { user: User })[]) || []);
-    setPendingMembers((pendingResult.data as (GroupMember & { user: User })[]) || []);
     setIsLoading(false);
   };
 
@@ -137,9 +161,44 @@ export default function MembersPage({ params }: MembersPageProps) {
         .eq("group_id", params.id)
         .eq("student_id", member.user_id)
         .order("scheduled_at", { ascending: false })
-        .limit(20);
+        .limit(50);
 
-      setLessonHistory((lessons as Lesson[]) || []);
+      // 출석 데이터 조회
+      const lessonIds = lessons?.map(l => l.id) || [];
+      let attendanceMap: Record<string, Attendance> = {};
+
+      if (lessonIds.length > 0) {
+        const { data: attendanceData } = await supabase
+          .from("attendance")
+          .select("*")
+          .in("lesson_id", lessonIds);
+
+        if (attendanceData) {
+          attendanceData.forEach(att => {
+            attendanceMap[att.lesson_id] = att;
+          });
+        }
+      }
+
+      // 수업에 출석 데이터 연결
+      const lessonsWithAttendance = (lessons || []).map(lesson => ({
+        ...lesson,
+        attendance: attendanceMap[lesson.id] || null,
+      }));
+
+      // 출석 통계 계산
+      const completedLessons = lessonsWithAttendance.filter(l => l.status === "completed");
+      const stats = {
+        total: completedLessons.length,
+        present: completedLessons.filter(l => l.attendance?.status === "present").length,
+        late: completedLessons.filter(l => l.attendance?.status === "late").length,
+        early_leave: completedLessons.filter(l => l.attendance?.status === "early_leave").length,
+        absent: completedLessons.filter(l => l.attendance?.status === "absent").length,
+        excused: completedLessons.filter(l => l.attendance?.status === "excused").length,
+      };
+
+      setAttendanceStats(stats);
+      setLessonHistory(lessonsWithAttendance as (Lesson & { attendance?: Attendance })[]);
       setAssignedStudents([]);
     } else {
       setAssignedStudents([]);
@@ -150,7 +209,16 @@ export default function MembersPage({ params }: MembersPageProps) {
     setIsLoadingDetail(false);
   };
 
-  const canManage = isOwner;
+  // 오너는 모든 멤버 관리 가능, 강사는 담당 학생만 관리 가능
+  // canManage는 context에서 제공
+  const isInstructorOnly = membership.role === "instructor" && !isOwner;
+
+  // 특정 멤버를 관리할 수 있는지 확인
+  const canManageMember = (member: GroupMember & { user: User }) => {
+    if (isOwner) return true;
+    if (isInstructorOnly && myAssignedStudentIds.includes(member.user_id)) return true;
+    return false;
+  };
 
   const handleApprove = (member: GroupMember & { user: User }) => {
     if (group?.type === "education") {
@@ -205,6 +273,80 @@ export default function MembersPage({ params }: MembersPageProps) {
     }
   };
 
+  // 수업 시간 편집 시작
+  const startEditSchedule = (member: GroupMember & { user: User }) => {
+    setEditingSchedule((member.lesson_schedule as LessonSchedule[]) || []);
+    setEditingInstructorId(member.instructor_id || "");
+    setIsEditingSchedule(true);
+  };
+
+  // 수업 시간 편집 취소
+  const cancelEditSchedule = () => {
+    setIsEditingSchedule(false);
+    setEditingSchedule([]);
+    setEditingInstructorId("");
+  };
+
+  // 스케줄 추가
+  const addScheduleItem = () => {
+    setEditingSchedule([
+      ...editingSchedule,
+      { day_of_week: 1, start_time: "14:00", end_time: "15:00" },
+    ]);
+  };
+
+  // 스케줄 삭제
+  const removeScheduleItem = (index: number) => {
+    setEditingSchedule(editingSchedule.filter((_, i) => i !== index));
+  };
+
+  // 스케줄 업데이트
+  const updateScheduleItem = (index: number, field: keyof LessonSchedule, value: string | number) => {
+    const updated = [...editingSchedule];
+    updated[index] = { ...updated[index], [field]: value };
+    // 시작 시간 변경 시 종료 시간 자동 조정
+    if (field === "start_time" && typeof value === "string") {
+      updated[index].end_time = addMinutesToTime(value, 60);
+    }
+    setEditingSchedule(updated);
+  };
+
+  // 수업 시간 저장
+  const saveSchedule = async () => {
+    if (!selectedMember) return;
+
+    setIsSavingSchedule(true);
+    const supabase = createClient();
+
+    try {
+      await supabase
+        .from("group_members")
+        .update({
+          lesson_schedule: editingSchedule,
+          instructor_id: editingInstructorId || null,
+        })
+        .eq("id", selectedMember.id);
+
+      // 로컬 상태 업데이트
+      setMembers(members.map(m =>
+        m.id === selectedMember.id
+          ? { ...m, lesson_schedule: editingSchedule, instructor_id: editingInstructorId || undefined }
+          : m
+      ));
+      setSelectedMember({
+        ...selectedMember,
+        lesson_schedule: editingSchedule,
+        instructor_id: editingInstructorId || undefined,
+      });
+
+      setIsEditingSchedule(false);
+    } catch (error) {
+      console.error("Failed to save schedule:", error);
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
   const handleToggleOwner = async (memberId: string, currentIsOwner: boolean) => {
     // max_owners 체크
     if (!currentIsOwner && group?.settings?.max_owners) {
@@ -224,7 +366,15 @@ export default function MembersPage({ params }: MembersPageProps) {
     setOpenMenuId(null);
   };
 
-  const filteredMembers = members.filter((member) => {
+  // 강사는 담당 학생만 볼 수 있음 (오너는 전체 볼 수 있음)
+  const visibleMembers = isInstructorOnly
+    ? members.filter(m =>
+        m.user_id === currentUser?.id || // 본인
+        myAssignedStudentIds.includes(m.user_id) // 담당 학생
+      )
+    : members;
+
+  const filteredMembers = visibleMembers.filter((member) => {
     const name = member.nickname || member.user?.name || "";
     return name.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -241,8 +391,10 @@ export default function MembersPage({ params }: MembersPageProps) {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b shrink-0">
-        <h2 className="text-lg font-semibold">멤버 ({members.length})</h2>
-        {canManage && pendingMembers.length > 0 && (
+        <h2 className="text-lg font-semibold">
+          {isInstructorOnly ? "담당 학생" : "멤버"} ({visibleMembers.length})
+        </h2>
+        {isOwner && pendingMembers.length > 0 && (
           <span className="px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
             대기 {pendingMembers.length}
           </span>
@@ -266,8 +418,8 @@ export default function MembersPage({ params }: MembersPageProps) {
       <div className="flex-1 flex min-h-0">
         {/* Table / List */}
         <div className={`overflow-auto ${selectedMember ? "hidden md:block md:w-80 lg:w-96 border-r" : "flex-1"}`}>
-          {/* Pending Members */}
-          {canManage && pendingMembers.length > 0 && (
+          {/* Pending Members - 오너만 볼 수 있음 */}
+          {isOwner && pendingMembers.length > 0 && (
             <div className="p-4 bg-yellow-50/50 dark:bg-yellow-950/10 border-b">
               <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <UserCheck className="h-4 w-4" />
@@ -388,7 +540,7 @@ export default function MembersPage({ params }: MembersPageProps) {
                         <td className="py-3 px-4 text-center text-muted-foreground hidden md:table-cell">
                           {formatDateShort(member.created_at)}
                         </td>
-                        {canManage && (
+                        {canManage && canManageMember(member) && (
                           <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                             <div className="relative">
                               <button
@@ -400,7 +552,7 @@ export default function MembersPage({ params }: MembersPageProps) {
 
                               {openMenuId === member.id && (
                                 <div className="absolute right-0 top-8 w-36 bg-background border rounded-lg shadow-lg py-1 z-20">
-                                  {member.role === "instructor" && (
+                                  {isOwner && member.role === "instructor" && (
                                     <button
                                       onClick={() => handleToggleOwner(member.id, member.is_owner)}
                                       className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
@@ -438,27 +590,37 @@ export default function MembersPage({ params }: MembersPageProps) {
         {/* Detail Panel */}
         {selectedMember && (
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b shrink-0">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">{ROLE_LABELS[selectedMember.role]}</span>
-                {selectedMember.is_owner && (
-                  <span className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
-                    <Crown className="h-3.5 w-3.5" />
-                    관리자
-                  </span>
-                )}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg shrink-0">
+                  {selectedMember.user?.avatar_url ? (
+                    <img src={selectedMember.user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    (selectedMember.nickname || selectedMember.user?.name || "?")[0]
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{selectedMember.nickname || selectedMember.user?.name}</h3>
+                    {selectedMember.is_owner && (
+                      <Crown className="h-4 w-4 text-yellow-500" />
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{ROLE_LABELS[selectedMember.role]}</p>
+                </div>
               </div>
               <div className="flex items-center gap-1">
-                {canManage && (
+                {canManage && canManageMember(selectedMember) && (
                   <>
-                    {selectedMember.role === "instructor" && (
+                    {isOwner && selectedMember.role === "instructor" && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleToggleOwner(selectedMember.id, selectedMember.is_owner)}
                       >
                         <Crown className="h-4 w-4 mr-1" />
-                        {selectedMember.is_owner ? "관리자 해제" : "관리자 지정"}
+                        {selectedMember.is_owner ? "해제" : "관리자"}
                       </Button>
                     )}
                     <Button
@@ -481,21 +643,7 @@ export default function MembersPage({ params }: MembersPageProps) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4">
-              {/* 기본 정보 */}
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl mb-2">
-                  {selectedMember.user?.avatar_url ? (
-                    <img src={selectedMember.user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    (selectedMember.nickname || selectedMember.user?.name || "?")[0]
-                  )}
-                </div>
-                <h3 className="text-lg font-semibold">{selectedMember.nickname || selectedMember.user?.name}</h3>
-                {selectedMember.nickname && selectedMember.user?.name && (
-                  <p className="text-sm text-muted-foreground">{selectedMember.user.name}</p>
-                )}
-              </div>
+            <div className="flex-1 overflow-auto p-4 space-y-4">
 
               {isLoadingDetail ? (
                 <div className="flex items-center justify-center py-8">
@@ -505,43 +653,71 @@ export default function MembersPage({ params }: MembersPageProps) {
                 <>
                   {/* 강사 상세 */}
                   {selectedMember.role === "instructor" && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
+                      {/* 통계 */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-4 rounded-lg border bg-card">
+                          <Users className="h-5 w-5 text-muted-foreground mb-2" />
+                          <p className="text-2xl font-bold">{assignedStudents.length}</p>
+                          <p className="text-xs text-muted-foreground">담당 학생</p>
+                        </div>
+                        <div className="p-4 rounded-lg border bg-card">
+                          <BookOpen className="h-5 w-5 text-muted-foreground mb-2" />
+                          <p className="text-2xl font-bold">-</p>
+                          <p className="text-xs text-muted-foreground">이번 달 수업</p>
+                        </div>
+                      </div>
+
                       {/* 담당 학생 목록 */}
                       <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <GraduationCap className="h-4 w-4" />
-                          담당 학생 ({assignedStudents.length})
-                        </h4>
+                        <h4 className="font-semibold mb-2">담당 학생</h4>
                         {assignedStudents.length > 0 ? (
-                          <div className="space-y-2">
-                            {assignedStudents.map((student) => (
-                              <div
-                                key={student.id}
-                                className="p-3 rounded-lg border bg-muted/30"
-                              >
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-medium text-sm">
-                                    {student.nickname || student.user?.name}
-                                  </span>
-                                </div>
-                                {/* 수업 시간 */}
-                                {student.lesson_schedule && (student.lesson_schedule as LessonSchedule[]).length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {(student.lesson_schedule as LessonSchedule[]).map((schedule, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary"
-                                      >
-                                        {WEEKDAYS_KO[schedule.day_of_week]} {schedule.start_time}~{schedule.end_time}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr className="text-left text-muted-foreground text-xs">
+                                  <th className="py-2 px-3 font-medium">이름</th>
+                                  <th className="py-2 px-3 font-medium">수업 시간</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y">
+                                {assignedStudents.map((student) => (
+                                  <tr
+                                    key={student.id}
+                                    className="hover:bg-muted/30 cursor-pointer"
+                                    onClick={() => setSelectedMember(student)}
+                                  >
+                                    <td className="py-2.5 px-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs shrink-0">
+                                          {student.user?.avatar_url ? (
+                                            <img src={student.user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+                                          ) : (
+                                            (student.nickname || student.user?.name || "?")[0]
+                                          )}
+                                        </div>
+                                        <span className="font-medium">
+                                          {student.nickname || student.user?.name}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-muted-foreground">
+                                      {student.lesson_schedule && (student.lesson_schedule as LessonSchedule[]).length > 0 ? (
+                                        (student.lesson_schedule as LessonSchedule[]).map((s, i) => (
+                                          <span key={i}>
+                                            {i > 0 && ", "}
+                                            {WEEKDAYS_KO[s.day_of_week]} {s.start_time}
+                                          </span>
+                                        ))
+                                      ) : "-"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4">
+                          <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg">
                             담당 학생이 없습니다
                           </p>
                         )}
@@ -551,87 +727,274 @@ export default function MembersPage({ params }: MembersPageProps) {
 
                   {/* 학생 상세 */}
                   {selectedMember.role === "student" && (
-                    <div className="space-y-4">
-                      {/* 담당 강사 */}
-                      <div className="flex items-center justify-between py-2 border-b">
-                        <span className="text-sm text-muted-foreground">담당 강사</span>
-                        <span className="text-sm font-medium">
-                          {instructorInfo?.nickname || instructorInfo?.user?.name || "-"}
-                        </span>
-                      </div>
+                    <div className="space-y-6">
+                      {!isEditingSchedule ? (
+                        // 보기 모드
+                        <>
+                          {/* 기본 정보 테이블 */}
+                          <table className="w-full text-sm">
+                            <tbody className="divide-y">
+                              <tr>
+                                <td className="py-2.5 text-muted-foreground w-24">담당 강사</td>
+                                <td className="py-2.5 font-medium">{instructorInfo?.nickname || instructorInfo?.user?.name || "-"}</td>
+                              </tr>
+                              <tr>
+                                <td className="py-2.5 text-muted-foreground">총 수업</td>
+                                <td className="py-2.5 font-medium">{attendanceStats.total}회</td>
+                              </tr>
+                              <tr>
+                                <td className="py-2.5 text-muted-foreground">출석률</td>
+                                <td className="py-2.5 font-medium">
+                                  {attendanceStats.total > 0
+                                    ? `${Math.round((attendanceStats.present / attendanceStats.total) * 100)}%`
+                                    : "-"}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
 
-                      {/* 수업 시간 */}
-                      {selectedMember.lesson_schedule && (selectedMember.lesson_schedule as LessonSchedule[]).length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            수업 시간
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {(selectedMember.lesson_schedule as LessonSchedule[]).map((schedule, idx) => (
-                              <span
-                                key={idx}
-                                className="text-sm px-3 py-1 rounded-lg bg-primary/10 text-primary"
+                          {/* 출결 현황 */}
+                          <div>
+                            <h4 className="font-semibold mb-2">출결 현황</h4>
+                            <div className="grid grid-cols-5 gap-2 text-center">
+                              <div className="p-3 rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <p className="text-lg font-bold text-green-700 dark:text-green-400">{attendanceStats.present}</p>
+                                <p className="text-[11px] text-green-600 dark:text-green-500">출석</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
+                                <p className="text-lg font-bold text-yellow-700 dark:text-yellow-400">{attendanceStats.late}</p>
+                                <p className="text-[11px] text-yellow-600 dark:text-yellow-500">지각</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                                <p className="text-lg font-bold text-orange-700 dark:text-orange-400">{attendanceStats.early_leave}</p>
+                                <p className="text-[11px] text-orange-600 dark:text-orange-500">조퇴</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
+                                <p className="text-lg font-bold text-red-700 dark:text-red-400">{attendanceStats.absent}</p>
+                                <p className="text-[11px] text-red-600 dark:text-red-500">결석</p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                                <p className="text-lg font-bold text-purple-700 dark:text-purple-400">{attendanceStats.excused}</p>
+                                <p className="text-[11px] text-purple-600 dark:text-purple-500">사유</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 정규 수업 시간 */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-semibold">정규 수업</h4>
+                              {canManageMember(selectedMember) && (
+                                <button
+                                  onClick={() => startEditSchedule(selectedMember)}
+                                  className="text-sm text-primary hover:underline"
+                                >
+                                  수정
+                                </button>
+                              )}
+                            </div>
+                            {(selectedMember.lesson_schedule as LessonSchedule[])?.length > 0 ? (
+                              <table className="w-full text-sm">
+                                <tbody className="divide-y">
+                                  {(selectedMember.lesson_schedule as LessonSchedule[]).map((schedule, idx) => (
+                                    <tr key={idx}>
+                                      <td className="py-2.5 font-medium">{WEEKDAYS_KO[schedule.day_of_week]}요일</td>
+                                      <td className="py-2.5 text-right text-muted-foreground">{schedule.start_time} ~ {schedule.end_time}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
+                                등록된 수업 시간이 없습니다
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        // 편집 모드 - 카드 형태
+                        <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium">수업 정보 수정</h4>
+                            <button
+                              onClick={cancelEditSchedule}
+                              className="p-1 hover:bg-muted rounded"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          {/* 담당 강사 선택 */}
+                          <div className="space-y-2">
+                            <label className="text-sm text-muted-foreground">담당 강사</label>
+                            <Select value={editingInstructorId} onValueChange={setEditingInstructorId}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="강사 선택" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {members.filter(m => m.role === "instructor").map((instructor) => (
+                                  <SelectItem key={instructor.id} value={instructor.user_id || ""}>
+                                    {instructor.nickname || instructor.user?.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* 수업 시간 */}
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm text-muted-foreground">수업 시간</label>
+                              <button
+                                type="button"
+                                onClick={addScheduleItem}
+                                className="text-xs text-primary hover:underline"
                               >
-                                {WEEKDAYS_KO[schedule.day_of_week]} {schedule.start_time}~{schedule.end_time}
-                              </span>
-                            ))}
+                                + 추가
+                              </button>
+                            </div>
+
+                            <div className="space-y-2">
+                              {editingSchedule.map((schedule, idx) => (
+                                <div key={idx} className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-background border">
+                                  <Select
+                                    value={schedule.day_of_week.toString()}
+                                    onValueChange={(v) => updateScheduleItem(idx, "day_of_week", parseInt(v))}
+                                  >
+                                    <SelectTrigger className="w-[70px] h-9">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {WEEKDAYS_KO.map((day, i) => (
+                                        <SelectItem key={i} value={i.toString()}>{day}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <div className="flex items-center gap-1 flex-1 min-w-[180px]">
+                                    <Input
+                                      type="time"
+                                      value={schedule.start_time}
+                                      onChange={(e) => updateScheduleItem(idx, "start_time", e.target.value)}
+                                      className="h-9 flex-1"
+                                    />
+                                    <span className="text-muted-foreground text-sm">~</span>
+                                    <Input
+                                      type="time"
+                                      value={schedule.end_time}
+                                      onChange={(e) => updateScheduleItem(idx, "end_time", e.target.value)}
+                                      className="h-9 flex-1"
+                                    />
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeScheduleItem(idx)}
+                                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                              {editingSchedule.length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-4">
+                                  수업 시간을 추가해주세요
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 저장 버튼 */}
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              variant="outline"
+                              onClick={cancelEditSchedule}
+                              disabled={isSavingSchedule}
+                              className="flex-1"
+                            >
+                              취소
+                            </Button>
+                            <Button
+                              onClick={saveSchedule}
+                              disabled={isSavingSchedule}
+                              className="flex-1"
+                            >
+                              {isSavingSchedule ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "저장"
+                              )}
+                            </Button>
                           </div>
                         </div>
                       )}
 
                       {/* 수업 이력 */}
                       <div>
-                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          수업 이력
-                        </h4>
+                        <h4 className="font-semibold mb-2">최근 수업</h4>
                         {lessonHistory.length > 0 ? (
-                          <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-sm">
-                              <thead className="bg-muted/50">
-                                <tr className="text-left text-muted-foreground">
-                                  <th className="py-2 px-3 font-medium">수업</th>
-                                  <th className="py-2 px-3 font-medium hidden sm:table-cell">내용</th>
-                                  <th className="py-2 px-3 font-medium hidden md:table-cell">과제</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y">
-                                {lessonHistory.map((lesson) => {
+                          <div className="flex gap-3">
+                            {/* 수업 목록 (왼쪽) */}
+                            <div className="w-28 shrink-0 border rounded-lg overflow-hidden">
+                              <div className="divide-y max-h-[200px] overflow-y-auto">
+                                {lessonHistory.slice(0, 10).map((lesson, idx) => {
                                   const lessonDate = new Date(lesson.scheduled_at);
-                                  const dateStr = `${lessonDate.getMonth() + 1}/${lessonDate.getDate()}`;
+                                  const isSelected = selectedLessonId ? selectedLessonId === lesson.id : idx === 0;
+                                  const getAttendanceDot = (status?: string) => {
+                                    switch (status) {
+                                      case "present": return "bg-green-500";
+                                      case "late": return "bg-yellow-500";
+                                      case "early_leave": return "bg-orange-500";
+                                      case "absent": case "excused": return "bg-red-500";
+                                      default: return "bg-gray-300";
+                                    }
+                                  };
                                   return (
-                                    <tr key={lesson.id} className="hover:bg-muted/30">
-                                      <td className="py-2 px-3">
-                                        <div className="font-medium">
-                                          {selectedMember.nickname || selectedMember.user?.name}_{dateStr}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {lessonDate.toLocaleDateString("ko-KR", {
-                                            month: "short",
-                                            day: "numeric",
-                                            weekday: "short",
-                                          })}
-                                        </div>
-                                      </td>
-                                      <td className="py-2 px-3 hidden sm:table-cell">
-                                        <p className="text-muted-foreground line-clamp-2">
-                                          {lesson.content || "-"}
-                                        </p>
-                                      </td>
-                                      <td className="py-2 px-3 hidden md:table-cell">
-                                        <p className="text-muted-foreground line-clamp-2">
-                                          {lesson.homework || "-"}
-                                        </p>
-                                      </td>
-                                    </tr>
+                                    <button
+                                      key={lesson.id}
+                                      onClick={() => setSelectedLessonId(lesson.id)}
+                                      className={cn(
+                                        "w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors",
+                                        isSelected ? "bg-primary/10" : "hover:bg-muted/50"
+                                      )}
+                                    >
+                                      <span className={cn("w-2 h-2 rounded-full shrink-0", getAttendanceDot(lesson.attendance?.status))} />
+                                      <span>
+                                        {lessonDate.getMonth() + 1}/{lessonDate.getDate()}
+                                        <span className="text-muted-foreground ml-1">
+                                          ({["일", "월", "화", "수", "목", "금", "토"][lessonDate.getDay()]})
+                                        </span>
+                                      </span>
+                                    </button>
                                   );
                                 })}
-                              </tbody>
-                            </table>
+                              </div>
+                            </div>
+
+                            {/* 선택된 수업 상세 (오른쪽) */}
+                            {(() => {
+                              const detailLesson = selectedLessonId
+                                ? lessonHistory.find(l => l.id === selectedLessonId)
+                                : lessonHistory[0];
+                              if (!detailLesson) return null;
+                              return (
+                                <div className="flex-1 border rounded-lg p-3 text-sm space-y-4 min-h-[200px]">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">수업 내용</p>
+                                    <p className="whitespace-pre-wrap min-h-[40px]">{detailLesson.content || <span className="text-muted-foreground">-</span>}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">과제</p>
+                                    <p className="whitespace-pre-wrap min-h-[40px]">{detailLesson.homework || <span className="text-muted-foreground">-</span>}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">비고</p>
+                                    <p className="whitespace-pre-wrap min-h-[20px]">{detailLesson.notes || <span className="text-muted-foreground">-</span>}</p>
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground text-center py-4">
+                          <p className="text-sm text-muted-foreground py-6 text-center border rounded-lg">
                             수업 이력이 없습니다
                           </p>
                         )}
@@ -641,15 +1004,19 @@ export default function MembersPage({ params }: MembersPageProps) {
 
                   {/* 보호자/기타 역할 */}
                   {selectedMember.role !== "instructor" && selectedMember.role !== "student" && (
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">이메일</span>
-                        <span>{selectedMember.user?.email || "-"}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b">
-                        <span className="text-muted-foreground">가입일</span>
-                        <span>{formatDateShort(selectedMember.created_at)}</span>
-                      </div>
+                    <div className="space-y-6">
+                      <table className="w-full text-sm">
+                        <tbody className="divide-y">
+                          <tr>
+                            <td className="py-2.5 text-muted-foreground w-20">이메일</td>
+                            <td className="py-2.5">{selectedMember.user?.email || "-"}</td>
+                          </tr>
+                          <tr>
+                            <td className="py-2.5 text-muted-foreground">가입일</td>
+                            <td className="py-2.5">{formatDateShort(selectedMember.created_at)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </>

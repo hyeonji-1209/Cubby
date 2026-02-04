@@ -19,6 +19,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/date-utils";
 import { useUser } from "@/lib/contexts/user-context";
+import { useGroup } from "@/lib/contexts/group-context";
 
 interface SubgroupsPageProps {
   params: { id: string };
@@ -27,6 +28,7 @@ interface SubgroupsPageProps {
 export default function SubgroupsPage({ params }: SubgroupsPageProps) {
   const { confirm } = useConfirm();
   const { user: currentUser } = useUser();
+  const { isOwner } = useGroup();
 
   const [subgroups, setSubgroups] = useState<(SubGroup & { members?: User[] })[]>([]);
   const [members, setMembers] = useState<(GroupMember & { user: User })[]>([]);
@@ -36,8 +38,6 @@ export default function SubgroupsPage({ params }: SubgroupsPageProps) {
   const [name, setName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<string>("student");
-  const [isOwner, setIsOwner] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedSubgroup, setSelectedSubgroup] = useState<(SubGroup & { members?: User[] }) | null>(null);
 
@@ -52,14 +52,8 @@ export default function SubgroupsPage({ params }: SubgroupsPageProps) {
 
     const supabase = createClient();
 
-    // 병렬로 모든 데이터 조회
-    const [membershipResult, subgroupResult, memberResult] = await Promise.all([
-      supabase
-        .from("group_members")
-        .select("role, is_owner")
-        .eq("group_id", params.id)
-        .eq("user_id", currentUser.id)
-        .single(),
+    // 병렬로 소그룹과 멤버 데이터 조회
+    const [subgroupResult, memberResult] = await Promise.all([
       supabase
         .from("subgroups")
         .select("*")
@@ -72,10 +66,6 @@ export default function SubgroupsPage({ params }: SubgroupsPageProps) {
         .eq("status", "approved"),
     ]);
 
-    if (membershipResult.data) {
-      setUserRole(membershipResult.data.role);
-      setIsOwner(membershipResult.data.is_owner || false);
-    }
     setSubgroups((subgroupResult.data as (SubGroup & { members?: User[] })[]) || []);
     setMembers((memberResult.data as (GroupMember & { user: User })[]) || []);
     setIsLoading(false);

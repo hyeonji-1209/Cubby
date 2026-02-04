@@ -26,6 +26,8 @@ import {
 import { Announcement } from "@/types";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatDateShort, formatDateTimeFull } from "@/lib/date-utils";
+import { useUser } from "@/lib/contexts/user-context";
+import { useGroup } from "@/lib/contexts/group-context";
 
 interface AnnouncementsPageProps {
   params: { id: string };
@@ -34,40 +36,25 @@ interface AnnouncementsPageProps {
 export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
   const router = useRouter();
   const { confirm } = useConfirm();
+  const { user } = useUser();
+  const { membership, isOwner, canManage } = useGroup();
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>("student");
-  const [isOwner, setIsOwner] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [likedAnnouncements, setLikedAnnouncements] = useState<Set<string>>(new Set());
   const [likingId, setLikingId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, [params.id]);
+    if (user) loadData();
+  }, [params.id, user?.id]);
 
   const loadData = async () => {
+    if (!user) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
 
-    // 사용자 역할 확인
-    const { data: membership } = await supabase
-      .from("group_members")
-      .select("role, is_owner")
-      .eq("group_id", params.id)
-      .eq("user_id", user?.id)
-      .single();
-
-    const role = membership?.role || "student";
-    const memberIsOwner = membership?.is_owner || false;
-    setUserRole(role);
-    setIsOwner(memberIsOwner);
-
-    // 공지사항 로드
+    // 공지사항 로드 (membership 정보는 context에서 가져옴)
     const { data } = await supabase
       .from("announcements")
       .select("*")
@@ -78,27 +65,23 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
     // 강사 전용 공지 필터링
     const filteredData = (data as Announcement[] || []).filter(ann => {
       if (!ann.is_instructor_only) return true;
-      return memberIsOwner || role === "instructor";
+      return isOwner || membership.role === "instructor";
     });
 
     setAnnouncements(filteredData);
 
     // 사용자가 좋아요한 공지 확인
-    if (user) {
-      const { data: likes } = await supabase
-        .from("announcement_likes")
-        .select("announcement_id")
-        .eq("user_id", user.id);
+    const { data: likes } = await supabase
+      .from("announcement_likes")
+      .select("announcement_id")
+      .eq("user_id", user.id);
 
-      if (likes) {
-        setLikedAnnouncements(new Set(likes.map(l => l.announcement_id)));
-      }
+    if (likes) {
+      setLikedAnnouncements(new Set(likes.map(l => l.announcement_id)));
     }
 
     setIsLoading(false);
   };
-
-  const canManage = isOwner || userRole === "instructor";
 
   const handleRowClick = async (announcement: Announcement) => {
     setSelectedAnnouncement(announcement);
@@ -119,7 +102,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
 
   const handleLike = async (announcementId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (likingId || !currentUserId) return;
+    if (likingId || !user?.id) return;
 
     setLikingId(announcementId);
     const supabase = createClient();
@@ -130,7 +113,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
         .from("announcement_likes")
         .delete()
         .eq("announcement_id", announcementId)
-        .eq("user_id", currentUserId);
+        .eq("user_id", user?.id);
 
       setLikedAnnouncements(prev => {
         const next = new Set(prev);
@@ -150,7 +133,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
     } else {
       await supabase.from("announcement_likes").insert({
         announcement_id: announcementId,
-        user_id: currentUserId,
+        user_id: user?.id,
       });
 
       setLikedAnnouncements(prev => {
@@ -453,7 +436,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
               </div>
               <div className="flex items-center gap-1">
                 {/* Edit/Delete for owner or author */}
-                {(isOwner || currentUserId === selectedAnnouncement.author_id) && (
+                {(isOwner || user?.id === selectedAnnouncement.author_id) && (
                   <>
                     <button
                       onClick={() => {

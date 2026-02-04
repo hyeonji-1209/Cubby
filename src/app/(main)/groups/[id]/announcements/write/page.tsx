@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Announcement, AnnouncementAttachment } from "@/types";
 import { useToast } from "@/components/ui/toast";
+import { useUser } from "@/lib/contexts/user-context";
 
 interface WriteAnnouncementPageProps {
   params: { id: string };
@@ -44,6 +45,7 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
   const toast = useToast();
+  const { user } = useUser();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -85,11 +87,9 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
 
   const uploadFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
-    if (fileArray.length === 0) return;
+    if (fileArray.length === 0 || !user) return;
 
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
     for (const file of fileArray) {
       if (file.size > MAX_FILE_SIZE) {
@@ -192,7 +192,6 @@ export default function WriteAnnouncementPage({ params }: WriteAnnouncementPageP
 
     setIsSubmitting(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     const announcementData = {
       title: title.trim(),

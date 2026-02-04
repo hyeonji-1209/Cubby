@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,11 +25,19 @@ import {
   Trash2,
   Play,
   Check,
+  ChevronDown,
+  ChevronUp,
+  CalendarClock,
 } from "lucide-react";
 import { Lesson, GroupMember, User as UserType, Attendance } from "@/types";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatDateWithWeekday, getRoundedCurrentTime } from "@/lib/date-utils";
+import { useUser } from "@/lib/contexts/user-context";
+import { useGroup } from "@/lib/contexts/group-context";
+import { RescheduleRequestModal } from "@/components/lessons/reschedule-request-modal";
+import { RescheduleRequestsList } from "@/components/lessons/reschedule-requests-list";
+import { addWeeks, isBefore } from "date-fns";
 
 interface LessonsPageProps {
   params: { id: string };
@@ -43,6 +51,8 @@ interface LessonWithDetails extends Lesson {
 
 export default function LessonsPage({ params }: LessonsPageProps) {
   const { confirm } = useConfirm();
+  const { user } = useUser();
+  const { membership, isOwner, canManage, isStudent, isGuardian } = useGroup();
 
   const [lessons, setLessons] = useState<LessonWithDetails[]>([]);
   const [members, setMembers] = useState<(GroupMember & { user: UserType })[]>([]);
@@ -53,38 +63,24 @@ export default function LessonsPage({ params }: LessonsPageProps) {
   const [duration, setDuration] = useState(60);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<string>("student");
-  const [isOwner, setIsOwner] = useState(false);
-  const [userId, setUserId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"upcoming" | "past">("upcoming");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<LessonWithDetails | null>(null);
-  const [membershipId, setMembershipId] = useState<string>("");
+  const [expandedLessonId, setExpandedLessonId] = useState<string | null>(null);
+  const [rescheduleLesson, setRescheduleLesson] = useState<LessonWithDetails | null>(null);
+
+  const isStudentOrGuardian = isStudent || isGuardian;
 
   useEffect(() => {
-    loadData();
-  }, [params.id]);
+    if (user) loadData();
+  }, [params.id, user?.id]);
 
   const loadData = async () => {
+    if (!user) return;
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    setUserId(user?.id || "");
 
-    const { data: membership } = await supabase
-      .from("group_members")
-      .select("id, role, is_owner")
-      .eq("group_id", params.id)
-      .eq("user_id", user?.id)
-      .single();
-
-    if (membership) {
-      setUserRole(membership.role);
-      setIsOwner(membership.is_owner || false);
-      setMembershipId(membership.id);
-    }
-
-    // 수업 데이터 조회
-    const { data: lessonData } = await supabase
+    // 수업 데이터 조회 (membership 정보는 context에서 가져옴)
+    let lessonQuery = supabase
       .from("lessons")
       .select(`
         *,
@@ -93,6 +89,13 @@ export default function LessonsPage({ params }: LessonsPageProps) {
       `)
       .eq("group_id", params.id)
       .order("scheduled_at", { ascending: false });
+
+    // 학생/보호자는 자신의 수업만 조회
+    if (isStudentOrGuardian) {
+      lessonQuery = lessonQuery.eq("student_id", user.id);
+    }
+
+    const { data: lessonData } = await lessonQuery;
 
     // 출석 데이터 조회
     const lessonIds = lessonData?.map(l => l.id) || [];
@@ -132,21 +135,17 @@ export default function LessonsPage({ params }: LessonsPageProps) {
     setIsLoading(false);
   };
 
-  const canManage = isOwner || userRole === "instructor";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime) return;
+    if (!selectedDate || !selectedTime || !user) return;
 
     setIsSubmitting(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
     const scheduledAt = new Date(`${selectedDate}T${selectedTime}`);
 
     await supabase.from("lessons").insert({
       group_id: params.id,
-      instructor_id: user?.id,
+      instructor_id: user.id,
       student_id: selectedStudent || null,
       scheduled_at: scheduledAt.toISOString(),
       duration_minutes: duration,
@@ -313,36 +312,292 @@ export default function LessonsPage({ params }: LessonsPageProps) {
     );
   }
 
+  // 학생/보호자용 수업 뷰
+  if (isStudentOrGuardian) {
+    const completedLessons = lessons.filter(l => l.status === "completed");
+    const upcomingLessons = lessons.filter(l => l.status === "scheduled" || l.status === "in_progress")
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+    const nextLesson = upcomingLessons[0];
+
+    // 출석 통계 계산
+    const attendanceStats = {
+      total: completedLessons.length,
+      present: completedLessons.filter(l => l.attendance?.status === "present").length,
+      late: completedLessons.filter(l => l.attendance?.status === "late").length,
+      absent: completedLessons.filter(l => l.attendance?.status === "absent" || l.attendance?.status === "excused").length,
+    };
+    const attendanceRate = attendanceStats.total > 0
+      ? Math.round(((attendanceStats.present + attendanceStats.late) / attendanceStats.total) * 100)
+      : 100;
+
+    return (
+      <div className="h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b shrink-0">
+          <h2 className="text-lg font-semibold">내 수업</h2>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          {/* 요약 카드 그리드 */}
+          <div className="p-4 grid grid-cols-3 gap-3">
+            <div className="p-4 rounded-xl border bg-card">
+              <p className="text-xs text-muted-foreground mb-1">예정된 수업</p>
+              <p className="text-2xl font-bold">{upcomingLessons.length}</p>
+            </div>
+            <div className="p-4 rounded-xl border bg-card">
+              <p className="text-xs text-muted-foreground mb-1">완료한 수업</p>
+              <p className="text-2xl font-bold">{completedLessons.length}</p>
+            </div>
+            <div className="p-4 rounded-xl border bg-card">
+              <p className="text-xs text-muted-foreground mb-1">출석률</p>
+              <p className={cn(
+                "text-2xl font-bold",
+                attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-yellow-600" : "text-red-600"
+              )}>
+                {attendanceRate}%
+              </p>
+            </div>
+          </div>
+
+          {/* 다가오는 수업 섹션 */}
+          <div className="px-4 pb-4">
+            <h3 className="text-sm font-semibold mb-3">다가오는 수업</h3>
+
+            {upcomingLessons.length > 0 ? (
+              <div className="space-y-2">
+                {upcomingLessons.map((lesson, index) => {
+                  const lessonDate = new Date(lesson.scheduled_at);
+                  const maxRescheduleDate = addWeeks(new Date(), 3);
+                  const canReschedule = lesson.status === "scheduled" && isBefore(lessonDate, maxRescheduleDate);
+                  const isFirst = index === 0;
+
+                  return (
+                    <div
+                      key={lesson.id}
+                      className={cn(
+                        "p-4 rounded-xl border transition-colors",
+                        isFirst ? "bg-primary/5 border-primary/20" : "bg-card"
+                      )}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-12 h-12 rounded-xl flex flex-col items-center justify-center",
+                            isFirst ? "bg-primary/10" : "bg-muted"
+                          )}>
+                            <span className={cn(
+                              "text-lg font-bold leading-none",
+                              isFirst && "text-primary"
+                            )}>
+                              {lessonDate.getDate()}
+                            </span>
+                            <span className={cn(
+                              "text-[10px] uppercase",
+                              isFirst ? "text-primary/70" : "text-muted-foreground"
+                            )}>
+                              {["일", "월", "화", "수", "목", "금", "토"][lessonDate.getDay()]}
+                            </span>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">
+                                {formatTime(lesson.scheduled_at)}
+                              </p>
+                              {lesson.status === "in_progress" && (
+                                <span className="px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-[10px] font-medium">
+                                  진행중
+                                </span>
+                              )}
+                              {isFirst && lesson.status === "scheduled" && (
+                                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
+                                  다음 수업
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {lesson.instructor?.name} 선생님 · {lesson.duration_minutes}분
+                            </p>
+                          </div>
+                        </div>
+                        {canReschedule && (
+                          <button
+                            onClick={() => setRescheduleLesson(lesson)}
+                            className="p-2 rounded-lg hover:bg-muted transition-colors"
+                            title="일정 변경 신청"
+                          >
+                            <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 rounded-xl border bg-card">
+                <Calendar className="h-10 w-10 mb-2 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">예정된 수업이 없습니다</p>
+              </div>
+            )}
+          </div>
+
+          {/* 지난 수업 섹션 */}
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold">지난 수업</h3>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  {attendanceStats.present}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                  {attendanceStats.late}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  {attendanceStats.absent}
+                </span>
+              </div>
+            </div>
+
+            {completedLessons.length > 0 ? (
+              <div className="space-y-1">
+                {completedLessons.map((lesson) => {
+                  const lessonDate = new Date(lesson.scheduled_at);
+                  const isExpanded = expandedLessonId === lesson.id;
+
+                  return (
+                    <div
+                      key={lesson.id}
+                      className={cn(
+                        "rounded-xl border bg-card overflow-hidden transition-all",
+                        isExpanded && "ring-1 ring-primary/50"
+                      )}
+                    >
+                      <button
+                        className="w-full flex items-center gap-3 p-3 text-left"
+                        onClick={() => setExpandedLessonId(isExpanded ? null : lesson.id)}
+                      >
+                        {/* 출석 상태 인디케이터 */}
+                        <div className={cn(
+                          "w-1 h-10 rounded-full shrink-0",
+                          lesson.attendance?.status === "present" && "bg-green-500",
+                          lesson.attendance?.status === "late" && "bg-yellow-500",
+                          (lesson.attendance?.status === "absent" || lesson.attendance?.status === "excused") && "bg-red-500",
+                          !lesson.attendance?.status && "bg-gray-300 dark:bg-gray-600"
+                        )} />
+
+                        {/* 날짜 */}
+                        <div className="w-10 text-center shrink-0">
+                          <p className="text-lg font-bold leading-none">{lessonDate.getDate()}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {lessonDate.getMonth() + 1}월
+                          </p>
+                        </div>
+
+                        {/* 정보 */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">
+                            {formatTime(lesson.scheduled_at)}
+                            <span className="text-muted-foreground ml-1">· {lesson.duration_minutes}분</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {lesson.instructor?.name} 선생님
+                          </p>
+                        </div>
+
+                        {/* 출석 배지 */}
+                        <span className={cn(
+                          "px-2 py-1 rounded-lg text-xs font-medium shrink-0",
+                          getAttendanceColor(lesson.attendance?.status)
+                        )}>
+                          {getAttendanceLabel(lesson.attendance?.status)}
+                        </span>
+
+                        <ChevronDown className={cn(
+                          "h-4 w-4 text-muted-foreground transition-transform shrink-0",
+                          isExpanded && "rotate-180"
+                        )} />
+                      </button>
+
+                      {/* 확장 내용 */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 pt-2 border-t bg-muted/30 space-y-3">
+                          {lesson.content && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">수업 내용</p>
+                              <p className="text-sm">{lesson.content}</p>
+                            </div>
+                          )}
+                          {lesson.homework && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">과제</p>
+                              <p className="text-sm">{lesson.homework}</p>
+                            </div>
+                          )}
+                          {lesson.notes && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">비고</p>
+                              <p className="text-sm">{lesson.notes}</p>
+                            </div>
+                          )}
+                          {!lesson.content && !lesson.homework && !lesson.notes && (
+                            <p className="text-sm text-muted-foreground">기록된 내용이 없습니다</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 rounded-xl border bg-card">
+                <BookOpen className="h-10 w-10 mb-2 text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">아직 완료된 수업이 없습니다</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Reschedule Request Modal */}
+        {rescheduleLesson && (
+          <RescheduleRequestModal
+            lesson={rescheduleLesson}
+            onClose={() => setRescheduleLesson(null)}
+            onSuccess={() => {
+              setRescheduleLesson(null);
+              loadData();
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // 오늘 날짜 기준 수업 통계 계산
+  const todayLessons = lessons.filter(l => {
+    const date = new Date(l.scheduled_at);
+    return date.toDateString() === now.toDateString();
+  });
+  const upcomingLessonsCount = lessons.filter(l => l.status === "scheduled" || l.status === "in_progress").length;
+  const completedLessonsCount = lessons.filter(l => l.status === "completed").length;
+
+  // 출석 통계 (전체)
+  const allAttendanceStats = {
+    present: lessons.filter(l => l.attendance?.status === "present").length,
+    late: lessons.filter(l => l.attendance?.status === "late").length,
+    early_leave: lessons.filter(l => l.attendance?.status === "early_leave").length,
+    absent: lessons.filter(l => l.attendance?.status === "absent").length,
+    excused: lessons.filter(l => l.attendance?.status === "excused").length,
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b shrink-0">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold">수업 관리</h2>
-          <div className="flex gap-1">
-            <button
-              onClick={() => setViewMode("upcoming")}
-              className={cn(
-                "px-3 py-1 rounded-md text-sm font-medium",
-                viewMode === "upcoming"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
-              )}
-            >
-              예정
-            </button>
-            <button
-              onClick={() => setViewMode("past")}
-              className={cn(
-                "px-3 py-1 rounded-md text-sm font-medium",
-                viewMode === "past"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted hover:bg-muted/80"
-              )}
-            >
-              지난
-            </button>
-          </div>
         </div>
         {canManage && (
           <Button size="sm" onClick={() => setShowForm(true)}>
@@ -438,192 +693,175 @@ export default function LessonsPage({ params }: LessonsPageProps) {
         </div>
       )}
 
-      {/* Content Area */}
-      <div className="flex-1 flex min-h-0">
-        {/* Table / List */}
-        <div className={`overflow-auto ${selectedLesson ? "hidden md:block md:w-80 lg:w-96 border-r" : "flex-1"}`}>
-          {filteredLessons.length > 0 ? (
-            selectedLesson ? (
-              // 심플 리스트 (선택 시)
+      {/* 통계 대시보드 */}
+      <div className="p-4 grid grid-cols-4 lg:grid-cols-7 gap-2 border-b shrink-0">
+        <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+          <p className="text-xl font-bold text-blue-700 dark:text-blue-400">{todayLessons.length}</p>
+          <p className="text-xs text-blue-600 dark:text-blue-500">오늘</p>
+        </div>
+        <div className="p-3 rounded-lg bg-primary/10 border">
+          <p className="text-xl font-bold">{upcomingLessonsCount}</p>
+          <p className="text-xs text-muted-foreground">예정</p>
+        </div>
+        <div className="p-3 rounded-lg bg-muted border">
+          <p className="text-xl font-bold">{completedLessonsCount}</p>
+          <p className="text-xs text-muted-foreground">완료</p>
+        </div>
+        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+          <p className="text-xl font-bold text-green-700 dark:text-green-400">{allAttendanceStats.present}</p>
+          <p className="text-xs text-green-600 dark:text-green-500">출석</p>
+        </div>
+        <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
+          <p className="text-xl font-bold text-yellow-700 dark:text-yellow-400">{allAttendanceStats.late}</p>
+          <p className="text-xs text-yellow-600 dark:text-yellow-500">지각</p>
+        </div>
+        <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+          <p className="text-xl font-bold text-orange-700 dark:text-orange-400">{allAttendanceStats.early_leave}</p>
+          <p className="text-xs text-orange-600 dark:text-orange-500">조퇴</p>
+        </div>
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+          <p className="text-xl font-bold text-red-700 dark:text-red-400">{allAttendanceStats.absent + allAttendanceStats.excused}</p>
+          <p className="text-xs text-red-600 dark:text-red-500">결석</p>
+        </div>
+      </div>
+
+      {/* Main Content - Left/Right Split */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel - Lesson List */}
+        <div className="w-80 lg:w-96 border-r flex flex-col shrink-0">
+          {/* Reschedule Requests for Instructors */}
+          {user && (
+            <RescheduleRequestsList
+              groupId={params.id}
+              instructorId={user.id}
+              onUpdate={loadData}
+            />
+          )}
+
+          {/* Filter Tabs */}
+          <div className="flex p-2 gap-1 border-b shrink-0">
+            <button
+              onClick={() => setViewMode("upcoming")}
+              className={cn(
+                "flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                viewMode === "upcoming"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted"
+              )}
+            >
+              예정 ({upcomingLessonsCount})
+            </button>
+            <button
+              onClick={() => setViewMode("past")}
+              className={cn(
+                "flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+                viewMode === "past"
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted"
+              )}
+            >
+              완료 ({completedLessonsCount})
+            </button>
+          </div>
+
+          {/* Lesson List */}
+          <div className="flex-1 overflow-auto">
+            {filteredLessons.length > 0 ? (
               <div className="divide-y">
                 {filteredLessons.map((lesson) => {
                   const isSelected = selectedLesson?.id === lesson.id;
+                  const lessonDate = new Date(lesson.scheduled_at);
                   return (
-                    <div
+                    <button
                       key={lesson.id}
-                      className={cn(
-                        "p-3 cursor-pointer",
-                        isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-muted/50"
-                      )}
                       onClick={() => setSelectedLesson(lesson)}
+                      className={cn(
+                        "w-full p-3 text-left transition-colors",
+                        isSelected ? "bg-primary/10" : "hover:bg-muted/50"
+                      )}
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={cn("px-1.5 py-0.5 rounded text-[10px]", getStatusColor(lesson.status))}>
-                          {getStatusLabel(lesson.status)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateWithWeekday(lesson.scheduled_at)}
-                        </span>
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium", getStatusColor(lesson.status))}>
+                            {getStatusLabel(lesson.status)}
+                          </span>
+                          {lesson.is_makeup && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                              보강
+                            </span>
+                          )}
+                        </div>
+                        {lesson.student_id && (
+                          <span className={cn("w-2 h-2 rounded-full shrink-0", {
+                            "bg-green-500": lesson.attendance?.status === "present",
+                            "bg-yellow-500": lesson.attendance?.status === "late",
+                            "bg-orange-500": lesson.attendance?.status === "early_leave",
+                            "bg-red-500": lesson.attendance?.status === "absent" || lesson.attendance?.status === "excused",
+                            "bg-gray-300": !lesson.attendance?.status,
+                          })} />
+                        )}
                       </div>
-                      <p className="text-sm">
-                        {formatTime(lesson.scheduled_at)} · {lesson.duration_minutes}분
-                        {lesson.student && ` · ${lesson.student.name}`}
+                      <p className="font-medium text-sm">
+                        {lessonDate.getMonth() + 1}/{lessonDate.getDate()}
+                        <span className="text-muted-foreground ml-1">
+                          ({["일", "월", "화", "수", "목", "금", "토"][lessonDate.getDay()]})
+                        </span>
+                        <span className="ml-2">{formatTime(lesson.scheduled_at)}</span>
                       </p>
-                    </div>
+                      <div className="flex items-center justify-between mt-1 text-xs text-muted-foreground">
+                        <span>{lesson.student?.name || "그룹 수업"}</span>
+                        <span>{lesson.duration_minutes}분</span>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
             ) : (
-              // 풀 테이블 (선택 없을 시)
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 sticky top-0">
-                  <tr className="text-left text-muted-foreground border-b">
-                    <th className="py-3 px-4 font-medium w-20 text-center">상태</th>
-                    <th className="py-3 px-4 font-medium">날짜</th>
-                    <th className="py-3 px-4 font-medium">시간</th>
-                    <th className="py-3 px-4 font-medium w-20 text-center hidden sm:table-cell">시간</th>
-                    <th className="py-3 px-4 font-medium hidden md:table-cell">학생</th>
-                    <th className="py-3 px-4 font-medium w-20 text-center hidden lg:table-cell">출결</th>
-                    {canManage && <th className="py-3 px-4 font-medium w-12"></th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredLessons.map((lesson) => (
-                    <tr
-                      key={lesson.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setSelectedLesson(lesson)}
-                    >
-                      <td className="py-3 px-4 text-center">
-                        <span className={cn("px-2 py-0.5 rounded text-xs", getStatusColor(lesson.status))}>
-                          {getStatusLabel(lesson.status)}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">{formatDateWithWeekday(lesson.scheduled_at)}</td>
-                      <td className="py-3 px-4">{formatTime(lesson.scheduled_at)}</td>
-                      <td className="py-3 px-4 text-center text-muted-foreground hidden sm:table-cell">
-                        {lesson.duration_minutes}분
-                      </td>
-                      <td className="py-3 px-4 hidden md:table-cell">
-                        {lesson.student?.name || <span className="text-muted-foreground">그룹 수업</span>}
-                      </td>
-                      <td className="py-3 px-4 text-center hidden lg:table-cell">
-                        {lesson.student_id && (
-                          <span className={cn("px-2 py-0.5 rounded text-xs", getAttendanceColor(lesson.attendance?.status))}>
-                            {getAttendanceLabel(lesson.attendance?.status)}
-                          </span>
-                        )}
-                      </td>
-                      {canManage && (
-                        <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="relative">
-                            <button
-                              onClick={() => setOpenMenuId(openMenuId === lesson.id ? null : lesson.id)}
-                              className="p-1 hover:bg-muted rounded"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </button>
-
-                            {openMenuId === lesson.id && (
-                              <div className="absolute right-0 top-8 w-28 bg-background border rounded-lg shadow-lg py-1 z-20">
-                                {lesson.status === "scheduled" && (
-                                  <>
-                                    <button
-                                      onClick={() => handleStatusChange(lesson.id, "in_progress")}
-                                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
-                                    >
-                                      <Play className="h-3.5 w-3.5" />
-                                      시작
-                                    </button>
-                                    <button
-                                      onClick={() => handleStatusChange(lesson.id, "cancelled")}
-                                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
-                                    >
-                                      <XCircle className="h-3.5 w-3.5" />
-                                      취소
-                                    </button>
-                                  </>
-                                )}
-                                {lesson.status === "in_progress" && (
-                                  <button
-                                    onClick={() => handleStatusChange(lesson.id, "completed")}
-                                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
-                                  >
-                                    <Check className="h-3.5 w-3.5" />
-                                    완료
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => handleDelete(lesson.id)}
-                                  className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                  삭제
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )
-          ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <BookOpen className="h-12 w-12 mb-3 opacity-50" />
-              <p>{viewMode === "upcoming" ? "예정된 수업이 없습니다" : "지난 수업이 없습니다"}</p>
-              {canManage && viewMode === "upcoming" && (
-                <Button variant="link" onClick={() => setShowForm(true)} className="mt-2">
-                  첫 수업을 등록해보세요
-                </Button>
-              )}
-            </div>
-          )}
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <BookOpen className="h-10 w-10 mb-2 opacity-50" />
+                <p className="text-sm">{viewMode === "upcoming" ? "예정된 수업이 없습니다" : "지난 수업이 없습니다"}</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Detail Panel */}
-        {selectedLesson && (
-          <div className="flex-1 flex flex-col bg-background overflow-hidden">
+        {/* Right Panel - Lesson Detail */}
+        {selectedLesson ? (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Detail Header */}
             <div className="flex items-center justify-between p-4 border-b shrink-0">
-              <div className="flex items-center gap-2">
-                <span className={cn("px-2 py-0.5 rounded text-xs", getStatusColor(selectedLesson.status))}>
-                  {getStatusLabel(selectedLesson.status)}
-                </span>
-                {selectedLesson.is_makeup && (
-                  <span className="px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                    보강
-                  </span>
-                )}
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={cn("px-2 py-0.5 rounded text-xs font-medium", getStatusColor(selectedLesson.status))}>
+                      {getStatusLabel(selectedLesson.status)}
+                    </span>
+                    {selectedLesson.is_makeup && (
+                      <span className="px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                        보강
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-semibold">{formatDateWithWeekday(selectedLesson.scheduled_at)} {formatTime(selectedLesson.scheduled_at)}</h3>
+                </div>
               </div>
               <div className="flex items-center gap-1">
                 {canManage && (
                   <>
                     {selectedLesson.status === "scheduled" && (
                       <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStatusChange(selectedLesson.id, "in_progress")}
-                        >
+                        <Button size="sm" onClick={() => handleStatusChange(selectedLesson.id, "in_progress")}>
                           <Play className="h-4 w-4 mr-1" />
                           시작
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleStatusChange(selectedLesson.id, "cancelled")}
-                        >
-                          <XCircle className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => handleStatusChange(selectedLesson.id, "cancelled")}>
+                          <XCircle className="h-4 w-4 mr-1" />
+                          취소
                         </Button>
                       </>
                     )}
                     {selectedLesson.status === "in_progress" && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleStatusChange(selectedLesson.id, "completed")}
-                      >
+                      <Button size="sm" onClick={() => handleStatusChange(selectedLesson.id, "completed")}>
                         <Check className="h-4 w-4 mr-1" />
                         완료
                       </Button>
@@ -636,135 +874,109 @@ export default function LessonsPage({ params }: LessonsPageProps) {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                    <div className="w-px h-4 bg-border mx-1" />
                   </>
                 )}
                 <button
                   onClick={() => setSelectedLesson(null)}
-                  className="p-1.5 hover:bg-muted rounded-lg"
+                  className="p-1.5 hover:bg-muted rounded-lg ml-2"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-auto p-4">
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    {new Date(selectedLesson.scheduled_at).toLocaleDateString("ko-KR", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      weekday: "long",
-                    })}
-                  </span>
-                </div>
+            {/* Detail Content */}
+            <div className="flex-1 overflow-auto p-4 space-y-6">
+              {/* 기본 정보 테이블 */}
+              <table className="w-full text-sm">
+                <tbody className="divide-y">
+                  <tr>
+                    <td className="py-2.5 text-muted-foreground w-24">학생</td>
+                    <td className="py-2.5 font-medium">{selectedLesson.student?.name || "그룹 수업"}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 text-muted-foreground">강사</td>
+                    <td className="py-2.5 font-medium">{selectedLesson.instructor?.name || "-"}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2.5 text-muted-foreground">수업 시간</td>
+                    <td className="py-2.5 font-medium">{selectedLesson.duration_minutes}분</td>
+                  </tr>
+                </tbody>
+              </table>
 
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    {formatTime(selectedLesson.scheduled_at)} - {selectedLesson.duration_minutes}분
-                  </span>
-                </div>
-
-                {selectedLesson.student && (
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      {selectedLesson.student.name}
-                    </span>
+              {/* 출결 관리 */}
+              {selectedLesson.student_id && (
+                <div>
+                  <h4 className="font-semibold mb-2">출결 상태</h4>
+                  <div className="grid grid-cols-5 gap-2 text-center">
+                    {[
+                      { status: "present", label: "출석", color: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400" },
+                      { status: "late", label: "지각", color: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-400" },
+                      { status: "early_leave", label: "조퇴", color: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-400" },
+                      { status: "absent", label: "결석", color: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400" },
+                      { status: "excused", label: "사유", color: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-700 dark:text-purple-400" },
+                    ].map(({ status, label, color, text }) => (
+                      <button
+                        key={status}
+                        onClick={() => canManage && handleAttendanceChange(selectedLesson.id, selectedLesson.student_id!, status)}
+                        disabled={!canManage}
+                        className={cn(
+                          "p-3 rounded-lg transition-all",
+                          selectedLesson.attendance?.status === status
+                            ? `${color} ring-2 ring-offset-2 ring-current ${text}`
+                            : "bg-muted/50 hover:bg-muted",
+                          !canManage && "cursor-default"
+                        )}
+                      >
+                        <p className={cn("text-lg font-bold", selectedLesson.attendance?.status === status ? text : "")}>{label}</p>
+                      </button>
+                    ))}
                   </div>
-                )}
-
-                {selectedLesson.instructor && (
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    강사: {selectedLesson.instructor.name}
-                  </div>
-                )}
-
-                {/* 출결 관리 (학생이 있는 수업만) */}
-                {selectedLesson.student_id && (
-                  <div className="border-t pt-4 mt-4">
-                    <h4 className="font-medium mb-3">출결 현황</h4>
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm font-medium",
-                        getAttendanceColor(selectedLesson.attendance?.status)
-                      )}>
-                        {getAttendanceLabel(selectedLesson.attendance?.status)}
-                      </span>
-                      {selectedLesson.attendance?.check_in_at && (
-                        <span className="text-xs text-muted-foreground">
-                          체크인: {formatTime(selectedLesson.attendance.check_in_at)}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 출결 변경 버튼 (선생님만) */}
-                    {canManage && selectedLesson.student_id && (
-                      <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">출결 상태 변경:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {[
-                            { status: "present", label: "출석" },
-                            { status: "late", label: "지각" },
-                            { status: "early_leave", label: "조퇴" },
-                            { status: "absent", label: "결석" },
-                            { status: "excused", label: "사유결석" },
-                          ].map(({ status, label }) => (
-                            <button
-                              key={status}
-                              onClick={() => handleAttendanceChange(
-                                selectedLesson.id,
-                                selectedLesson.student_id!,
-                                status
-                              )}
-                              className={cn(
-                                "px-3 py-1.5 rounded-md text-xs font-medium border transition-colors",
-                                selectedLesson.attendance?.status === status
-                                  ? getAttendanceColor(status)
-                                  : "hover:bg-muted"
-                              )}
-                            >
-                              {label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* 수업 내용 */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-medium mb-2">수업 내용</h4>
-                  {selectedLesson.content ? (
-                    <p className="text-sm whitespace-pre-wrap">{selectedLesson.content}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">수업 내용이 없습니다.</p>
-                  )}
                 </div>
+              )}
 
-                {/* 과제 */}
-                <div className="border-t pt-4">
-                  <h4 className="font-medium mb-2">과제</h4>
-                  {selectedLesson.homework ? (
-                    <p className="text-sm whitespace-pre-wrap">{selectedLesson.homework}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">등록된 과제가 없습니다.</p>
-                  )}
+              {/* 수업 내용 */}
+              <div>
+                <h4 className="font-semibold mb-2">수업 내용</h4>
+                <div className="border rounded-lg p-3 min-h-[80px] bg-muted/30">
+                  <p className="text-sm whitespace-pre-wrap">
+                    {selectedLesson.content || <span className="text-muted-foreground">-</span>}
+                  </p>
                 </div>
-
-                {/* 비고 */}
-                {selectedLesson.notes && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-2">비고</h4>
-                    <p className="text-sm whitespace-pre-wrap">{selectedLesson.notes}</p>
-                  </div>
-                )}
               </div>
+
+              {/* 과제 */}
+              <div>
+                <h4 className="font-semibold mb-2">과제</h4>
+                <div className="border rounded-lg p-3 min-h-[80px] bg-muted/30">
+                  <p className="text-sm whitespace-pre-wrap">
+                    {selectedLesson.homework || <span className="text-muted-foreground">-</span>}
+                  </p>
+                </div>
+              </div>
+
+              {/* 비고 */}
+              <div>
+                <h4 className="font-semibold mb-2">비고</h4>
+                <div className="border rounded-lg p-3 min-h-[60px] bg-muted/30">
+                  <p className="text-sm whitespace-pre-wrap">
+                    {selectedLesson.notes || <span className="text-muted-foreground">-</span>}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>수업을 선택하세요</p>
+              {canManage && filteredLessons.length === 0 && viewMode === "upcoming" && (
+                <Button variant="link" onClick={() => setShowForm(true)} className="mt-2">
+                  첫 수업을 등록해보세요
+                </Button>
+              )}
             </div>
           </div>
         )}

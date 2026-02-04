@@ -788,6 +788,56 @@ CREATE POLICY "Instructors can delete QR codes"
     )
   );
 
+-- Room Reservations policies
+CREATE POLICY "Group members can view reservations"
+  ON room_reservations FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = room_reservations.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.status = 'approved'
+    )
+  );
+
+CREATE POLICY "Group members can create reservations"
+  ON room_reservations FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = room_reservations.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.status = 'approved'
+    )
+    AND reserved_by = auth.uid()
+  );
+
+CREATE POLICY "Owners and reservers can update reservations"
+  ON room_reservations FOR UPDATE
+  USING (
+    reserved_by = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = room_reservations.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.status = 'approved'
+      AND (group_members.is_owner = true OR group_members.role = 'instructor')
+    )
+  );
+
+CREATE POLICY "Owners and reservers can delete reservations"
+  ON room_reservations FOR DELETE
+  USING (
+    reserved_by = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM group_members
+      WHERE group_members.group_id = room_reservations.group_id
+      AND group_members.user_id = auth.uid()
+      AND group_members.status = 'approved'
+      AND (group_members.is_owner = true OR group_members.role = 'instructor')
+    )
+  );
+
 -- More policies can be added as needed...
 
 -- ============================================

@@ -80,7 +80,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (membershipsResult.data) {
       const groupList = membershipsResult.data
         .map((m) => {
-          const group = m.group as { id: string; name: string; icon: string | null; type: string } | null;
+          const rawGroup = m.group;
+          // group:groups(*) 조인 결과가 배열인지 객체인지 확인
+          const group = (Array.isArray(rawGroup) ? rawGroup[0] : rawGroup) as { id: string; name: string; icon: string | null; type: string } | null;
           if (!group) return null;
           return {
             ...group,
@@ -114,7 +116,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (memberships) {
       const groupList = memberships
         .map((m) => {
-          const group = m.group as { id: string; name: string; icon: string | null; type: string } | null;
+          const rawGroup = m.group;
+          // group:groups(*) 조인 결과가 배열인지 객체인지 확인
+          const group = (Array.isArray(rawGroup) ? rawGroup[0] : rawGroup) as { id: string; name: string; icon: string | null; type: string } | null;
           if (!group) return null;
           return {
             ...group,

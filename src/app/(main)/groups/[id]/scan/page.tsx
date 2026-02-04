@@ -14,6 +14,8 @@ import {
   QrCode,
   Camera,
 } from "lucide-react";
+import { useUser } from "@/lib/contexts/user-context";
+import { useGroup } from "@/lib/contexts/group-context";
 
 interface ScanPageProps {
   params: { id: string };
@@ -23,8 +25,9 @@ export default function ScanPage({ params }: ScanPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const codeFromUrl = searchParams.get("code");
+  const { user } = useUser();
+  const { membership } = useGroup();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [code, setCode] = useState(codeFromUrl || "");
   const [result, setResult] = useState<{
@@ -36,11 +39,6 @@ export default function ScanPage({ params }: ScanPageProps) {
       student_name: string;
     };
   } | null>(null);
-  const [membership, setMembership] = useState<any>(null);
-
-  useEffect(() => {
-    loadMembership();
-  }, [params.id]);
 
   useEffect(() => {
     // URL에서 코드가 있으면 자동으로 출석 처리
@@ -48,31 +46,6 @@ export default function ScanPage({ params }: ScanPageProps) {
       handleScan(codeFromUrl);
     }
   }, [codeFromUrl, membership]);
-
-  const loadMembership = async () => {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    const { data: membershipData } = await supabase
-      .from("group_members")
-      .select("*")
-      .eq("group_id", params.id)
-      .eq("user_id", user.id)
-      .single();
-
-    if (!membershipData) {
-      router.push("/dashboard");
-      return;
-    }
-
-    setMembership(membershipData);
-    setIsLoading(false);
-  };
 
   const handleScan = async (qrCode: string) => {
     if (!membership || isProcessing) return;
@@ -168,20 +141,13 @@ export default function ScanPage({ params }: ScanPageProps) {
       return;
     }
 
-    // 학생 이름 가져오기
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("name")
-      .eq("id", membership.user_id)
-      .single();
-
     setResult({
       success: true,
       status: attendanceStatus,
       message: attendanceStatus === "present" ? "출석 완료!" : "지각 처리되었습니다.",
       lessonInfo: {
         scheduled_at: lesson.scheduled_at,
-        student_name: profile?.name || "",
+        student_name: user?.name || "",
       },
     });
 
@@ -194,14 +160,6 @@ export default function ScanPage({ params }: ScanPageProps) {
       handleScan(code.trim());
     }
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="h-full flex flex-col">

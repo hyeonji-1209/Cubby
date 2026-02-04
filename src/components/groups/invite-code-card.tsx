@@ -1,24 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { useClipboard } from "@/hooks";
 
 interface InviteCodeCardProps {
   inviteCode: string;
 }
 
 export function InviteCodeCard({ inviteCode }: InviteCodeCardProps) {
-  const [copied, setCopied] = useState(false);
-
-  const copyInviteCode = async () => {
-    try {
-      await navigator.clipboard.writeText(inviteCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
+  const { copied, copy } = useClipboard();
 
   return (
     <div className="rounded-lg border p-4 bg-muted/30">
@@ -30,7 +20,7 @@ export function InviteCodeCard({ inviteCode }: InviteCodeCardProps) {
           </p>
         </div>
         <button
-          onClick={copyInviteCode}
+          onClick={() => copy(inviteCode)}
           className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
         >
           {copied ? (

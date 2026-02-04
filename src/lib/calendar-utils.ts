@@ -52,22 +52,14 @@ export function getMultiDayEvents(events: CalendarEvent[]): CalendarEvent[] {
   return events.filter((event) => isMultiDayEvent(event));
 }
 
-/**
- * 시간 포맷팅 (HH:mm)
- */
-export function formatTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
+// formatTime은 date-utils.ts에서 import해서 사용
+// formatDateShort는 date-utils.ts의 formatDateWithWeekday와 동일하므로 제거
 
 /**
- * 날짜 포맷팅 (MM.DD (요일))
+ * 캘린더용 날짜 포맷팅 (MM.DD (요일))
+ * @deprecated date-utils.ts의 formatDateWithWeekday 사용 권장
  */
-export function formatDateShort(date: Date | string): string {
+export function formatCalendarDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString("ko-KR", {
     month: "2-digit",

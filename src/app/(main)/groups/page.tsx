@@ -27,7 +27,7 @@ const groupTypeIcons: Record<string, string> = {
 };
 
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<(Group & { role: string })[]>([]);
+  const [groups, setGroups] = useState<(Group & { role: string; is_owner: boolean })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [hasCoupleGroup, setHasCoupleGroup] = useState(false);
@@ -53,9 +53,10 @@ export default function GroupsPage() {
     const groupList = memberships?.map((m) => ({
       ...m.group,
       role: m.role,
+      is_owner: m.is_owner || false,
     })) || [];
 
-    setGroups(groupList as (Group & { role: string })[]);
+    setGroups(groupList as (Group & { role: string; is_owner: boolean })[]);
     setHasCoupleGroup(groupList.some((g) => g.type === "couple"));
     setIsLoading(false);
   };

@@ -264,7 +264,7 @@ export function MemberApprovalModal({
           <div className="flex items-center gap-3">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center",
-              ROLE_BG_COLORS[role as MemberRole] || ROLE_BG_COLORS.member
+              ROLE_BG_COLORS[role as MemberRole] || ROLE_BG_COLORS.student
             )}>
               {getRoleIconComponent()}
             </div>
