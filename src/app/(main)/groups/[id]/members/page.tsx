@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Users,
-  Shield,
   MoreVertical,
   UserMinus,
   UserCheck,
@@ -13,31 +12,32 @@ import {
   Loader2,
   Search,
   X,
+  Crown,
+  Clock,
+  BookOpen,
+  GraduationCap,
 } from "lucide-react";
-import { GroupMember, User, MemberRole, Group } from "@/types";
+import { GroupMember, User, MemberRole, Group, Lesson, LessonSchedule } from "@/types";
 import { Input } from "@/components/ui/input";
 import { MemberApprovalModal } from "@/components/groups/member-approval-modal";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
-import { ROLE_LABELS, ROLE_ICONS, ROLE_COLORS } from "@/lib/role-utils";
-import { formatDateShort } from "@/lib/date-utils";
+import { ROLE_LABELS } from "@/lib/role-utils";
+import { formatDateShort, WEEKDAYS_KO } from "@/lib/date-utils";
+import { useUser } from "@/lib/contexts/user-context";
 
 interface MembersPageProps {
   params: { id: string };
 }
 
-// 공유 상수 별칭 (기존 코드 호환)
-const roleLabels = ROLE_LABELS;
-const roleIcons = ROLE_ICONS;
-const roleColors = ROLE_COLORS;
-
 export default function MembersPage({ params }: MembersPageProps) {
   const { confirm } = useConfirm();
+  const { user: currentUser } = useUser();
 
   const [members, setMembers] = useState<(GroupMember & { user: User })[]>([]);
   const [pendingMembers, setPendingMembers] = useState<(GroupMember & { user: User })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<MemberRole>("member");
+  const [isOwner, setIsOwner] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [group, setGroup] = useState<Group | null>(null);
@@ -45,61 +45,112 @@ export default function MembersPage({ params }: MembersPageProps) {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<(GroupMember & { user: User }) | null>(null);
 
+  // 선택된 멤버 관련 데이터
+  const [assignedStudents, setAssignedStudents] = useState<(GroupMember & { user: User })[]>([]);
+  const [instructorInfo, setInstructorInfo] = useState<(GroupMember & { user: User }) | null>(null);
+  const [lessonHistory, setLessonHistory] = useState<Lesson[]>([]);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
   useEffect(() => {
-    loadData();
-  }, [params.id]);
+    if (currentUser) {
+      loadData();
+    }
+  }, [params.id, currentUser?.id]);
+
+  // 선택된 멤버가 변경되면 관련 데이터 로드
+  useEffect(() => {
+    if (selectedMember) {
+      loadMemberDetail(selectedMember);
+    }
+  }, [selectedMember?.id]);
 
   const loadData = async () => {
+    if (!currentUser) return;
+
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: groupData } = await supabase
-      .from("groups")
-      .select("*")
-      .eq("id", params.id)
-      .single();
+    // 멤버 데이터만 조회 (group은 layout에서 이미 조회됨)
+    const [membershipResult, approvedResult, pendingResult] = await Promise.all([
+      supabase
+        .from("group_members")
+        .select("is_owner, group:groups(*)")
+        .eq("group_id", params.id)
+        .eq("user_id", currentUser.id)
+        .single(),
+      supabase
+        .from("group_members")
+        .select(`*, user:profiles!user_id(*)`)
+        .eq("group_id", params.id)
+        .eq("status", "approved")
+        .order("created_at"),
+      supabase
+        .from("group_members")
+        .select(`*, user:profiles!user_id(*)`)
+        .eq("group_id", params.id)
+        .eq("status", "pending")
+        .order("created_at"),
+    ]);
 
-    if (groupData) {
-      setGroup(groupData as Group);
+    if (membershipResult.data) {
+      setIsOwner(membershipResult.data.is_owner || false);
+      if (membershipResult.data.group) {
+        setGroup(membershipResult.data.group as Group);
+      }
     }
 
-    const { data: membership } = await supabase
-      .from("group_members")
-      .select("role")
-      .eq("group_id", params.id)
-      .eq("user_id", user?.id)
-      .single();
-
-    if (membership) {
-      setUserRole(membership.role as MemberRole);
-    }
-
-    const { data: approvedData } = await supabase
-      .from("group_members")
-      .select(`
-        *,
-        user:users(*)
-      `)
-      .eq("group_id", params.id)
-      .eq("status", "approved")
-      .order("created_at");
-
-    const { data: pendingData } = await supabase
-      .from("group_members")
-      .select(`
-        *,
-        user:users(*)
-      `)
-      .eq("group_id", params.id)
-      .eq("status", "pending")
-      .order("created_at");
-
-    setMembers((approvedData as (GroupMember & { user: User })[]) || []);
-    setPendingMembers((pendingData as (GroupMember & { user: User })[]) || []);
+    setMembers((approvedResult.data as (GroupMember & { user: User })[]) || []);
+    setPendingMembers((pendingResult.data as (GroupMember & { user: User })[]) || []);
     setIsLoading(false);
   };
 
-  const canManage = userRole === "owner" || userRole === "admin";
+  // 선택된 멤버의 상세 데이터 로드
+  const loadMemberDetail = async (member: GroupMember & { user: User }) => {
+    setIsLoadingDetail(true);
+    const supabase = createClient();
+
+    if (member.role === "instructor") {
+      // 강사: 담당 학생들 조회
+      const { data: students } = await supabase
+        .from("group_members")
+        .select(`*, user:profiles!user_id(*)`)
+        .eq("group_id", params.id)
+        .eq("instructor_id", member.user_id)
+        .eq("status", "approved")
+        .order("nickname");
+
+      setAssignedStudents((students as (GroupMember & { user: User })[]) || []);
+      setInstructorInfo(null);
+      setLessonHistory([]);
+    } else if (member.role === "student") {
+      // 학생: 담당 강사 정보 조회
+      if (member.instructor_id) {
+        const instructor = members.find(m => m.user_id === member.instructor_id);
+        setInstructorInfo(instructor || null);
+      } else {
+        setInstructorInfo(null);
+      }
+
+      // 학생의 수업 이력 조회
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("*")
+        .eq("group_id", params.id)
+        .eq("student_id", member.user_id)
+        .order("scheduled_at", { ascending: false })
+        .limit(20);
+
+      setLessonHistory((lessons as Lesson[]) || []);
+      setAssignedStudents([]);
+    } else {
+      setAssignedStudents([]);
+      setInstructorInfo(null);
+      setLessonHistory([]);
+    }
+
+    setIsLoadingDetail(false);
+  };
+
+  const canManage = isOwner;
 
   const handleApprove = (member: GroupMember & { user: User }) => {
     if (group?.type === "education") {
@@ -154,11 +205,20 @@ export default function MembersPage({ params }: MembersPageProps) {
     }
   };
 
-  const handleChangeRole = async (memberId: string, newRole: MemberRole) => {
+  const handleToggleOwner = async (memberId: string, currentIsOwner: boolean) => {
+    // max_owners 체크
+    if (!currentIsOwner && group?.settings?.max_owners) {
+      const ownerCount = members.filter(m => m.is_owner).length;
+      if (ownerCount >= group.settings.max_owners) {
+        alert(`관리자는 최대 ${group.settings.max_owners}명까지만 지정할 수 있습니다.`);
+        return;
+      }
+    }
+
     const supabase = createClient();
     await supabase
       .from("group_members")
-      .update({ role: newRole })
+      .update({ is_owner: !currentIsOwner })
       .eq("id", memberId);
     loadData();
     setOpenMenuId(null);
@@ -245,7 +305,6 @@ export default function MembersPage({ params }: MembersPageProps) {
               <div className="divide-y">
                 {filteredMembers.map((member) => {
                   const isSelected = selectedMember?.id === member.id;
-                  const RoleIcon = roleIcons[member.role];
                   return (
                     <div
                       key={member.id}
@@ -264,11 +323,13 @@ export default function MembersPage({ params }: MembersPageProps) {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{member.nickname || member.user?.name}</p>
-                          <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px]", roleColors[member.role])}>
-                            <RoleIcon className="h-2.5 w-2.5" />
-                            {roleLabels[member.role]}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <p className="text-sm font-medium truncate">{member.nickname || member.user?.name}</p>
+                            {member.is_owner && <Crown className="h-3 w-3 text-yellow-500" />}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {ROLE_LABELS[member.role]}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -281,14 +342,13 @@ export default function MembersPage({ params }: MembersPageProps) {
                 <thead className="bg-muted/50 sticky top-0">
                   <tr className="text-left text-muted-foreground border-b">
                     <th className="py-3 px-4 font-medium">이름</th>
-                    <th className="py-3 px-4 font-medium w-24 text-center">역할</th>
+                    <th className="py-3 px-4 font-medium w-24 text-center">role</th>
                     <th className="py-3 px-4 font-medium w-28 text-center hidden md:table-cell">가입일</th>
                     {canManage && <th className="py-3 px-4 font-medium w-12"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {filteredMembers.map((member) => {
-                    const RoleIcon = roleIcons[member.role];
                     return (
                       <tr
                         key={member.id}
@@ -313,47 +373,52 @@ export default function MembersPage({ params }: MembersPageProps) {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs", roleColors[member.role])}>
-                            <RoleIcon className="h-3 w-3" />
-                            {roleLabels[member.role]}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="text-xs text-muted-foreground">
+                              {ROLE_LABELS[member.role]}
+                            </span>
+                            {member.is_owner && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] text-yellow-600 dark:text-yellow-400">
+                                <Crown className="h-2.5 w-2.5" />
+                                관리자
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-center text-muted-foreground hidden md:table-cell">
                           {formatDateShort(member.created_at)}
                         </td>
                         {canManage && (
                           <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                            {member.role !== "owner" && (
-                              <div className="relative">
-                                <button
-                                  onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
-                                  className="p-1 hover:bg-muted rounded"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenMenuId(openMenuId === member.id ? null : member.id)}
+                                className="p-1 hover:bg-muted rounded"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
 
-                                {openMenuId === member.id && (
-                                  <div className="absolute right-0 top-8 w-32 bg-background border rounded-lg shadow-lg py-1 z-20">
-                                    {userRole === "owner" && (
-                                      <button
-                                        onClick={() => handleChangeRole(member.id, member.role === "admin" ? "member" : "admin")}
-                                        className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
-                                      >
-                                        <Shield className="h-3.5 w-3.5" />
-                                        {member.role === "admin" ? "관리자 해제" : "관리자 지정"}
-                                      </button>
-                                    )}
+                              {openMenuId === member.id && (
+                                <div className="absolute right-0 top-8 w-36 bg-background border rounded-lg shadow-lg py-1 z-20">
+                                  {member.role === "instructor" && (
                                     <button
-                                      onClick={() => handleRemove(member.id)}
-                                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
+                                      onClick={() => handleToggleOwner(member.id, member.is_owner)}
+                                      className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2"
                                     >
-                                      <UserMinus className="h-3.5 w-3.5" />
-                                      내보내기
+                                      <Crown className="h-3.5 w-3.5" />
+                                      {member.is_owner ? "관리자 해제" : "관리자 지정"}
                                     </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                                  )}
+                                  <button
+                                    onClick={() => handleRemove(member.id)}
+                                    className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted flex items-center gap-2 text-destructive"
+                                  >
+                                    <UserMinus className="h-3.5 w-3.5" />
+                                    내보내기
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -374,21 +439,26 @@ export default function MembersPage({ params }: MembersPageProps) {
         {selectedMember && (
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b shrink-0">
-              <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs", roleColors[selectedMember.role])}>
-                {(() => { const RoleIcon = roleIcons[selectedMember.role]; return <RoleIcon className="h-3 w-3" />; })()}
-                {roleLabels[selectedMember.role]}
-              </span>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">{ROLE_LABELS[selectedMember.role]}</span>
+                {selectedMember.is_owner && (
+                  <span className="inline-flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
+                    <Crown className="h-3.5 w-3.5" />
+                    관리자
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
-                {canManage && selectedMember.role !== "owner" && (
+                {canManage && (
                   <>
-                    {userRole === "owner" && (
+                    {selectedMember.role === "instructor" && (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleChangeRole(selectedMember.id, selectedMember.role === "admin" ? "member" : "admin")}
+                        onClick={() => handleToggleOwner(selectedMember.id, selectedMember.is_owner)}
                       >
-                        <Shield className="h-4 w-4 mr-1" />
-                        {selectedMember.role === "admin" ? "관리자 해제" : "관리자 지정"}
+                        <Crown className="h-4 w-4 mr-1" />
+                        {selectedMember.is_owner ? "관리자 해제" : "관리자 지정"}
                       </Button>
                     )}
                     <Button
@@ -412,8 +482,9 @@ export default function MembersPage({ params }: MembersPageProps) {
             </div>
 
             <div className="flex-1 overflow-auto p-4">
+              {/* 기본 정보 */}
               <div className="flex flex-col items-center mb-6">
-                <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center text-2xl mb-3">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl mb-2">
                   {selectedMember.user?.avatar_url ? (
                     <img src={selectedMember.user.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
                   ) : (
@@ -426,20 +497,163 @@ export default function MembersPage({ params }: MembersPageProps) {
                 )}
               </div>
 
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">이메일</span>
-                  <span>{selectedMember.user?.email || "-"}</span>
+              {isLoadingDetail ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">가입일</span>
-                  <span>{formatDateShort(selectedMember.created_at)}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">역할</span>
-                  <span>{roleLabels[selectedMember.role]}</span>
-                </div>
-              </div>
+              ) : (
+                <>
+                  {/* 강사 상세 */}
+                  {selectedMember.role === "instructor" && (
+                    <div className="space-y-4">
+                      {/* 담당 학생 목록 */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <GraduationCap className="h-4 w-4" />
+                          담당 학생 ({assignedStudents.length})
+                        </h4>
+                        {assignedStudents.length > 0 ? (
+                          <div className="space-y-2">
+                            {assignedStudents.map((student) => (
+                              <div
+                                key={student.id}
+                                className="p-3 rounded-lg border bg-muted/30"
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-medium text-sm">
+                                    {student.nickname || student.user?.name}
+                                  </span>
+                                </div>
+                                {/* 수업 시간 */}
+                                {student.lesson_schedule && (student.lesson_schedule as LessonSchedule[]).length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {(student.lesson_schedule as LessonSchedule[]).map((schedule, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary"
+                                      >
+                                        {WEEKDAYS_KO[schedule.day_of_week]} {schedule.start_time}~{schedule.end_time}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            담당 학생이 없습니다
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 학생 상세 */}
+                  {selectedMember.role === "student" && (
+                    <div className="space-y-4">
+                      {/* 담당 강사 */}
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">담당 강사</span>
+                        <span className="text-sm font-medium">
+                          {instructorInfo?.nickname || instructorInfo?.user?.name || "-"}
+                        </span>
+                      </div>
+
+                      {/* 수업 시간 */}
+                      {selectedMember.lesson_schedule && (selectedMember.lesson_schedule as LessonSchedule[]).length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            수업 시간
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedMember.lesson_schedule as LessonSchedule[]).map((schedule, idx) => (
+                              <span
+                                key={idx}
+                                className="text-sm px-3 py-1 rounded-lg bg-primary/10 text-primary"
+                              >
+                                {WEEKDAYS_KO[schedule.day_of_week]} {schedule.start_time}~{schedule.end_time}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 수업 이력 */}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          수업 이력
+                        </h4>
+                        {lessonHistory.length > 0 ? (
+                          <div className="border rounded-lg overflow-hidden">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50">
+                                <tr className="text-left text-muted-foreground">
+                                  <th className="py-2 px-3 font-medium">수업</th>
+                                  <th className="py-2 px-3 font-medium hidden sm:table-cell">내용</th>
+                                  <th className="py-2 px-3 font-medium hidden md:table-cell">과제</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y">
+                                {lessonHistory.map((lesson) => {
+                                  const lessonDate = new Date(lesson.scheduled_at);
+                                  const dateStr = `${lessonDate.getMonth() + 1}/${lessonDate.getDate()}`;
+                                  return (
+                                    <tr key={lesson.id} className="hover:bg-muted/30">
+                                      <td className="py-2 px-3">
+                                        <div className="font-medium">
+                                          {selectedMember.nickname || selectedMember.user?.name}_{dateStr}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {lessonDate.toLocaleDateString("ko-KR", {
+                                            month: "short",
+                                            day: "numeric",
+                                            weekday: "short",
+                                          })}
+                                        </div>
+                                      </td>
+                                      <td className="py-2 px-3 hidden sm:table-cell">
+                                        <p className="text-muted-foreground line-clamp-2">
+                                          {lesson.content || "-"}
+                                        </p>
+                                      </td>
+                                      <td className="py-2 px-3 hidden md:table-cell">
+                                        <p className="text-muted-foreground line-clamp-2">
+                                          {lesson.homework || "-"}
+                                        </p>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            수업 이력이 없습니다
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 보호자/기타 역할 */}
+                  {selectedMember.role !== "instructor" && selectedMember.role !== "student" && (
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">이메일</span>
+                        <span>{selectedMember.user?.email || "-"}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b">
+                        <span className="text-muted-foreground">가입일</span>
+                        <span>{formatDateShort(selectedMember.created_at)}</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}

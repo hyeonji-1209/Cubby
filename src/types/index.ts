@@ -11,12 +11,9 @@ export type GroupType =
   | 'other';       // 기타
 
 export type MemberRole =
-  | 'owner'        // 소유자
-  | 'admin'        // 관리자
-  | 'instructor'   // 강사 (교육 타입)
-  | 'student'      // 학생 (교육 타입)
-  | 'guardian'     // 보호자 (교육 타입)
-  | 'member';      // 일반 멤버
+  | 'instructor'   // 원장/강사
+  | 'student'      // 학생/수강생
+  | 'guardian';    // 보호자
 
 export type ApprovalStatus =
   | 'pending'      // 대기중
@@ -141,8 +138,8 @@ export interface GroupMember {
   group_id: string;
   user_id: string;
   role: MemberRole;
+  is_owner: boolean;
   nickname?: string;
-  position_id?: string;
   status: ApprovalStatus;
 
   // 교육 타입 전용

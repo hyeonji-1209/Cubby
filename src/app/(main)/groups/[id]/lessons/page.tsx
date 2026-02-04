@@ -5,6 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   BookOpen,
   Plus,
   X,
@@ -22,7 +29,7 @@ import {
 import { Lesson, GroupMember, User as UserType, Attendance } from "@/types";
 import { cn } from "@/lib/utils";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { formatDateWithWeekday } from "@/lib/date-utils";
+import { formatDateWithWeekday, getRoundedCurrentTime } from "@/lib/date-utils";
 
 interface LessonsPageProps {
   params: { id: string };
@@ -42,11 +49,12 @@ export default function LessonsPage({ params }: LessonsPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-  const [selectedTime, setSelectedTime] = useState("10:00");
+  const [selectedTime, setSelectedTime] = useState(getRoundedCurrentTime());
   const [duration, setDuration] = useState(60);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<string>("member");
+  const [userRole, setUserRole] = useState<string>("student");
+  const [isOwner, setIsOwner] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [viewMode, setViewMode] = useState<"upcoming" | "past">("upcoming");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -64,13 +72,14 @@ export default function LessonsPage({ params }: LessonsPageProps) {
 
     const { data: membership } = await supabase
       .from("group_members")
-      .select("id, role")
+      .select("id, role, is_owner")
       .eq("group_id", params.id)
       .eq("user_id", user?.id)
       .single();
 
     if (membership) {
       setUserRole(membership.role);
+      setIsOwner(membership.is_owner || false);
       setMembershipId(membership.id);
     }
 
@@ -112,18 +121,18 @@ export default function LessonsPage({ params }: LessonsPageProps) {
       .from("group_members")
       .select(`
         *,
-        user:profiles(*)
+        user:profiles!user_id(*)
       `)
       .eq("group_id", params.id)
       .eq("status", "approved")
-      .in("role", ["member"]);
+      .in("role", ["student"]);
 
     setLessons(lessonsWithAttendance as LessonWithDetails[]);
     setMembers((memberData as (GroupMember & { user: UserType })[]) || []);
     setIsLoading(false);
   };
 
-  const canManage = userRole === "owner" || userRole === "admin" || userRole === "instructor";
+  const canManage = isOwner || userRole === "instructor";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,7 +204,7 @@ export default function LessonsPage({ params }: LessonsPageProps) {
   const resetForm = () => {
     setShowForm(false);
     setSelectedDate(new Date().toISOString().split("T")[0]);
-    setSelectedTime("10:00");
+    setSelectedTime(getRoundedCurrentTime());
     setDuration(60);
     setSelectedStudent("");
     setIsSubmitting(false);
@@ -402,18 +411,19 @@ export default function LessonsPage({ params }: LessonsPageProps) {
 
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">학생 (선택)</label>
-              <select
-                value={selectedStudent}
-                onChange={(e) => setSelectedStudent(e.target.value)}
-                className="w-full p-2 rounded-md border bg-background"
-              >
-                <option value="">선택 안함 (그룹 수업)</option>
-                {members.map((member) => (
-                  <option key={member.id} value={member.user_id}>
-                    {member.nickname || member.user?.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedStudent || "none"} onValueChange={(v) => setSelectedStudent(v === "none" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="선택 안함 (그룹 수업)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">선택 안함 (그룹 수업)</SelectItem>
+                  {members.map((member) => (
+                    <SelectItem key={member.id} value={member.user_id || member.id}>
+                      {member.nickname || member.user?.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

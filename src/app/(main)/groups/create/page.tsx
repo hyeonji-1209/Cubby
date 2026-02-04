@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { GroupType, GroupSettings } from "@/types";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/lib/contexts/user-context";
 
 const groupTypes: {
   type: string;
@@ -54,6 +55,7 @@ const stepTitles: Record<number, { title: string; desc: string }> = {
 export default function CreateGroupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshGroups } = useUser();
   const initialType = (searchParams.get("type") as GroupType) || null;
 
   const [step, setStep] = useState(initialType ? 2 : 1);
@@ -94,7 +96,6 @@ export default function CreateGroupPage() {
 
   const handleTypeSelect = (type: GroupType) => {
     setGroupType(type);
-    setIcon(type);
     setStep(2);
   };
 
@@ -165,12 +166,16 @@ export default function CreateGroupPage() {
     await supabase.from("group_members").insert({
       group_id: group.id,
       user_id: user.id,
-      role: "owner",
+      role: "instructor",
+      is_owner: true,
       nickname: myNickname || undefined,
       family_role: myRole || undefined,
       birthday: myBirthday || undefined,
       status: "approved",
     });
+
+    // 사이드바 그룹 목록 갱신
+    await refreshGroups();
 
     router.push(`/groups/${group.id}`);
   };

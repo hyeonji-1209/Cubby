@@ -68,7 +68,7 @@ export default async function GroupPage({ params }: GroupPageProps) {
     .order("start_at");
 
   const typedGroup = group as Group;
-  const isOwnerOrAdmin = myMembership?.role === "owner" || myMembership?.role === "admin";
+  const isOwnerOrAdmin = myMembership?.is_owner;
   const isEducationType = typedGroup.type === "education";
 
   return (

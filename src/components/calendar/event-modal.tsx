@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { X, Loader2, Calendar, Trash2, MapPin } from "lucide-react";
+import { getRoundedCurrentTime, addMinutesToTime } from "@/lib/date-utils";
 import { CalendarEvent, ClassRoom } from "@/types";
 import {
   Select,
@@ -167,8 +168,10 @@ export function EventModal({
         const dateStr = format(initialDate, "yyyy-MM-dd");
         setStartDate(dateStr);
         setEndDate(dateStr);
-        setStartTime("09:00");
-        setEndTime("10:00");
+        // 현재 시간 기준 30분 반올림
+        const roundedTime = getRoundedCurrentTime();
+        setStartTime(roundedTime);
+        setEndTime(addMinutesToTime(roundedTime, 60));
         setAllDay(false);
         setIsAcademyHoliday(false);
         setLocationId("");
@@ -178,6 +181,12 @@ export function EventModal({
       }
     }
   }, [isOpen, initialDate, event]);
+
+  // 시작 시간 변경 시 종료 시간 자동 조정 (+1시간)
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    setEndTime(addMinutesToTime(newStartTime, 60));
+  };
 
   // 충돌 감지 업데이트
   useEffect(() => {
@@ -286,8 +295,9 @@ export function EventModal({
     setDescription("");
     setStartDate("");
     setEndDate("");
-    setStartTime("09:00");
-    setEndTime("10:00");
+    const roundedTime = getRoundedCurrentTime();
+    setStartTime(roundedTime);
+    setEndTime(addMinutesToTime(roundedTime, 60));
     setAllDay(false);
     setIsAcademyHoliday(false);
     setLocationId("");
@@ -414,7 +424,7 @@ export function EventModal({
                   <Input
                     type="time"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">

@@ -37,7 +37,8 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string>("member");
+  const [userRole, setUserRole] = useState<string>("student");
+  const [isOwner, setIsOwner] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
@@ -56,13 +57,15 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
     // 사용자 역할 확인
     const { data: membership } = await supabase
       .from("group_members")
-      .select("role")
+      .select("role, is_owner")
       .eq("group_id", params.id)
       .eq("user_id", user?.id)
       .single();
 
-    const role = membership?.role || "member";
+    const role = membership?.role || "student";
+    const memberIsOwner = membership?.is_owner || false;
     setUserRole(role);
+    setIsOwner(memberIsOwner);
 
     // 공지사항 로드
     const { data } = await supabase
@@ -75,7 +78,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
     // 강사 전용 공지 필터링
     const filteredData = (data as Announcement[] || []).filter(ann => {
       if (!ann.is_instructor_only) return true;
-      return ["owner", "admin", "instructor"].includes(role);
+      return memberIsOwner || role === "instructor";
     });
 
     setAnnouncements(filteredData);
@@ -95,7 +98,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
     setIsLoading(false);
   };
 
-  const canManage = ["owner", "admin", "instructor"].includes(userRole);
+  const canManage = isOwner || userRole === "instructor";
 
   const handleRowClick = async (announcement: Announcement) => {
     setSelectedAnnouncement(announcement);
@@ -450,7 +453,7 @@ export default function AnnouncementsPage({ params }: AnnouncementsPageProps) {
               </div>
               <div className="flex items-center gap-1">
                 {/* Edit/Delete for owner or author */}
-                {(userRole === "owner" || currentUserId === selectedAnnouncement.author_id) && (
+                {(isOwner || currentUserId === selectedAnnouncement.author_id) && (
                   <>
                     <button
                       onClick={() => {

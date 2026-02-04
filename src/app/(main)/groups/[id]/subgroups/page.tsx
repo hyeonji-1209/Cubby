@@ -18,6 +18,7 @@ import { SubGroup, GroupMember, User } from "@/types";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/date-utils";
+import { useUser } from "@/lib/contexts/user-context";
 
 interface SubgroupsPageProps {
   params: { id: string };
@@ -25,6 +26,7 @@ interface SubgroupsPageProps {
 
 export default function SubgroupsPage({ params }: SubgroupsPageProps) {
   const { confirm } = useConfirm();
+  const { user: currentUser } = useUser();
 
   const [subgroups, setSubgroups] = useState<(SubGroup & { members?: User[] })[]>([]);
   const [members, setMembers] = useState<(GroupMember & { user: User })[]>([]);
@@ -34,58 +36,59 @@ export default function SubgroupsPage({ params }: SubgroupsPageProps) {
   const [name, setName] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<string>("member");
+  const [userRole, setUserRole] = useState<string>("student");
+  const [isOwner, setIsOwner] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedSubgroup, setSelectedSubgroup] = useState<(SubGroup & { members?: User[] }) | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, [params.id]);
+    if (currentUser) {
+      loadData();
+    }
+  }, [params.id, currentUser?.id]);
 
   const loadData = async () => {
+    if (!currentUser) return;
+
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: membership } = await supabase
-      .from("group_members")
-      .select("role")
-      .eq("group_id", params.id)
-      .eq("user_id", user?.id)
-      .single();
+    // 병렬로 모든 데이터 조회
+    const [membershipResult, subgroupResult, memberResult] = await Promise.all([
+      supabase
+        .from("group_members")
+        .select("role, is_owner")
+        .eq("group_id", params.id)
+        .eq("user_id", currentUser.id)
+        .single(),
+      supabase
+        .from("subgroups")
+        .select("*")
+        .eq("group_id", params.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("group_members")
+        .select(`*, user:profiles!user_id(*)`)
+        .eq("group_id", params.id)
+        .eq("status", "approved"),
+    ]);
 
-    if (membership) {
-      setUserRole(membership.role);
+    if (membershipResult.data) {
+      setUserRole(membershipResult.data.role);
+      setIsOwner(membershipResult.data.is_owner || false);
     }
-
-    const { data: subgroupData } = await supabase
-      .from("subgroups")
-      .select("*")
-      .eq("group_id", params.id)
-      .order("created_at", { ascending: false });
-
-    const { data: memberData } = await supabase
-      .from("group_members")
-      .select(`
-        *,
-        user:users(*)
-      `)
-      .eq("group_id", params.id)
-      .eq("status", "approved");
-
-    setSubgroups((subgroupData as (SubGroup & { members?: User[] })[]) || []);
-    setMembers((memberData as (GroupMember & { user: User })[]) || []);
+    setSubgroups((subgroupResult.data as (SubGroup & { members?: User[] })[]) || []);
+    setMembers((memberResult.data as (GroupMember & { user: User })[]) || []);
     setIsLoading(false);
   };
 
-  const canManage = userRole === "owner" || userRole === "admin";
+  const canManage = isOwner;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !currentUser) return;
 
     setIsSubmitting(true);
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     if (editingId) {
       await supabase
@@ -100,7 +103,7 @@ export default function SubgroupsPage({ params }: SubgroupsPageProps) {
       await supabase.from("subgroups").insert({
         group_id: params.id,
         name: name.trim(),
-        instructor_id: user?.id,
+        instructor_id: currentUser.id,
         member_ids: selectedMembers,
         lesson_schedule: [],
       });

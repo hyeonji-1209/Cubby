@@ -94,3 +94,44 @@ export const WEEKDAYS_KO = ["일", "월", "화", "수", "목", "금", "토"];
 export function getWeekdayKo(dayIndex: number): string {
   return WEEKDAYS_KO[dayIndex % 7];
 }
+
+/**
+ * 현재 시간을 30분 단위로 반올림 (HH:mm 형식)
+ * 예: 10:17 → 10:30, 10:45 → 11:00
+ */
+export function getRoundedCurrentTime(): string {
+  const now = new Date();
+  let hours = now.getHours();
+  let minutes = now.getMinutes();
+
+  // 30분 단위로 반올림
+  if (minutes < 15) {
+    minutes = 0;
+  } else if (minutes < 45) {
+    minutes = 30;
+  } else {
+    minutes = 0;
+    hours += 1;
+  }
+
+  // 24시 넘어가면 0시로
+  if (hours >= 24) {
+    hours = 0;
+  }
+
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+}
+
+/**
+ * 시간에 지정된 분을 더함 (HH:mm 형식)
+ * 예: addMinutesToTime("10:30", 60) → "11:30"
+ */
+export function addMinutesToTime(time: string, minutesToAdd: number): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + minutesToAdd;
+
+  let newHours = Math.floor(totalMinutes / 60) % 24;
+  const newMinutes = totalMinutes % 60;
+
+  return `${newHours.toString().padStart(2, "0")}:${newMinutes.toString().padStart(2, "0")}`;
+}

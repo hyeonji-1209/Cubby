@@ -16,8 +16,18 @@ import {
   ShieldCheck,
   ChevronLeft,
 } from "lucide-react";
-import { Group } from "@/types";
+import { GroupType, GroupSettings } from "@/types";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/lib/contexts/user-context";
+
+// RPC에서 반환하는 그룹 정보 타입
+interface GroupInfo {
+  id: string;
+  name: string;
+  type: GroupType;
+  settings: GroupSettings | null;
+  owner_id: string;
+}
 
 interface JoinGroupModalProps {
   isOpen: boolean;
@@ -29,12 +39,13 @@ type EducationRole = "student" | "instructor" | "guardian";
 
 export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
   const router = useRouter();
+  const { refreshGroups } = useUser();
   const [step, setStep] = useState<JoinStep>("code");
   const [inviteCode, setInviteCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [groupName, setGroupName] = useState("");
-  const [foundGroup, setFoundGroup] = useState<Group | null>(null);
+  const [foundGroup, setFoundGroup] = useState<GroupInfo | null>(null);
   const [selectedRole, setSelectedRole] = useState<EducationRole | null>(null);
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
@@ -52,18 +63,17 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
         return;
       }
 
-      // 초대 코드로 모임 찾기
-      const { data: group, error: groupError } = await supabase
-        .from("groups")
-        .select("*")
-        .eq("invite_code", inviteCode.toUpperCase().trim())
-        .single();
+      // 초대 코드로 모임 찾기 (RLS 우회 함수 사용)
+      const { data: groupData, error: groupError } = await supabase
+        .rpc("get_group_by_invite_code", { code: inviteCode });
 
-      if (groupError || !group) {
+      if (groupError || !groupData || groupData.length === 0) {
         setError("유효하지 않은 초대 코드입니다.");
         setIsLoading(false);
         return;
       }
+
+      const group = groupData[0];
 
       // 초대 코드 유효성 검사
       const settings = group.settings || {};
@@ -105,15 +115,15 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
         return;
       }
 
-      setFoundGroup(group as Group);
+      setFoundGroup(group as GroupInfo);
       setGroupName(group.name);
 
       // 교육 타입이면 역할 선택 단계로
       if (group.type === "education") {
         setStep("role");
       } else {
-        // 교육 타입이 아니면 바로 가입 처리
-        await joinGroup(group as Group, "member");
+        // 교육 타입이 아니면 바로 가입 처리 (학생으로)
+        await joinGroup(group as GroupInfo, "student");
       }
     } catch {
       setError("오류가 발생했습니다. 다시 시도해주세요.");
@@ -130,7 +140,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
     setIsLoading(false);
   };
 
-  const joinGroup = async (group: Group, role: EducationRole | "member") => {
+  const joinGroup = async (group: GroupInfo, role: EducationRole) => {
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -143,7 +153,7 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
       // 역할 매핑
       const memberRole = role === "instructor" ? "instructor"
         : role === "guardian" ? "guardian"
-        : "member";
+        : "student";
 
       // 모임 가입 신청
       const { error: joinError } = await supabase
@@ -153,12 +163,34 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
           user_id: user.id,
           role: memberRole,
           status: "pending",
+          is_owner: false,
         });
 
       if (joinError) {
         setError("모임 가입에 실패했습니다. 다시 시도해주세요.");
         return;
       }
+
+      // Owner에게 알림 보내기
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
+
+      const applicantName = profile?.name || user.email?.split("@")[0] || "새 멤버";
+      const roleLabel = memberRole === "instructor" ? "강사"
+        : memberRole === "guardian" ? "보호자"
+        : "학생";
+
+      await supabase.from("notifications").insert({
+        user_id: group.owner_id,
+        group_id: group.id,
+        type: "member_joined",
+        title: "새 가입 신청",
+        body: `${applicantName}님이 ${roleLabel}(으)로 가입을 신청했습니다.`,
+        data: { applicant_id: user.id, role: memberRole },
+      });
 
       // 단발성 코드인 경우 사용됨으로 표시
       const settings = group.settings || {};
@@ -176,6 +208,8 @@ export function JoinGroupModal({ isOpen, onClose }: JoinGroupModalProps) {
           .eq("id", group.id);
       }
 
+      // 사이드바 그룹 목록 새로고침
+      await refreshGroups();
       setStep("success");
     } catch {
       setError("오류가 발생했습니다. 다시 시도해주세요.");

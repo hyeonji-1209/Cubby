@@ -5,6 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   X,
   Loader2,
   Plus,
@@ -14,7 +21,7 @@ import {
 import { GroupMember, User, Group, LessonSchedule, MemberRole } from "@/types";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS, ROLE_ICONS, ROLE_BG_COLORS, ROLE_ICON_COLORS } from "@/lib/role-utils";
-import { WEEKDAYS_KO } from "@/lib/date-utils";
+import { WEEKDAYS_KO, getRoundedCurrentTime, addMinutesToTime } from "@/lib/date-utils";
 
 interface MemberApprovalModalProps {
   isOpen: boolean;
@@ -25,6 +32,16 @@ interface MemberApprovalModalProps {
   instructors: (GroupMember & { user: User })[];
 }
 
+
+// 기본 스케줄 생성 헬퍼
+const createDefaultSchedule = (): LessonSchedule => {
+  const startTime = getRoundedCurrentTime();
+  return {
+    day_of_week: 1,
+    start_time: startTime,
+    end_time: addMinutesToTime(startTime, 60),
+  };
+};
 
 export function MemberApprovalModal({
   isOpen,
@@ -38,13 +55,24 @@ export function MemberApprovalModal({
 
   // 강사 승인용 상태
   const [paymentDay, setPaymentDay] = useState<number>(25);
+  const [isCustomPaymentDay, setIsCustomPaymentDay] = useState(false);
+  const [grantOwner, setGrantOwner] = useState(false);
+
+  // 현재 owner 수 계산 (max_owners 체크용)
+  const currentOwnerCount = instructors.filter(i => i.is_owner).length;
+  const maxOwners = group.settings?.max_owners || 999;
+  const canGrantOwner = currentOwnerCount < maxOwners;
 
   // 학생 승인용 상태
   const [selectedInstructor, setSelectedInstructor] = useState<string>("");
   const [lessonSchedule, setLessonSchedule] = useState<LessonSchedule[]>([
-    { day_of_week: 1, start_time: "14:00", end_time: "15:00" },
+    createDefaultSchedule(),
   ]);
   const [studentPaymentDay, setStudentPaymentDay] = useState<number>(1);
+  const [isCustomStudentPaymentDay, setIsCustomStudentPaymentDay] = useState(false);
+
+  // 납부일 프리셋 옵션
+  const paymentDayPresets = [1, 10, 25];
 
   // 보호자 승인용 상태
   const [children, setChildren] = useState<{
@@ -52,12 +80,14 @@ export function MemberApprovalModal({
     instructor_id: string;
     schedule: LessonSchedule[];
     payment_day: number;
+    isCustomPaymentDay: boolean;
   }[]>([
     {
       name: "",
       instructor_id: "",
-      schedule: [{ day_of_week: 1, start_time: "14:00", end_time: "15:00" }],
+      schedule: [createDefaultSchedule()],
       payment_day: 1,
+      isCustomPaymentDay: false,
     },
   ]);
 
@@ -65,14 +95,18 @@ export function MemberApprovalModal({
   useEffect(() => {
     if (isOpen) {
       setPaymentDay(25);
-      setSelectedInstructor(instructors[0]?.id || "");
-      setLessonSchedule([{ day_of_week: 1, start_time: "14:00", end_time: "15:00" }]);
+      setIsCustomPaymentDay(false);
+      setGrantOwner(false);
+      setSelectedInstructor(instructors[0]?.user_id || "");
+      setLessonSchedule([createDefaultSchedule()]);
       setStudentPaymentDay(1);
+      setIsCustomStudentPaymentDay(false);
       setChildren([{
         name: "",
-        instructor_id: instructors[0]?.id || "",
-        schedule: [{ day_of_week: 1, start_time: "14:00", end_time: "15:00" }],
+        instructor_id: instructors[0]?.user_id || "",
+        schedule: [createDefaultSchedule()],
         payment_day: 1,
+        isCustomPaymentDay: false,
       }]);
     }
   }, [isOpen, instructors]);
@@ -94,6 +128,7 @@ export function MemberApprovalModal({
           .update({
             status: "approved",
             payment_date: paymentDay,
+            is_owner: grantOwner && canGrantOwner,
           })
           .eq("id", member.id);
 
@@ -105,7 +140,7 @@ export function MemberApprovalModal({
           lesson_schedule: [],
           member_ids: [],
         });
-      } else if (role === "member") {
+      } else if (role === "student") {
         // 학생 승인: 담당강사, 수업시간, 납부일 설정
         await supabase
           .from("group_members")
@@ -125,18 +160,19 @@ export function MemberApprovalModal({
           })
           .eq("id", member.id);
 
-        // 자녀들을 멤버로 추가
+        // 자녀들을 학생으로 추가
         for (const child of children) {
           if (child.name.trim()) {
             await supabase.from("group_members").insert({
               group_id: group.id,
               user_id: null, // 자녀는 별도 계정 없이 등록
-              role: "member",
+              role: "student",
               status: "approved",
               nickname: child.name.trim(),
               instructor_id: child.instructor_id,
               lesson_schedule: child.schedule,
               payment_date: child.payment_day,
+              is_owner: false,
             });
           }
         }
@@ -160,7 +196,7 @@ export function MemberApprovalModal({
   const addSchedule = () => {
     setLessonSchedule([
       ...lessonSchedule,
-      { day_of_week: 1, start_time: "14:00", end_time: "15:00" },
+      createDefaultSchedule(),
     ]);
   };
 
@@ -171,6 +207,10 @@ export function MemberApprovalModal({
   const updateSchedule = (index: number, field: keyof LessonSchedule, value: string | number) => {
     const updated = [...lessonSchedule];
     updated[index] = { ...updated[index], [field]: value };
+    // 시작 시간 변경 시 종료 시간 자동 조정
+    if (field === "start_time" && typeof value === "string") {
+      updated[index].end_time = addMinutesToTime(value, 60);
+    }
     setLessonSchedule(updated);
   };
 
@@ -179,9 +219,10 @@ export function MemberApprovalModal({
       ...children,
       {
         name: "",
-        instructor_id: instructors[0]?.id || "",
-        schedule: [{ day_of_week: 1, start_time: "14:00", end_time: "15:00" }],
+        instructor_id: instructors[0]?.user_id || "",
+        schedule: [createDefaultSchedule()],
         payment_day: 1,
+        isCustomPaymentDay: false,
       },
     ]);
   };
@@ -199,14 +240,13 @@ export function MemberApprovalModal({
   };
 
   const getRoleIconComponent = () => {
-    const Icon = ROLE_ICONS[role as MemberRole] || ROLE_ICONS.member;
-    const iconColor = ROLE_ICON_COLORS[role as MemberRole] || ROLE_ICON_COLORS.member;
+    const Icon = ROLE_ICONS[role as MemberRole] || ROLE_ICONS.student;
+    const iconColor = ROLE_ICON_COLORS[role as MemberRole] || ROLE_ICON_COLORS.student;
     return <Icon className={cn("h-5 w-5", iconColor)} />;
   };
 
   const getRoleLabel = () => {
-    if (role === "member") return "학생/수강생";
-    return ROLE_LABELS[role as MemberRole] || ROLE_LABELS.member;
+    return ROLE_LABELS[role as MemberRole] || "학생";
   };
 
   return (
@@ -256,42 +296,100 @@ export function MemberApprovalModal({
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">급여일</label>
-                <select
-                  value={paymentDay}
-                  onChange={(e) => setPaymentDay(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-md border bg-background"
-                >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>
-                      매월 {day}일
-                    </option>
+                <div className="flex gap-2">
+                  {paymentDayPresets.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        setPaymentDay(day);
+                        setIsCustomPaymentDay(false);
+                      }}
+                      className={cn(
+                        "flex-1 h-10 rounded-md border text-sm transition-colors",
+                        !isCustomPaymentDay && paymentDay === day
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-muted"
+                      )}
+                    >
+                      {day}일
+                    </button>
                   ))}
-                </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomPaymentDay(true)}
+                    className={cn(
+                      "flex-1 h-10 rounded-md border text-sm transition-colors",
+                      isCustomPaymentDay
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted"
+                    )}
+                  >
+                    직접입력
+                  </button>
+                </div>
+                {isCustomPaymentDay && (
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={paymentDay}
+                    onChange={(e) => setPaymentDay(Number(e.target.value))}
+                    placeholder="1~31"
+                    className="mt-2"
+                  />
+                )}
                 <p className="text-xs text-muted-foreground">
                   강사에게 급여가 지급되는 날짜입니다
                 </p>
+              </div>
+
+              {/* 관리자 권한 부여 */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">관리 권한</label>
+                {canGrantOwner ? (
+                  <label className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      checked={grantOwner}
+                      onChange={(e) => setGrantOwner(e.target.checked)}
+                      className="w-4 h-4 rounded border-input"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">관리자 권한 부여</p>
+                      <p className="text-xs text-muted-foreground">
+                        멤버 승인, 설정 변경 등의 권한을 부여합니다
+                      </p>
+                    </div>
+                  </label>
+                ) : (
+                  <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted">
+                    관리자가 최대 인원({maxOwners}명)에 도달했습니다
+                  </p>
+                )}
               </div>
             </div>
           )}
 
           {/* 학생 승인 폼 */}
-          {isEducationType && role === "member" && (
+          {isEducationType && role === "student" && (
             <div className="space-y-4">
               {/* 담당 강사 */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">담당 강사</label>
                 {instructors.length > 0 ? (
-                  <select
-                    value={selectedInstructor}
-                    onChange={(e) => setSelectedInstructor(e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border bg-background"
-                  >
-                    {instructors.map((instructor) => (
-                      <option key={instructor.id} value={instructor.id}>
-                        {instructor.nickname || instructor.user?.name}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={selectedInstructor} onValueChange={setSelectedInstructor}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="강사 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {instructors.map((instructor) => (
+                        <SelectItem key={instructor.id} value={instructor.user_id || ""}>
+                          {instructor.nickname || instructor.user?.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <p className="text-sm text-muted-foreground p-3 rounded-lg bg-muted">
                     등록된 강사가 없습니다
@@ -320,19 +418,21 @@ export function MemberApprovalModal({
                       key={index}
                       className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
                     >
-                      <select
-                        value={schedule.day_of_week}
-                        onChange={(e) =>
-                          updateSchedule(index, "day_of_week", Number(e.target.value))
-                        }
-                        className="h-9 px-2 rounded border bg-background text-sm"
+                      <Select
+                        value={String(schedule.day_of_week)}
+                        onValueChange={(value) => updateSchedule(index, "day_of_week", Number(value))}
                       >
-                        {WEEKDAYS_KO.map((day, i) => (
-                          <option key={i} value={i}>
-                            {day}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className="h-9 w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {WEEKDAYS_KO.map((day, i) => (
+                            <SelectItem key={i} value={String(i)}>
+                              {day}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <div className="flex items-center gap-1 flex-1">
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <Input
@@ -370,17 +470,49 @@ export function MemberApprovalModal({
               {/* 수업료 납부일 */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">수업료 납부일</label>
-                <select
-                  value={studentPaymentDay}
-                  onChange={(e) => setStudentPaymentDay(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-md border bg-background"
-                >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>
-                      매월 {day}일
-                    </option>
+                <div className="flex gap-2">
+                  {paymentDayPresets.map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        setStudentPaymentDay(day);
+                        setIsCustomStudentPaymentDay(false);
+                      }}
+                      className={cn(
+                        "flex-1 h-10 rounded-md border text-sm transition-colors",
+                        !isCustomStudentPaymentDay && studentPaymentDay === day
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-muted"
+                      )}
+                    >
+                      {day}일
+                    </button>
                   ))}
-                </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomStudentPaymentDay(true)}
+                    className={cn(
+                      "flex-1 h-10 rounded-md border text-sm transition-colors",
+                      isCustomStudentPaymentDay
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background hover:bg-muted"
+                    )}
+                  >
+                    직접입력
+                  </button>
+                </div>
+                {isCustomStudentPaymentDay && (
+                  <Input
+                    type="number"
+                    min={1}
+                    max={31}
+                    value={studentPaymentDay}
+                    onChange={(e) => setStudentPaymentDay(Number(e.target.value))}
+                    placeholder="1~31"
+                    className="mt-2"
+                  />
+                )}
               </div>
             </div>
           )}
@@ -433,20 +565,21 @@ export function MemberApprovalModal({
 
                   {/* 담당 강사 */}
                   {instructors.length > 0 && (
-                    <select
+                    <Select
                       value={child.instructor_id}
-                      onChange={(e) =>
-                        updateChild(childIndex, "instructor_id", e.target.value)
-                      }
-                      className="w-full h-10 px-3 rounded-md border bg-background text-sm"
+                      onValueChange={(value) => updateChild(childIndex, "instructor_id", value)}
                     >
-                      <option value="">담당 강사 선택</option>
-                      {instructors.map((instructor) => (
-                        <option key={instructor.id} value={instructor.id}>
-                          {instructor.nickname || instructor.user?.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="담당 강사 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {instructors.map((instructor) => (
+                          <SelectItem key={instructor.id} value={instructor.user_id || ""}>
+                            {instructor.nickname || instructor.user?.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
 
                   {/* 수업 시간 */}
@@ -458,7 +591,7 @@ export function MemberApprovalModal({
                         onClick={() =>
                           updateChild(childIndex, "schedule", [
                             ...child.schedule,
-                            { day_of_week: 1, start_time: "14:00", end_time: "15:00" },
+                            createDefaultSchedule(),
                           ])
                         }
                         className="text-xs text-primary hover:underline"
@@ -471,24 +604,28 @@ export function MemberApprovalModal({
                         key={scheduleIndex}
                         className="flex items-center gap-2"
                       >
-                        <select
-                          value={schedule.day_of_week}
-                          onChange={(e) => {
+                        <Select
+                          value={String(schedule.day_of_week)}
+                          onValueChange={(value) => {
                             const updated = [...child.schedule];
                             updated[scheduleIndex] = {
                               ...updated[scheduleIndex],
-                              day_of_week: Number(e.target.value),
+                              day_of_week: Number(value),
                             };
                             updateChild(childIndex, "schedule", updated);
                           }}
-                          className="h-8 px-2 rounded border bg-background text-xs"
                         >
-                          {WEEKDAYS_KO.map((day, i) => (
-                            <option key={i} value={i}>
-                              {day}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className="h-8 w-16 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {WEEKDAYS_KO.map((day, i) => (
+                              <SelectItem key={i} value={String(i)}>
+                                {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Input
                           type="time"
                           value={schedule.start_time}
@@ -497,6 +634,7 @@ export function MemberApprovalModal({
                             updated[scheduleIndex] = {
                               ...updated[scheduleIndex],
                               start_time: e.target.value,
+                              end_time: addMinutesToTime(e.target.value, 60),
                             };
                             updateChild(childIndex, "schedule", updated);
                           }}
@@ -535,19 +673,52 @@ export function MemberApprovalModal({
                   </div>
 
                   {/* 납부일 */}
-                  <select
-                    value={child.payment_day}
-                    onChange={(e) =>
-                      updateChild(childIndex, "payment_day", Number(e.target.value))
-                    }
-                    className="w-full h-9 px-3 rounded-md border bg-background text-sm"
-                  >
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <option key={day} value={day}>
-                        매월 {day}일 납부
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <span className="text-xs text-muted-foreground">납부일</span>
+                    <div className="flex gap-1">
+                      {paymentDayPresets.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            updateChild(childIndex, "payment_day", day);
+                            updateChild(childIndex, "isCustomPaymentDay", false);
+                          }}
+                          className={cn(
+                            "flex-1 h-8 rounded border text-xs transition-colors",
+                            !child.isCustomPaymentDay && child.payment_day === day
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background hover:bg-muted"
+                          )}
+                        >
+                          {day}일
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => updateChild(childIndex, "isCustomPaymentDay", true)}
+                        className={cn(
+                          "flex-1 h-8 rounded border text-xs transition-colors",
+                          child.isCustomPaymentDay
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-muted"
+                        )}
+                      >
+                        직접
+                      </button>
+                    </div>
+                    {child.isCustomPaymentDay && (
+                      <Input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={child.payment_day}
+                        onChange={(e) => updateChild(childIndex, "payment_day", Number(e.target.value))}
+                        placeholder="1~31"
+                        className="h-8 text-sm"
+                      />
+                    )}
+                  </div>
                 </div>
               ))}
 

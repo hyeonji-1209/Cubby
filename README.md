@@ -53,7 +53,34 @@ cp .env.example .env.local
 2. `supabase/schema.sql` 파일의 SQL을 Supabase SQL Editor에서 실행
 3. Project URL과 Anon Key를 `.env.local`에 입력
 
-### 4. 개발 서버 실행
+### 4. 이메일 인증 설정
+
+#### 개발 환경 (현재)
+이메일 인증이 비활성화되어 있습니다.
+- Supabase Dashboard → Authentication → Providers → Email
+- **Confirm email**: OFF
+
+#### 프로덕션 배포 전 (TODO)
+실제 서비스 배포 시 이메일 인증을 활성화해야 합니다:
+
+1. **Resend 도메인 설정**
+   - [Resend](https://resend.com)에서 커스텀 도메인 등록
+   - DNS 레코드 설정 (MX, TXT, DKIM)
+   - 도메인 인증 완료
+
+2. **Supabase SMTP 설정** (Dashboard → Project Settings → Auth → SMTP Settings)
+   - Host: `smtp.resend.com`
+   - Port: `465`
+   - Username: `resend`
+   - Password: Resend API Key
+   - Sender email: `noreply@yourdomain.com`
+   - Sender name: `Cubby`
+
+3. **이메일 인증 활성화**
+   - Authentication → Providers → Email
+   - **Confirm email**: ON
+
+### 5. 개발 서버 실행
 
 ```bash
 npm run dev

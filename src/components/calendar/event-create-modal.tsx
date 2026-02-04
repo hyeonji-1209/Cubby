@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { X, Loader2, Calendar } from "lucide-react";
+import { getRoundedCurrentTime, addMinutesToTime } from "@/lib/date-utils";
 
 interface EventCreateModalProps {
   isOpen: boolean;
@@ -36,14 +37,24 @@ export function EventCreateModal({
   const [isAcademyHoliday, setIsAcademyHoliday] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 모달이 열릴 때 초기 날짜 설정
+  // 모달이 열릴 때 초기 날짜/시간 설정
   useEffect(() => {
     if (isOpen && initialDate) {
       const dateStr = format(initialDate, "yyyy-MM-dd");
       setStartDate(dateStr);
       setEndDate(dateStr);
+      // 현재 시간 기준 30분 반올림
+      const roundedTime = getRoundedCurrentTime();
+      setStartTime(roundedTime);
+      setEndTime(addMinutesToTime(roundedTime, 60));
     }
   }, [isOpen, initialDate]);
+
+  // 시작 시간 변경 시 종료 시간 자동 조정 (+1시간)
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    setEndTime(addMinutesToTime(newStartTime, 60));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,8 +102,9 @@ export function EventCreateModal({
     setDescription("");
     setStartDate("");
     setEndDate("");
-    setStartTime("09:00");
-    setEndTime("10:00");
+    const roundedTime = getRoundedCurrentTime();
+    setStartTime(roundedTime);
+    setEndTime(addMinutesToTime(roundedTime, 60));
     setAllDay(false);
     setIsAcademyHoliday(false);
     setIsSubmitting(false);
@@ -213,7 +225,7 @@ export function EventCreateModal({
                   <Input
                     type="time"
                     value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
+                    onChange={(e) => handleStartTimeChange(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">

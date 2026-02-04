@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { X, Loader2, Trash2 } from "lucide-react";
+import { getRoundedCurrentTime, addMinutesToTime } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { CalendarEvent } from "@/types";
@@ -62,8 +63,10 @@ export function PersonalEventModal({
         const dateStr = format(initialDate, "yyyy-MM-dd");
         setStartDate(dateStr);
         setEndDate(dateStr);
-        setStartTime("09:00");
-        setEndTime("10:00");
+        // 현재 시간 기준 30분 반올림
+        const roundedTime = getRoundedCurrentTime();
+        setStartTime(roundedTime);
+        setEndTime(addMinutesToTime(roundedTime, 60));
         setTitle("");
         setDescription("");
         setAllDay(false);
@@ -71,13 +74,20 @@ export function PersonalEventModal({
     }
   }, [isOpen, event, initialDate]);
 
+  // 시작 시간 변경 시 종료 시간 자동 조정 (+1시간)
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    setEndTime(addMinutesToTime(newStartTime, 60));
+  };
+
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setStartDate("");
     setEndDate("");
-    setStartTime("09:00");
-    setEndTime("10:00");
+    const roundedTime = getRoundedCurrentTime();
+    setStartTime(roundedTime);
+    setEndTime(addMinutesToTime(roundedTime, 60));
     setAllDay(false);
     setIsSubmitting(false);
     setIsDeleting(false);
@@ -273,7 +283,7 @@ export function PersonalEventModal({
                 <input
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => handleStartTimeChange(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
               </div>

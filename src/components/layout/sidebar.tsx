@@ -3,71 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-  Settings,
-  LogOut,
-  Plus,
-  Home,
-  GraduationCap,
-  Heart,
-  Users,
-  Building2,
-  Gamepad2,
-  MoreHorizontal,
-  Folder
-} from "lucide-react";
+import { Settings, LogOut, Plus, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-interface Group {
-  id: string;
-  name: string;
-  icon: string | null;
-  type: string;
-}
-
-const groupTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  education: GraduationCap,
-  couple: Heart,
-  family: Users,
-  religion: Building2,
-  hobby: Gamepad2,
-  other: MoreHorizontal,
-};
+import { useUser } from "@/lib/contexts/user-context";
+import { GROUP_TYPE_ICONS, DEFAULT_GROUP_ICON } from "@/lib/group-utils";
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchGroups = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        const { data: memberships } = await supabase
-          .from("group_members")
-          .select(`
-            group:groups(id, name, icon, type)
-          `)
-          .eq("user_id", user.id)
-          .eq("status", "approved");
-
-        if (memberships) {
-          const groupList = memberships
-            .map((m) => m.group as unknown as Group)
-            .filter(Boolean);
-          setGroups(groupList);
-        }
-      }
-      setIsLoading(false);
-    };
-
-    fetchGroups();
-  }, [pathname]);
+  const { groups, isLoading } = useUser();
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -127,7 +72,38 @@ export function Sidebar() {
             <nav className="space-y-1">
               {groups.map((group) => {
                 const isActive = pathname === `/groups/${group.id}`;
-                const IconComponent = groupTypeIcons[group.type] || Folder;
+                const isPending = group.status === "pending";
+                const IconComponent = GROUP_TYPE_ICONS[group.type] || DEFAULT_GROUP_ICON;
+
+                if (isPending) {
+                  return (
+                    <div
+                      key={group.id}
+                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm opacity-50 cursor-not-allowed"
+                    >
+                      <span className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                        {group.icon ? (
+                          group.icon.startsWith("http") ? (
+                            <img
+                              src={group.icon}
+                              alt=""
+                              className="w-full h-full object-cover grayscale"
+                            />
+                          ) : (
+                            <span className="text-sm">{group.icon}</span>
+                          )
+                        ) : (
+                          <IconComponent className="h-3.5 w-3.5" />
+                        )}
+                      </span>
+                      <span className="truncate flex-1">{group.name}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 shrink-0">
+                        대기
+                      </span>
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={group.id}
@@ -139,8 +115,20 @@ export function Sidebar() {
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
-                    <span className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0">
-                      <IconComponent className="h-3.5 w-3.5" />
+                    <span className="w-6 h-6 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                      {group.icon ? (
+                        group.icon.startsWith("http") ? (
+                          <img
+                            src={group.icon}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-sm">{group.icon}</span>
+                        )
+                      ) : (
+                        <IconComponent className="h-3.5 w-3.5" />
+                      )}
                     </span>
                     <span className="truncate">{group.name}</span>
                   </Link>

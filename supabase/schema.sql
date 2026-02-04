@@ -554,11 +554,12 @@ CREATE TRIGGER on_announcement_comment_delete
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO profiles (id, email, name)
+  INSERT INTO profiles (id, email, name, phone)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1))
+    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    NEW.raw_user_meta_data->>'phone'
   );
   RETURN NEW;
 END;
@@ -567,6 +568,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+
+-- 전화번호 고유성 (NULL 허용)
+CREATE UNIQUE INDEX profiles_phone_unique
+  ON profiles (phone)
+  WHERE phone IS NOT NULL;
 
 -- ============================================
 -- Row Level Security (RLS)
@@ -588,26 +594,13 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 
 -- Profiles policies
-CREATE POLICY "Users can view their own profile"
+CREATE POLICY "Users can view all profiles"
   ON profiles FOR SELECT
-  USING (auth.uid() = id);
+  USING (true);
 
 CREATE POLICY "Users can update their own profile"
   ON profiles FOR UPDATE
   USING (auth.uid() = id);
-
-CREATE POLICY "Users can view profiles of group members"
-  ON profiles FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm1
-      JOIN group_members gm2 ON gm1.group_id = gm2.group_id
-      WHERE gm1.user_id = auth.uid()
-      AND gm2.user_id = profiles.id
-      AND gm1.status = 'approved'
-      AND gm2.status = 'approved'
-    )
-  );
 
 -- Groups policies
 CREATE POLICY "Users can view groups they are members of"
@@ -617,7 +610,7 @@ CREATE POLICY "Users can view groups they are members of"
       SELECT 1 FROM group_members
       WHERE group_members.group_id = groups.id
       AND group_members.user_id = auth.uid()
-      AND group_members.status = 'approved'
+      AND group_members.status IN ('approved', 'pending')
     )
     OR owner_id = auth.uid()
   );
@@ -634,21 +627,16 @@ CREATE POLICY "Owners can delete their groups"
   ON groups FOR DELETE
   USING (auth.uid() = owner_id);
 
--- Group members policies
+-- Group members policies (SECURITY DEFINER 함수 사용하여 무한 재귀 방지)
 CREATE POLICY "Users can view members of their groups"
   ON group_members FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM group_members gm
-      WHERE gm.group_id = group_members.group_id
-      AND gm.user_id = auth.uid()
-      AND gm.status = 'approved'
-    )
-    OR EXISTS (
-      SELECT 1 FROM groups
-      WHERE groups.id = group_members.group_id
-      AND groups.owner_id = auth.uid()
-    )
+    -- 자신의 멤버십은 항상 볼 수 있음 (pending 포함)
+    user_id = auth.uid()
+    -- 승인된 멤버는 같은 그룹의 모든 멤버 볼 수 있음
+    OR is_group_member(group_id, auth.uid())
+    -- 오너는 모든 멤버 볼 수 있음
+    OR is_group_owner(group_id, auth.uid())
   );
 
 CREATE POLICY "Users can join groups"
@@ -659,17 +647,17 @@ CREATE POLICY "Users can update their own membership"
   ON group_members FOR UPDATE
   USING (
     auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM groups
-      WHERE groups.id = group_members.group_id
-      AND groups.owner_id = auth.uid()
-    )
+    OR is_group_owner(group_id, auth.uid())
   );
 
 -- Notifications policies
 CREATE POLICY "Users can view their own notifications"
   ON notifications FOR SELECT
   USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert notifications"
+  ON notifications FOR INSERT
+  WITH CHECK (true);
 
 CREATE POLICY "Users can update their own notifications"
   ON notifications FOR UPDATE
@@ -801,3 +789,44 @@ CREATE POLICY "Instructors can delete QR codes"
   );
 
 -- More policies can be added as needed...
+
+-- ============================================
+-- RLS Helper Functions (SECURITY DEFINER)
+-- ============================================
+
+-- 그룹 멤버 여부 확인 (무한 재귀 방지)
+CREATE OR REPLACE FUNCTION is_group_member(group_uuid UUID, user_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM group_members
+    WHERE group_id = group_uuid
+    AND user_id = user_uuid
+    AND status = 'approved'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 그룹 오너 여부 확인 (무한 재귀 방지)
+CREATE OR REPLACE FUNCTION is_group_owner(group_uuid UUID, user_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM groups
+    WHERE id = group_uuid
+    AND owner_id = user_uuid
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 초대 코드로 그룹 찾기 (RLS 우회)
+CREATE OR REPLACE FUNCTION get_group_by_invite_code(code TEXT)
+RETURNS TABLE (id UUID, name TEXT, type group_type, settings JSONB, owner_id UUID)
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT g.id, g.name, g.type, g.settings, g.owner_id
+  FROM groups g
+  WHERE g.invite_code = code;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

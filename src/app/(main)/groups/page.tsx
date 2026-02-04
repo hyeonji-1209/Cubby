@@ -130,9 +130,9 @@ export default function GroupsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold truncate">{group.name}</p>
-                        {group.role === "owner" && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                            소유자
+                        {group.is_owner && (
+                          <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 px-2 py-0.5 rounded-full">
+                            관리자
                           </span>
                         )}
                       </div>

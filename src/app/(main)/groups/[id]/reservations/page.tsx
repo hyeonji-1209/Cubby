@@ -64,7 +64,8 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<string>("member");
+  const [userRole, setUserRole] = useState<string>("student");
+  const [isOwner, setIsOwner] = useState(false);
   const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
@@ -97,13 +98,14 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
     // 사용자 역할 확인
     const { data: membership } = await supabase
       .from("group_members")
-      .select("role")
+      .select("role, is_owner")
       .eq("group_id", params.id)
       .eq("user_id", user?.id)
       .single();
 
     if (membership) {
       setUserRole(membership.role);
+      setIsOwner(membership.is_owner || false);
     }
 
     // 이번 달의 예약, 수업, 일정 로드
@@ -148,7 +150,7 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
     setIsLoading(false);
   };
 
-  const canManage = userRole === "owner" || userRole === "admin" || userRole === "instructor";
+  const canManage = isOwner || userRole === "instructor";
   const hasPracticeRoom = group?.settings?.has_practice_room;
   const slotUnit = group?.settings?.practice_room_slot_unit || 60;
   const practiceHours = group?.settings?.practice_room_hours || { start: "09:00", end: "22:00" };

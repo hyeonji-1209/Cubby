@@ -1,25 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import {
-  ChevronRight,
-  GraduationCap,
-  Heart,
-  Users,
-  Building2,
-  Gamepad2,
-  MoreHorizontal,
-  Folder
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { DashboardCalendar } from "@/components/dashboard/dashboard-calendar";
-
-const groupTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  education: GraduationCap,
-  couple: Heart,
-  family: Users,
-  religion: Building2,
-  hobby: Gamepad2,
-  other: MoreHorizontal,
-};
+import { DashboardActions } from "@/components/dashboard/dashboard-actions";
+import { GROUP_TYPE_ICONS, GROUP_TYPE_LABELS, DEFAULT_GROUP_ICON } from "@/lib/group-utils";
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -50,14 +34,6 @@ export default async function DashboardPage() {
     .lte("start_at", endOfNextMonth.toISOString())
     .order("start_at");
 
-  const groupTypeLabels: Record<string, string> = {
-    education: "교육/학원",
-    couple: "연인",
-    family: "가족",
-    religion: "종교",
-    hobby: "동호회",
-    other: "기타",
-  };
 
   return (
     <div className="h-full flex flex-col lg:flex-row">
@@ -84,20 +60,32 @@ export default async function DashboardPage() {
             {groups.length > 0 ? (
               <div className="space-y-2">
                 {groups.slice(0, 5).map((group) => {
-                  const IconComponent = groupTypeIcons[group.type] || Folder;
+                  const IconComponent = GROUP_TYPE_ICONS[group.type] || DEFAULT_GROUP_ICON;
                   return (
                     <Link
                       key={group.id}
                       href={`/groups/${group.id}`}
                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                        <IconComponent className="h-5 w-5 text-muted-foreground" />
+                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                        {group.icon ? (
+                          group.icon.startsWith("http") ? (
+                            <img
+                              src={group.icon}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xl">{group.icon}</span>
+                          )
+                        ) : (
+                          <IconComponent className="h-5 w-5 text-muted-foreground" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-sm">{group.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {groupTypeLabels[group.type] || "기타"}
+                          {GROUP_TYPE_LABELS[group.type] || "기타"}
                         </p>
                       </div>
                     </Link>
@@ -130,6 +118,9 @@ export default async function DashboardPage() {
               <p className="text-xs text-muted-foreground">일정</p>
             </div>
           </div>
+
+          {/* Actions */}
+          <DashboardActions />
         </div>
     </div>
   );

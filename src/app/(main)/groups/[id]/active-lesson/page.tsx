@@ -1,584 +1,490 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import { Lesson, GroupMember, User } from "@/types";
 import {
   Loader2,
-  Radio,
-  User,
-  BookOpen,
-  CheckCircle2,
-  QrCode,
   Play,
-  Square,
-  ChevronLeft,
-  Save,
+  Check,
+  Clock,
+  User as UserIcon,
+  FileText,
+  BookOpen,
+  ArrowLeft,
 } from "lucide-react";
-import { Lesson } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface ActiveLessonPageProps {
   params: { id: string };
 }
 
-interface LessonWithStudent extends Lesson {
-  student?: {
-    id: string;
-    user: {
-      id: string;
-      name: string;
-    };
-  };
-}
-
-interface QRCode {
-  id: string;
-  code: string;
-  lesson_id: string;
-  created_at: string;
-  expires_at: string;
+interface LessonWithDetails extends Lesson {
+  instructor?: User;
+  student?: User;
+  student_member?: GroupMember;
 }
 
 export default function ActiveLessonPage({ params }: ActiveLessonPageProps) {
-  const router = useRouter();
+  const toast = useToast();
+  const [lesson, setLesson] = useState<LessonWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeLesson, setActiveLesson] = useState<LessonWithStudent | null>(null);
-  const [previousLesson, setPreviousLesson] = useState<LessonWithStudent | null>(null);
-  const [membership, setMembership] = useState<any>(null);
-  const [isInstructor, setIsInstructor] = useState(false);
-
-  // 수업 내용 작성
+  const [isUpdating, setIsUpdating] = useState(false);
   const [content, setContent] = useState("");
   const [homework, setHomework] = useState("");
   const [notes, setNotes] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  // QR 코드 (수업당 하나)
-  const [qrCode, setQrCode] = useState<QRCode | null>(null);
-  const [isGeneratingQR, setIsGeneratingQR] = useState(false);
-
-  // 출석 상태 (학생용)
-  const [attendanceStatus, setAttendanceStatus] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string>("student");
+  const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
-    loadData();
+    loadActiveLesson();
   }, [params.id]);
 
-  const loadData = async () => {
+  const loadActiveLesson = async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
+    if (!user) return;
+    setUserId(user.id);
 
     // 멤버십 확인
-    const { data: membershipData } = await supabase
+    const { data: membership } = await supabase
       .from("group_members")
       .select("*")
       .eq("group_id", params.id)
       .eq("user_id", user.id)
       .single();
 
-    if (!membershipData) {
-      router.push("/dashboard");
-      return;
-    }
+    if (!membership) return;
+    setUserRole(membership.role);
 
-    setMembership(membershipData);
-    const isInstructorRole = ["owner", "admin", "instructor"].includes(membershipData.role);
-    setIsInstructor(isInstructorRole);
-
+    const isInstructor = membership.role === "instructor";
     const now = new Date();
+    const currentDay = now.getDay();
+    const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
     const fiveMinutesLater = new Date(now.getTime() + 5 * 60 * 1000);
+    const fiveMinutesLaterTime = `${fiveMinutesLater.getHours().toString().padStart(2, "0")}:${fiveMinutesLater.getMinutes().toString().padStart(2, "0")}`;
 
-    // 활성 수업 조회
-    let query = supabase
-      .from("lessons")
-      .select(`
-        *,
-        student:group_members!lessons_student_id_fkey(
-          id,
-          user:users(id, name)
-        )
-      `)
-      .eq("group_id", params.id)
-      .in("status", ["scheduled", "in_progress"])
-      .order("scheduled_at", { ascending: true })
-      .limit(1);
+    let activeStudentMember: any = null;
+    let activeSchedule: any = null;
 
-    if (isInstructorRole) {
-      query = query.eq("instructor_id", membershipData.id);
-    } else {
-      query = query.eq("student_id", membershipData.id);
-    }
+    if (isInstructor) {
+      // 강사: 담당 학생들의 정기 수업 시간 확인
+      const { data: assignedStudents } = await supabase
+        .from("group_members")
+        .select("*, user:profiles!user_id(*)")
+        .eq("group_id", params.id)
+        .eq("instructor_id", user.id)
+        .eq("status", "approved");
 
-    const { data: lessons } = await query;
+      if (assignedStudents && assignedStudents.length > 0) {
+        for (const student of assignedStudents) {
+          const schedules = (student.lesson_schedule as any[]) || [];
+          for (const schedule of schedules) {
+            if (schedule.day_of_week === currentDay) {
+              const startTime = schedule.start_time;
+              const endTime = schedule.end_time;
 
-    if (lessons && lessons.length > 0) {
-      const lesson = lessons[0];
-      const lessonStart = new Date(lesson.scheduled_at);
-      const lessonEnd = new Date(lessonStart.getTime() + lesson.duration_minutes * 60 * 1000);
+              const isInProgress = currentTime >= startTime && currentTime <= endTime;
+              const isStartingSoon = currentTime < startTime && fiveMinutesLaterTime >= startTime;
 
-      const isInProgress = lesson.status === "in_progress" || (now >= lessonStart && now <= lessonEnd);
-      const isStartingSoon = lessonStart <= fiveMinutesLater && lessonStart > now;
-
-      if (isInProgress || isStartingSoon) {
-        setActiveLesson(lesson);
-        setContent(lesson.content || "");
-        setHomework(lesson.homework || "");
-        setNotes(lesson.notes || "");
-
-        // 이전 수업 조회
-        const { data: prevLesson } = await supabase
-          .from("lessons")
-          .select(`
-            *,
-            student:group_members!lessons_student_id_fkey(
-              id,
-              user:users(id, name)
-            )
-          `)
-          .eq("group_id", params.id)
-          .eq("status", "completed")
-          .eq(isInstructorRole ? "instructor_id" : "student_id", membershipData.id)
-          .lt("scheduled_at", lesson.scheduled_at)
-          .order("scheduled_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (prevLesson) {
-          setPreviousLesson(prevLesson);
-        }
-
-        // 출석 상태 확인 (학생용)
-        if (!isInstructorRole) {
-          const { data: attendance } = await supabase
-            .from("attendance")
-            .select("status")
-            .eq("lesson_id", lesson.id)
-            .eq("member_id", membershipData.id)
-            .single();
-
-          if (attendance) {
-            setAttendanceStatus(attendance.status);
+              if (isInProgress || isStartingSoon) {
+                activeStudentMember = student;
+                activeSchedule = schedule;
+                break;
+              }
+            }
           }
+          if (activeStudentMember) break;
         }
-
-        // 기존 QR 코드 확인 (강사용) - 수업당 하나
-        if (isInstructorRole) {
-          const { data: existingQR } = await supabase
-            .from("attendance_qr_codes")
-            .select("*")
-            .eq("lesson_id", lesson.id)
-            .single();
-
-          if (existingQR) {
-            setQrCode(existingQR);
-          }
-        }
-      } else {
-        // 활성 수업 없음 - 홈으로 리다이렉트
-        router.push(`/groups/${params.id}`);
-        return;
       }
     } else {
-      // 활성 수업 없음 - 홈으로 리다이렉트
-      router.push(`/groups/${params.id}`);
-      return;
+      // 학생: 자신의 정기 수업 시간 확인
+      const schedules = (membership.lesson_schedule as any[]) || [];
+      for (const schedule of schedules) {
+        if (schedule.day_of_week === currentDay) {
+          const startTime = schedule.start_time;
+          const endTime = schedule.end_time;
+
+          const isInProgress = currentTime >= startTime && currentTime <= endTime;
+          const isStartingSoon = currentTime < startTime && fiveMinutesLaterTime >= startTime;
+
+          if (isInProgress || isStartingSoon) {
+            // 자기 정보 조회
+            const { data: myMember } = await supabase
+              .from("group_members")
+              .select("*, user:profiles!user_id(*)")
+              .eq("group_id", params.id)
+              .eq("user_id", user.id)
+              .single();
+            activeStudentMember = myMember;
+            activeSchedule = schedule;
+            break;
+          }
+        }
+      }
+    }
+
+    if (activeStudentMember && activeSchedule) {
+      // 강사 정보 조회
+      let instructorData = null;
+      if (activeStudentMember.instructor_id) {
+        const { data: instructor } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", activeStudentMember.instructor_id)
+          .single();
+        instructorData = instructor;
+      }
+
+      // 오늘 날짜에 수업 시간 설정
+      const today = new Date();
+      const [startH, startM] = activeSchedule.start_time.split(":").map(Number);
+      today.setHours(startH, startM, 0, 0);
+
+      const [endH, endM] = activeSchedule.end_time.split(":").map(Number);
+      const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+      const isInProgress = currentTime >= activeSchedule.start_time && currentTime <= activeSchedule.end_time;
+
+      setLesson({
+        id: activeStudentMember.user_id,
+        group_id: params.id,
+        instructor_id: activeStudentMember.instructor_id || "",
+        student_id: activeStudentMember.user_id,
+        scheduled_at: today.toISOString(),
+        duration_minutes: durationMinutes > 0 ? durationMinutes : 60,
+        is_makeup: false,
+        status: isInProgress ? "in_progress" : "scheduled",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        student: activeStudentMember.user,
+        instructor: instructorData,
+        student_member: activeStudentMember,
+      });
     }
 
     setIsLoading(false);
   };
 
-  // QR 코드 자동 생성 (수업 5분 전부터 가능, 수업 종료시 만료)
-  // 수업 시작 5분 후까지: 정상 출석
-  // 그 이후: 지각
-  const generateQRCode = async () => {
-    if (!activeLesson || isGeneratingQR || qrCode) return;
+  const handleStartLesson = async () => {
+    if (!lesson) return;
 
-    const now = new Date();
-    const lessonStart = new Date(activeLesson.scheduled_at);
-    const fiveMinutesBefore = new Date(lessonStart.getTime() - 5 * 60 * 1000);
-
-    // 수업 5분 전부터만 QR 생성 가능
-    if (now < fiveMinutesBefore) {
-      return;
-    }
-
-    setIsGeneratingQR(true);
+    setIsUpdating(true);
     const supabase = createClient();
 
-    // 수업 종료 시간 = 만료 시간
-    const expiresAt = new Date(lessonStart.getTime() + activeLesson.duration_minutes * 60 * 1000);
-
-    // 고유 코드 생성
-    const code = `${activeLesson.id}-${Math.random().toString(36).substring(2, 10)}`;
-
-    const { data: newQR, error } = await supabase
-      .from("attendance_qr_codes")
-      .insert({
-        lesson_id: activeLesson.id,
-        code: code,
-        group_id: params.id,
-        expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
-
-    if (newQR && !error) {
-      setQrCode(newQR);
-    }
-
-    setIsGeneratingQR(false);
-  };
-
-  // 자동 QR 생성 (수업 5분 전이 되면 자동으로)
-  useEffect(() => {
-    if (!activeLesson || !isInstructor || qrCode) return;
-
-    const checkAndGenerateQR = () => {
-      const now = new Date();
-      const lessonStart = new Date(activeLesson.scheduled_at);
-      const fiveMinutesBefore = new Date(lessonStart.getTime() - 5 * 60 * 1000);
-
-      if (now >= fiveMinutesBefore && !qrCode) {
-        generateQRCode();
-      }
-    };
-
-    // 즉시 체크
-    checkAndGenerateQR();
-
-    // 30초마다 체크 (아직 5분 전이 아닌 경우를 위해)
-    const interval = setInterval(checkAndGenerateQR, 30000);
-
-    return () => clearInterval(interval);
-  }, [activeLesson, isInstructor, qrCode]);
-
-  // 수업 시작
-  const startLesson = async () => {
-    if (!activeLesson) return;
-
-    const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("lessons")
       .update({ status: "in_progress" })
-      .eq("id", activeLesson.id);
+      .eq("id", lesson.id);
 
-    setActiveLesson({ ...activeLesson, status: "in_progress" });
+    if (error) {
+      toast.error("수업 시작에 실패했습니다.");
+    } else {
+      toast.success("수업이 시작되었습니다.");
+      setLesson({ ...lesson, status: "in_progress" });
+    }
+
+    setIsUpdating(false);
   };
 
-  // 수업 종료
-  const endLesson = async () => {
-    if (!activeLesson) return;
+  const handleCompleteLesson = async () => {
+    if (!lesson) return;
 
+    setIsUpdating(true);
     const supabase = createClient();
-    await supabase
+
+    const { error } = await supabase
       .from("lessons")
       .update({
         status: "completed",
-        content,
-        homework,
-        notes,
+        content: content.trim() || null,
+        homework: homework.trim() || null,
+        notes: notes.trim() || null,
       })
-      .eq("id", activeLesson.id);
+      .eq("id", lesson.id);
 
-    router.push(`/groups/${params.id}/lessons`);
+    if (error) {
+      toast.error("수업 완료에 실패했습니다.");
+    } else {
+      toast.success("수업이 완료되었습니다.");
+      setLesson(null);
+    }
+
+    setIsUpdating(false);
   };
 
-  // 수업 내용 저장
-  const saveContent = async () => {
-    if (!activeLesson) return;
+  const handleSaveNotes = async () => {
+    if (!lesson) return;
 
-    setIsSaving(true);
+    setIsUpdating(true);
     const supabase = createClient();
-    await supabase
+
+    const { error } = await supabase
       .from("lessons")
       .update({
-        content,
-        homework,
-        notes,
+        content: content.trim() || null,
+        homework: homework.trim() || null,
+        notes: notes.trim() || null,
       })
-      .eq("id", activeLesson.id);
+      .eq("id", lesson.id);
 
-    setIsSaving(false);
+    if (error) {
+      toast.error("저장에 실패했습니다.");
+    } else {
+      toast.success("저장되었습니다.");
+    }
+
+    setIsUpdating(false);
   };
 
-  const formatTime = (dateString: string) => {
-    return format(new Date(dateString), "HH:mm", { locale: ko });
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), "M월 d일 (EEE)", { locale: ko });
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("ko-KR", {
+      month: "long",
+      day: "numeric",
+      weekday: "short",
+    });
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  if (!activeLesson) {
+  if (!lesson) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        <p>활성 수업이 없습니다</p>
+      <div className="p-6">
+        <div className="max-w-md mx-auto text-center py-12">
+          <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-lg font-semibold mb-2">진행 중인 수업이 없습니다</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            예정된 수업이 시작 5분 전이 되면 여기에 표시됩니다.
+          </p>
+          <Link href={`/groups/${params.id}`}>
+            <Button variant="outline" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              홈으로 돌아가기
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const lessonStart = new Date(activeLesson.scheduled_at);
-  const lessonEnd = new Date(lessonStart.getTime() + activeLesson.duration_minutes * 60 * 1000);
+  const lessonStart = new Date(lesson.scheduled_at);
+  const lessonEnd = new Date(
+    lessonStart.getTime() + lesson.duration_minutes * 60 * 1000
+  );
   const now = new Date();
-  const isInProgress = activeLesson.status === "in_progress" || (now >= lessonStart && now <= lessonEnd);
-  const studentName = activeLesson.student?.user?.name || "학생";
+  const isStarted = lesson.status === "in_progress" || now >= lessonStart;
+  const studentName =
+    lesson.student_member?.nickname || lesson.student?.name || "학생";
+  const isInstructor = userRole === "instructor";
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Radio className={`h-5 w-5 ${isInProgress ? "text-green-500" : "text-yellow-500"}`} />
-            {isInProgress && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+    <div className="p-4 max-w-2xl mx-auto">
+      {/* 헤더 */}
+      <div className="mb-6">
+        <div
+          className={cn(
+            "inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-3",
+            isStarted
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          )}
+        >
+          <span
+            className={cn(
+              "w-2 h-2 rounded-full",
+              isStarted ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
             )}
-          </div>
+          />
+          {isStarted ? "수업 진행 중" : "곧 시작"}
+        </div>
+
+        <h1 className="text-2xl font-bold mb-2">{studentName} 수업</h1>
+
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            {formatDate(lesson.scheduled_at)}
+          </span>
+          <span>
+            {formatTime(lesson.scheduled_at)} ~{" "}
+            {formatTime(lessonEnd.toISOString())}
+          </span>
+        </div>
+      </div>
+
+      {/* 참여자 정보 */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="p-4 rounded-lg border bg-muted/30">
+          <p className="text-xs text-muted-foreground mb-1">강사</p>
+          <p className="font-medium">{lesson.instructor?.name || "-"}</p>
+        </div>
+        <div className="p-4 rounded-lg border bg-muted/30">
+          <p className="text-xs text-muted-foreground mb-1">학생</p>
+          <p className="font-medium">{studentName}</p>
+        </div>
+      </div>
+
+      {/* 강사용: 수업 시작/완료 버튼 */}
+      {isInstructor && (
+        <div className="mb-6">
+          {!isStarted ? (
+            <Button
+              onClick={handleStartLesson}
+              disabled={isUpdating}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {isUpdating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              수업 시작
+            </Button>
+          ) : (
+            <Button
+              onClick={handleCompleteLesson}
+              disabled={isUpdating}
+              className="w-full gap-2"
+              variant="default"
+              size="lg"
+            >
+              {isUpdating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              수업 완료
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* 강사용: 수업 기록 */}
+      {isInstructor && isStarted && (
+        <div className="space-y-4">
           <div>
-            <h2 className="font-semibold">
-              {isInstructor ? `${studentName} 수업` : "내 수업"}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {formatDate(activeLesson.scheduled_at)} {formatTime(activeLesson.scheduled_at)} - {formatTime(lessonEnd.toISOString())}
-            </p>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <BookOpen className="h-4 w-4" />
+              수업 내용
+            </label>
+            <Textarea
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="오늘 수업에서 다룬 내용을 기록하세요..."
+              rows={4}
+            />
           </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <FileText className="h-4 w-4" />
+              과제
+            </label>
+            <Textarea
+              value={homework}
+              onChange={(e) => setHomework(e.target.value)}
+              placeholder="학생에게 내준 과제를 기록하세요..."
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-medium mb-2">
+              <UserIcon className="h-4 w-4" />
+              비고
+            </label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="기타 메모..."
+              rows={2}
+            />
+          </div>
+
+          <Button
+            onClick={handleSaveNotes}
+            disabled={isUpdating}
+            variant="outline"
+            className="w-full"
+          >
+            {isUpdating ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            저장
+          </Button>
         </div>
+      )}
 
-        {isInstructor && (
-          <div className="flex items-center gap-2">
-            {activeLesson.status === "scheduled" ? (
-              <Button size="sm" onClick={startLesson}>
-                <Play className="h-4 w-4 mr-1" />
-                수업 시작
-              </Button>
-            ) : (
-              <Button size="sm" variant="destructive" onClick={endLesson}>
-                <Square className="h-4 w-4 mr-1" />
-                수업 종료
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 flex min-h-0">
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto p-4">
-          {/* 이전 수업 */}
-          {previousLesson && (
-            <div className="mb-6">
-              <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
-                <ChevronLeft className="h-4 w-4" />
-                이전 수업 ({formatDate(previousLesson.scheduled_at)})
-              </h3>
-              <div className="rounded-lg border p-4 bg-muted/30">
-                {previousLesson.content ? (
-                  <div className="mb-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">수업 내용</p>
-                    <p className="text-sm whitespace-pre-wrap">{previousLesson.content}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">수업 내용이 없습니다</p>
-                )}
-                {previousLesson.homework && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">과제</p>
-                    <p className="text-sm whitespace-pre-wrap">{previousLesson.homework}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 오늘 수업 작성 (강사용) */}
-          {isInstructor && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium flex items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  오늘 수업
-                </h3>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={saveContent}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-1" />
-                  )}
-                  저장
-                </Button>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">수업 내용</label>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="w-full mt-1 p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  rows={5}
-                  placeholder="오늘 수업 내용을 입력하세요..."
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">과제</label>
-                <textarea
-                  value={homework}
-                  onChange={(e) => setHomework(e.target.value)}
-                  className="w-full mt-1 p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  rows={3}
-                  placeholder="과제를 입력하세요..."
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">비고</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full mt-1 p-3 rounded-lg border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  rows={2}
-                  placeholder="추가 메모..."
-                />
-              </div>
-            </div>
-          )}
-
-          {/* 수업 내용 보기 (학생용) */}
-          {!isInstructor && (
-            <div className="space-y-4">
-              <h3 className="text-sm font-medium flex items-center gap-2">
+      {/* 학생용: 수업 정보 표시 */}
+      {!isInstructor && (
+        <div className="space-y-4">
+          {lesson.content && (
+            <div className="p-4 rounded-lg border">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                오늘 수업
+                수업 내용
               </h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {lesson.content}
+              </p>
+            </div>
+          )}
 
-              {activeLesson.content ? (
-                <div className="rounded-lg border p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">수업 내용</p>
-                  <p className="text-sm whitespace-pre-wrap">{activeLesson.content}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">아직 수업 내용이 작성되지 않았습니다</p>
-              )}
+          {lesson.homework && (
+            <div className="p-4 rounded-lg border">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                과제
+              </h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {lesson.homework}
+              </p>
+            </div>
+          )}
 
-              {activeLesson.homework && (
-                <div className="rounded-lg border p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">과제</p>
-                  <p className="text-sm whitespace-pre-wrap">{activeLesson.homework}</p>
-                </div>
-              )}
+          {lesson.notes && (
+            <div className="p-4 rounded-lg border">
+              <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
+                <UserIcon className="h-4 w-4" />
+                비고
+              </h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {lesson.notes}
+              </p>
+            </div>
+          )}
 
-              {/* 출석 상태 */}
-              {attendanceStatus && (
-                <div className="rounded-lg border p-4 bg-green-50/50 dark:bg-green-950/20">
-                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                    <CheckCircle2 className="h-5 w-5" />
-                    <span className="font-medium">출석 완료</span>
-                  </div>
-                </div>
-              )}
+          {!lesson.content && !lesson.homework && !lesson.notes && (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>수업이 진행 중입니다.</p>
+              <p className="text-sm">수업이 끝나면 내용이 업데이트됩니다.</p>
             </div>
           )}
         </div>
-
-        {/* Side Panel - QR Code (강사용) */}
-        {isInstructor && (
-          <div className="w-80 border-l p-4 bg-muted/20">
-            <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
-              <QrCode className="h-4 w-4" />
-              출석 QR 코드
-            </h3>
-
-            <div className="rounded-lg border bg-background p-4">
-              {qrCode ? (
-                <div className="space-y-4">
-                  {/* QR 코드 표시 */}
-                  <div className="aspect-square bg-white rounded-lg flex items-center justify-center p-4">
-                    {/* QR 코드 이미지 - 실제 구현시 QR 라이브러리 사용 */}
-                    <div className="w-full h-full border-2 border-dashed border-gray-300 rounded flex flex-col items-center justify-center">
-                      <QrCode className="h-16 w-16 text-gray-400 mb-2" />
-                      <p className="text-xs text-center text-muted-foreground break-all px-2">
-                        {qrCode.code.substring(0, 20)}...
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-center space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      수업 종료 시 만료
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(qrCode.expires_at), "HH:mm", { locale: ko })}까지 유효
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="aspect-square bg-muted rounded-lg flex flex-col items-center justify-center">
-                    <QrCode className="h-16 w-16 text-muted-foreground/50 mb-2" />
-                    <p className="text-sm text-muted-foreground">QR 코드 없음</p>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={generateQRCode}
-                    disabled={isGeneratingQR}
-                  >
-                    {isGeneratingQR ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : (
-                      <QrCode className="h-4 w-4 mr-1" />
-                    )}
-                    QR 코드 생성
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* 출석 현황 */}
-            <div className="mt-6">
-              <h4 className="text-xs font-medium text-muted-foreground mb-2">출석 현황</h4>
-              <div className="rounded-lg border bg-background p-3">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{studentName}</span>
-                  {attendanceStatus ? (
-                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                      출석
-                    </span>
-                  ) : (
-                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                      미출석
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

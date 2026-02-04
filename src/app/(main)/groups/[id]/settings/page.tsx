@@ -30,6 +30,7 @@ import { Group, GroupSettings, ClassRoom, GroupMember } from "@/types";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/lib/contexts/user-context";
 
 interface SettingsPageProps {
   params: { id: string };
@@ -41,6 +42,7 @@ export default function SettingsPage({ params }: SettingsPageProps) {
   const router = useRouter();
   const { confirm } = useConfirm();
   const toast = useToast();
+  const { refreshGroups } = useUser();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -216,6 +218,12 @@ export default function SettingsPage({ params }: SettingsPageProps) {
     setIsSaving(false);
     setHasChanges(false);
     toast.success("설정이 저장되었습니다.");
+
+    // 사이드바 그룹 목록 갱신
+    await refreshGroups();
+    // 서버 컴포넌트 갱신 (헤더 등)
+    router.refresh();
+
     loadData();
   };
 
