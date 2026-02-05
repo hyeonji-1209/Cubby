@@ -3,15 +3,17 @@
 import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarView, ColorMapping } from "@/components/calendar/calendar-view";
-import { CalendarEvent, Group } from "@/types";
+import { CalendarEvent, Group, Lesson, RoomReservation } from "@/types";
 import { PersonalEventModal } from "./personal-event-modal";
 
 interface DashboardCalendarProps {
   events: CalendarEvent[];
   groups?: Group[];
+  lessons?: Lesson[];
+  reservations?: RoomReservation[];
 }
 
-export function DashboardCalendar({ events, groups = [] }: DashboardCalendarProps) {
+export function DashboardCalendar({ events, groups = [], lessons = [], reservations = [] }: DashboardCalendarProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -50,6 +52,8 @@ export function DashboardCalendar({ events, groups = [] }: DashboardCalendarProp
     <>
       <CalendarView
         events={events}
+        lessons={lessons}
+        reservations={reservations}
         colorMappings={colorMappings}
         groups={groups}
         onAddClick={handleAddClick}

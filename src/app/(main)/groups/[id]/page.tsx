@@ -5,7 +5,6 @@ import {
   Bell,
   Users,
   ChevronRight,
-  BookOpen,
   Settings,
   Pin,
   UsersRound,
@@ -14,6 +13,7 @@ import {
 import { Group } from "@/types";
 import { GroupCalendar } from "@/components/groups/group-calendar";
 import { InviteCodeSection } from "@/components/groups/invite-code-section";
+import { StudentScheduleSection } from "@/components/groups/student-schedule-section";
 
 interface GroupPageProps {
   params: { id: string };
@@ -69,7 +69,112 @@ export default async function GroupPage({ params }: GroupPageProps) {
 
   const typedGroup = group as Group;
   const isOwnerOrAdmin = myMembership?.is_owner;
+  const isInstructor = myMembership?.role === "instructor";
   const isEducationType = typedGroup.type === "education";
+  const isStudent = myMembership?.role === "student" || myMembership?.role === "guardian";
+  const canManage = isOwnerOrAdmin || isInstructor;
+
+  // 수업과 예약 조회
+  let lessons: any[] = [];
+  let reservations: any[] = [];
+  let regularSchedules: any[] = [];
+
+  if (user) {
+    if (isStudent) {
+      // 학생용: 본인 수업만 조회
+      const { data: lessonData } = await supabase
+        .from("lessons")
+        .select("*")
+        .eq("group_id", params.id)
+        .eq("student_id", user.id)
+        .gte("scheduled_at", startOfMonth.toISOString())
+        .lte("scheduled_at", endOfNextMonth.toISOString())
+        .in("status", ["scheduled", "in_progress", "completed"])
+        .order("scheduled_at");
+
+      lessons = lessonData || [];
+
+      // 본인 예약 조회
+      const { data: reservationData } = await supabase
+        .from("room_reservations")
+        .select("*")
+        .eq("group_id", params.id)
+        .eq("reserved_by", user.id)
+        .gte("start_at", startOfMonth.toISOString())
+        .lte("start_at", endOfNextMonth.toISOString())
+        .eq("status", "approved")
+        .order("start_at");
+
+      reservations = reservationData || [];
+    } else if (canManage) {
+      // 관리자/선생님용: 전체 수업 조회 (학생, 강사, 장소 정보 포함)
+      const { data: lessonData } = await supabase
+        .from("lessons")
+        .select(`
+          *,
+          student:profiles!lessons_student_id_fkey(id, name),
+          instructor:profiles!lessons_instructor_id_fkey(id, name)
+        `)
+        .eq("group_id", params.id)
+        .gte("scheduled_at", startOfMonth.toISOString())
+        .lte("scheduled_at", endOfNextMonth.toISOString())
+        .in("status", ["scheduled", "in_progress", "completed"])
+        .order("scheduled_at");
+
+      // 클래스 정보 매핑 (room_id -> room name)
+      const classes = typedGroup.settings?.classes || [];
+      lessons = (lessonData || []).map((lesson: any) => ({
+        ...lesson,
+        room: lesson.room_id ? classes.find((c) => c.id === lesson.room_id) : undefined,
+      }));
+
+      // 전체 예약 조회
+      const { data: reservationData } = await supabase
+        .from("room_reservations")
+        .select("*")
+        .eq("group_id", params.id)
+        .gte("start_at", startOfMonth.toISOString())
+        .lte("start_at", endOfNextMonth.toISOString())
+        .eq("status", "approved")
+        .order("start_at");
+
+      reservations = reservationData || [];
+
+      // 정규수업 스케줄 조회 (학생 멤버의 lesson_schedule)
+      const { data: membersWithSchedule } = await supabase
+        .from("group_members")
+        .select(`
+          user_id,
+          lesson_schedule,
+          instructor_id,
+          user:profiles!group_members_user_id_fkey(id, name),
+          instructor:profiles!group_members_instructor_id_fkey(id, name)
+        `)
+        .eq("group_id", params.id)
+        .eq("status", "approved")
+        .in("role", ["student", "guardian"]);
+
+      // RegularSchedule 형식으로 변환
+      (membersWithSchedule || []).forEach((member: any) => {
+        const schedules = member.lesson_schedule || [];
+        schedules.forEach((schedule: any) => {
+          const roomInfo = schedule.room_id ? classes.find((c) => c.id === schedule.room_id) : undefined;
+          regularSchedules.push({
+            memberId: member.user_id,
+            studentName: member.user?.name || "",
+            instructorId: member.instructor_id,
+            instructorName: member.instructor?.name,
+            dayOfWeek: schedule.day_of_week,
+            startTime: schedule.start_time,
+            endTime: schedule.end_time,
+            roomId: schedule.room_id,
+            roomName: roomInfo?.name,
+            subject: schedule.subject,
+          });
+        });
+      });
+    }
+  }
 
   return (
     <div className="h-full flex flex-col lg:flex-row">
@@ -79,42 +184,58 @@ export default async function GroupPage({ params }: GroupPageProps) {
           events={events || []}
           groupId={params.id}
           classes={typedGroup.settings?.classes || []}
+          lessons={lessons}
+          reservations={reservations}
+          regularSchedules={regularSchedules}
+          hideAddButton={true}
+          showLessonDetails={canManage}
+          isOwner={isOwnerOrAdmin}
+          hideReservationLabels={canManage}
+          hasMultiInstructor={typedGroup.settings?.multi_instructor}
+          currentUserId={user?.id}
         />
       </div>
 
       {/* Right Sidebar */}
       <div className="w-full lg:w-80 p-4 space-y-6 overflow-auto border-t lg:border-t-0 lg:border-l bg-background">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              href={`/groups/${params.id}/members`}
-              className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-            >
-              <Users className="h-5 w-5 text-muted-foreground mb-2" />
-              <p className="text-2xl font-bold">{memberCount || 0}</p>
-              <p className="text-xs text-muted-foreground">멤버</p>
-            </Link>
+          {/* Quick Stats - 학생은 멤버 수 숨김 */}
+          {!isStudent && (
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href={`/groups/${params.id}/members`}
+                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+              >
+                <Users className="h-5 w-5 text-muted-foreground mb-2" />
+                <p className="text-2xl font-bold">{memberCount || 0}</p>
+                <p className="text-xs text-muted-foreground">멤버</p>
+              </Link>
 
-            {isEducationType ? (
-              <Link
-                href={`/groups/${params.id}/lessons`}
-                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <GraduationCap className="h-5 w-5 text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">-</p>
-                <p className="text-xs text-muted-foreground">수업</p>
-              </Link>
-            ) : (
-              <Link
-                href={`/groups/${params.id}/subgroups`}
-                className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <UsersRound className="h-5 w-5 text-muted-foreground mb-2" />
-                <p className="text-2xl font-bold">-</p>
-                <p className="text-xs text-muted-foreground">소그룹</p>
-              </Link>
-            )}
-          </div>
+              {isEducationType ? (
+                <Link
+                  href={`/groups/${params.id}/lessons`}
+                  className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <GraduationCap className="h-5 w-5 text-muted-foreground mb-2" />
+                  <p className="text-2xl font-bold">-</p>
+                  <p className="text-xs text-muted-foreground">수업</p>
+                </Link>
+              ) : (
+                <Link
+                  href={`/groups/${params.id}/subgroups`}
+                  className="p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <UsersRound className="h-5 w-5 text-muted-foreground mb-2" />
+                  <p className="text-2xl font-bold">-</p>
+                  <p className="text-xs text-muted-foreground">소그룹</p>
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Student Schedule Section - for education type groups */}
+          {isEducationType && isStudent && (
+            <StudentScheduleSection groupId={params.id} />
+          )}
 
           {/* Announcements */}
           <div>

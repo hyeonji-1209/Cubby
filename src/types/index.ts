@@ -160,6 +160,7 @@ export interface LessonSchedule {
   start_time: string;  // HH:mm
   end_time: string;    // HH:mm
   room_id?: string;
+  subject?: string;    // 과목/비고 (국어, 수학, 음악 등)
 }
 
 // ============================================
@@ -230,6 +231,9 @@ export interface LessonChangeRequest {
   status: ApprovalStatus;
   reviewed_by?: string;
   reviewed_at?: string;
+  room_id?: string;          // 승인 시 지정할 클래스
+  rejection_reason?: string; // 거절 사유
+  original_date?: string;    // 원래 수업 일정 (승인 시 저장)
   created_at: string;
 }
 

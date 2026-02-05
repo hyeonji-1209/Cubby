@@ -26,7 +26,7 @@ import {
   BookOpen,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import { CalendarEvent, Lesson, RoomReservation } from "@/types";
+import { CalendarEvent, Lesson, RoomReservation, LessonChangeRequest } from "@/types";
 import { cn } from "@/lib/utils";
 import { getHolidaysForMonth, Holiday } from "@/lib/holidays";
 import { EventModal } from "@/components/calendar/event-modal";
@@ -49,12 +49,12 @@ interface ScheduleItem {
   title: string;
   start_at: string;
   end_at: string;
-  type: "event" | "lesson" | "reservation";
+  type: "event" | "lesson" | "reservation" | "changed";
   all_day?: boolean;
   location?: string;
   location_id?: string;
   is_academy_holiday?: boolean;
-  original?: CalendarEvent | Lesson | RoomReservation;
+  original?: CalendarEvent | Lesson | RoomReservation | LessonChangeRequest;
 }
 
 export default function CalendarPage({ params }: CalendarPageProps) {
@@ -64,6 +64,7 @@ export default function CalendarPage({ params }: CalendarPageProps) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [reservations, setReservations] = useState<RoomReservation[]>([]);
+  const [approvedChanges, setApprovedChanges] = useState<LessonChangeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -200,6 +201,18 @@ export default function CalendarPage({ params }: CalendarPageProps) {
         .order("start_at");
 
       setReservations((reservationData as RoomReservation[]) || []);
+
+      // 승인된 수업 변경 요청 로드 (원래 일정을 "변경됨"으로 표시하기 위해)
+      const { data: changeData } = await supabase
+        .from("lesson_change_requests")
+        .select("*")
+        .eq("requested_by", user.id)
+        .eq("status", "approved")
+        .not("original_date", "is", null)
+        .gte("original_date", monthStart.toISOString())
+        .lte("original_date", monthEnd.toISOString());
+
+      setApprovedChanges((changeData as LessonChangeRequest[]) || []);
     }
 
     setIsLoading(false);
@@ -302,6 +315,29 @@ export default function CalendarPage({ params }: CalendarPageProps) {
           type: "reservation",
           all_day: false,
           original: res,
+        });
+      });
+
+      // 승인된 변경 요청의 원래 일정 (변경됨으로 표시)
+      const dateChangedLessons = approvedChanges.filter((change) => {
+        if (!change.original_date) return false;
+        const changeDate = new Date(change.original_date);
+        return isSameDay(changeDate, date);
+      });
+
+      dateChangedLessons.forEach((change) => {
+        if (!change.original_date) return;
+        const originalDate = new Date(change.original_date);
+        const endAt = new Date(originalDate.getTime() + 60 * 60 * 1000); // 기본 1시간
+
+        items.push({
+          id: `changed-${change.id}`,
+          title: `수업 일정 변경됨`,
+          start_at: change.original_date,
+          end_at: endAt.toISOString(),
+          type: "changed",
+          all_day: false,
+          original: change,
         });
       });
     }
@@ -488,10 +524,66 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                         const daysDiff = Math.floor((eventEnd.getTime() - eventStart.getTime()) / (1000 * 60 * 60 * 24));
                         return daysDiff < 1; // 하루 이벤트만
                       });
-                      const sortedDayEvents = [...singleDayEvents].sort((a, b) => {
-                        if (a.all_day && !b.all_day) return -1;
-                        if (!a.all_day && b.all_day) return 1;
-                        return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+
+                      // 학생용: 해당 날짜의 수업과 예약
+                      const dayLessons = isStudentOrGuardian ? lessons.filter(l => isSameDay(new Date(l.scheduled_at), day)) : [];
+                      const dayReservations = isStudentOrGuardian ? reservations.filter(r => isSameDay(new Date(r.start_at), day)) : [];
+                      // 학생용: 승인된 변경 요청 (원래 일정)
+                      const dayChangedLessons = isStudentOrGuardian ? approvedChanges.filter(c => c.original_date && isSameDay(new Date(c.original_date), day)) : [];
+
+                      // 통합 일정 아이템
+                      const allDayItems: { type: "event" | "lesson" | "reservation" | "changed"; time: string; title: string; color: { bg: string; light: string; text: string }; id: string }[] = [];
+
+                      // 단일 이벤트 추가
+                      singleDayEvents.forEach((event) => {
+                        allDayItems.push({
+                          type: "event",
+                          time: event.all_day ? "" : format(new Date(event.start_at), "HH:mm"),
+                          title: event.title,
+                          color: getEventColor(event),
+                          id: event.id,
+                        });
+                      });
+
+                      // 수업 추가
+                      dayLessons.forEach((lesson) => {
+                        allDayItems.push({
+                          type: "lesson",
+                          time: format(new Date(lesson.scheduled_at), "HH:mm"),
+                          title: "수업",
+                          color: { bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" },
+                          id: `lesson-${lesson.id}`,
+                        });
+                      });
+
+                      // 예약 추가
+                      dayReservations.forEach((res) => {
+                        allDayItems.push({
+                          type: "reservation",
+                          time: format(new Date(res.start_at), "HH:mm"),
+                          title: "예약",
+                          color: { bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" },
+                          id: `res-${res.id}`,
+                        });
+                      });
+
+                      // 변경된 수업 추가 (원래 일정)
+                      dayChangedLessons.forEach((change) => {
+                        if (!change.original_date) return;
+                        allDayItems.push({
+                          type: "changed",
+                          time: format(new Date(change.original_date), "HH:mm"),
+                          title: "변경됨",
+                          color: { bg: "bg-gray-400", light: "bg-gray-100 dark:bg-gray-800/30", text: "text-gray-500 dark:text-gray-400" },
+                          id: `changed-${change.id}`,
+                        });
+                      });
+
+                      // 시간순 정렬
+                      allDayItems.sort((a, b) => {
+                        if (!a.time && b.time) return -1;
+                        if (a.time && !b.time) return 1;
+                        return a.time.localeCompare(b.time);
                       });
 
                       // 멀티데이 바 개수만큼 라벨 공간 확보
@@ -525,9 +617,9 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                               {format(day, "d")}
                             </span>
                             {/* +N more 표시 */}
-                            {isCurrentMonth && (sortedDayEvents.length > availableLabels || dayEvents.length > maxLabels) && (
+                            {isCurrentMonth && (allDayItems.length > availableLabels) && (
                               <span className="text-[9px] text-muted-foreground">
-                                +{Math.max(0, sortedDayEvents.length - availableLabels)}
+                                +{Math.max(0, allDayItems.length - availableLabels)}
                               </span>
                             )}
                           </div>
@@ -536,42 +628,46 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                               {holiday.name}
                             </div>
                           )}
-                          {/* 일정 라벨 (단일 이벤트만) */}
-                          {isCurrentMonth && sortedDayEvents.length > 0 && (
+                          {/* 일정 라벨 (이벤트 + 수업 + 예약 + 변경됨) */}
+                          {isCurrentMonth && allDayItems.length > 0 && (
                             <div className="flex-1 flex flex-col gap-0.5 mt-0.5 overflow-hidden" style={{ marginTop: `${multiDayBarCount * 21 + 2}px` }}>
-                              {sortedDayEvents.slice(0, availableLabels).map((event) => {
-                                const eventColor = getEventColor(event);
-                                return (
-                                  <div
-                                    key={event.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEventClick(event);
-                                    }}
-                                    className={cn(
-                                      "flex items-center gap-1.5 text-xs leading-tight truncate px-1.5 py-0.5 cursor-pointer",
-                                      event.all_day ? eventColor.light : "bg-muted/50",
-                                      event.all_day ? eventColor.text : "text-foreground",
-                                      "hover:opacity-80"
-                                    )}
-                                  >
-                                    {/* 컬러 닷 */}
-                                    <span
-                                      className={cn(
-                                        "w-1.5 h-1.5 rounded-full shrink-0",
-                                        eventColor.bg
-                                      )}
-                                    />
-                                    {!event.all_day && (
-                                      <span className="text-[10px] text-muted-foreground shrink-0">
-                                        {format(new Date(event.start_at), "HH:mm")}
-                                        {event.location && ` [${event.location}]`}
-                                      </span>
-                                    )}
-                                    <span className="truncate">{event.title}</span>
-                                  </div>
-                                );
-                              })}
+                              {allDayItems.slice(0, availableLabels).map((item) => (
+                                <div
+                                  key={item.id}
+                                  className={cn(
+                                    "flex items-center gap-1 text-xs leading-tight truncate px-1 py-0.5",
+                                    item.type === "event" ? "bg-muted/50" : item.color.light,
+                                    item.type === "changed" && "opacity-60",
+                                    "hover:opacity-80"
+                                  )}
+                                >
+                                  {/* 타입별 아이콘/닷 */}
+                                  {item.type === "lesson" && (
+                                    <BookOpen className="h-2.5 w-2.5 shrink-0 text-blue-500" />
+                                  )}
+                                  {item.type === "reservation" && (
+                                    <CalendarIcon className="h-2.5 w-2.5 shrink-0 text-purple-500" />
+                                  )}
+                                  {item.type === "changed" && (
+                                    <BookOpen className="h-2.5 w-2.5 shrink-0 text-gray-400" />
+                                  )}
+                                  {item.type === "event" && (
+                                    <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", item.color.bg)} />
+                                  )}
+                                  {item.time && (
+                                    <span className={cn(
+                                      "text-[10px] shrink-0",
+                                      item.type === "changed" ? "text-gray-400 line-through" : "text-muted-foreground"
+                                    )}>
+                                      {item.time}
+                                    </span>
+                                  )}
+                                  <span className={cn(
+                                    "truncate",
+                                    item.type === "changed" && "line-through text-gray-400"
+                                  )}>{item.title}</span>
+                                </div>
+                              ))}
                             </div>
                           )}
                         </button>
@@ -698,6 +794,9 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                         if (item.type === "reservation") {
                           return { bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" };
                         }
+                        if (item.type === "changed") {
+                          return { bg: "bg-gray-400", light: "bg-gray-100 dark:bg-gray-800/30", text: "text-gray-500 dark:text-gray-400" };
+                        }
                         // Calendar event
                         if (item.original && "is_academy_holiday" in item.original) {
                           return getEventColor(item.original as CalendarEvent);
@@ -716,7 +815,8 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                           }}
                           className={cn(
                             "w-full p-2.5 rounded border border-border/40 hover:border-border hover:bg-muted/30 transition-colors text-left group",
-                            item.type !== "event" && "cursor-default"
+                            item.type !== "event" && "cursor-default",
+                            item.type === "changed" && "opacity-60"
                           )}
                         >
                           <div className="flex items-start gap-2.5">
@@ -728,7 +828,10 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="font-medium text-sm truncate flex-1">
+                                <p className={cn(
+                                  "font-medium text-sm truncate flex-1",
+                                  item.type === "changed" && "line-through text-gray-400"
+                                )}>
                                   {item.title}
                                 </p>
                                 {item.type === "lesson" && (
@@ -741,6 +844,11 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                                   <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 shrink-0 flex items-center gap-0.5">
                                     <CalendarIcon className="h-2.5 w-2.5" />
                                     예약
+                                  </span>
+                                )}
+                                {item.type === "changed" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-gray-100 text-gray-500 dark:bg-gray-800/50 dark:text-gray-400 shrink-0">
+                                    변경됨
                                   </span>
                                 )}
                                 {item.is_academy_holiday && (
@@ -915,6 +1023,9 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                             if (item.type === "reservation") {
                               return { bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" };
                             }
+                            if (item.type === "changed") {
+                              return { bg: "bg-gray-400", light: "bg-gray-100 dark:bg-gray-800/30", text: "text-gray-500 dark:text-gray-400" };
+                            }
                             if (item.type === "event" && item.original) {
                               return getEventColor(item.original as CalendarEvent);
                             }
@@ -945,7 +1056,8 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                                 itemColor.light,
                                 "hover:opacity-80 border-l-2",
                                 itemColor.bg.replace("bg-", "border-l-"),
-                                item.type !== "event" && "cursor-default"
+                                item.type !== "event" && "cursor-default",
+                                item.type === "changed" && "opacity-60"
                               )}
                               style={{
                                 top: `${topOffset}px`,
@@ -954,9 +1066,13 @@ export default function CalendarPage({ params }: CalendarPageProps) {
                                 left,
                               }}
                             >
-                              <div className="font-medium truncate text-[11px] flex items-center gap-1">
+                              <div className={cn(
+                                "font-medium truncate text-[11px] flex items-center gap-1",
+                                item.type === "changed" && "line-through text-gray-400"
+                              )}>
                                 {item.type === "lesson" && <BookOpen className="h-2.5 w-2.5 shrink-0" />}
                                 {item.type === "reservation" && <CalendarIcon className="h-2.5 w-2.5 shrink-0" />}
+                                {item.type === "changed" && <BookOpen className="h-2.5 w-2.5 shrink-0 text-gray-400" />}
                                 {item.title}
                               </div>
                               <div className="text-[9px] opacity-70 truncate">

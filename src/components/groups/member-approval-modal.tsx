@@ -34,12 +34,13 @@ interface MemberApprovalModalProps {
 
 
 // 기본 스케줄 생성 헬퍼
-const createDefaultSchedule = (): LessonSchedule => {
+const createDefaultSchedule = (defaultRoomId?: string): LessonSchedule => {
   const startTime = getRoundedCurrentTime();
   return {
     day_of_week: 1,
     start_time: startTime,
     end_time: addMinutesToTime(startTime, 60),
+    room_id: defaultRoomId,
   };
 };
 
@@ -52,6 +53,10 @@ export function MemberApprovalModal({
   instructors,
 }: MemberApprovalModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 사용 가능한 클래스 목록
+  const availableClasses = group.settings?.classes || [];
+  const defaultRoomId = availableClasses[0]?.id;
 
   // 강사 승인용 상태
   const [paymentDay, setPaymentDay] = useState<number>(25);
@@ -66,7 +71,7 @@ export function MemberApprovalModal({
   // 학생 승인용 상태
   const [selectedInstructor, setSelectedInstructor] = useState<string>("");
   const [lessonSchedule, setLessonSchedule] = useState<LessonSchedule[]>([
-    createDefaultSchedule(),
+    createDefaultSchedule(defaultRoomId),
   ]);
   const [studentPaymentDay, setStudentPaymentDay] = useState<number>(1);
   const [isCustomStudentPaymentDay, setIsCustomStudentPaymentDay] = useState(false);
@@ -85,7 +90,7 @@ export function MemberApprovalModal({
     {
       name: "",
       instructor_id: "",
-      schedule: [createDefaultSchedule()],
+      schedule: [createDefaultSchedule(defaultRoomId)],
       payment_day: 1,
       isCustomPaymentDay: false,
     },
@@ -94,17 +99,18 @@ export function MemberApprovalModal({
   // 초기화
   useEffect(() => {
     if (isOpen) {
+      const roomId = availableClasses[0]?.id;
       setPaymentDay(25);
       setIsCustomPaymentDay(false);
       setGrantOwner(false);
       setSelectedInstructor(instructors[0]?.user_id || "");
-      setLessonSchedule([createDefaultSchedule()]);
+      setLessonSchedule([createDefaultSchedule(roomId)]);
       setStudentPaymentDay(1);
       setIsCustomStudentPaymentDay(false);
       setChildren([{
         name: "",
         instructor_id: instructors[0]?.user_id || "",
-        schedule: [createDefaultSchedule()],
+        schedule: [createDefaultSchedule(roomId)],
         payment_day: 1,
         isCustomPaymentDay: false,
       }]);
@@ -196,7 +202,7 @@ export function MemberApprovalModal({
   const addSchedule = () => {
     setLessonSchedule([
       ...lessonSchedule,
-      createDefaultSchedule(),
+      createDefaultSchedule(availableClasses[0]?.id),
     ]);
   };
 
@@ -416,51 +422,75 @@ export function MemberApprovalModal({
                   {lessonSchedule.map((schedule, index) => (
                     <div
                       key={index}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                      className="p-2 rounded-lg bg-muted/50 space-y-2"
                     >
-                      <Select
-                        value={String(schedule.day_of_week)}
-                        onValueChange={(value) => updateSchedule(index, "day_of_week", Number(value))}
-                      >
-                        <SelectTrigger className="h-9 w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {WEEKDAYS_KO.map((day, i) => (
-                            <SelectItem key={i} value={String(i)}>
-                              {day}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex items-center gap-1 flex-1">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          type="time"
-                          value={schedule.start_time}
-                          onChange={(e) =>
-                            updateSchedule(index, "start_time", e.target.value)
-                          }
-                          className="h-9"
-                        />
-                        <span className="text-muted-foreground">~</span>
-                        <Input
-                          type="time"
-                          value={schedule.end_time}
-                          onChange={(e) =>
-                            updateSchedule(index, "end_time", e.target.value)
-                          }
-                          className="h-9"
-                        />
-                      </div>
-                      {lessonSchedule.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeSchedule(index)}
-                          className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded"
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={String(schedule.day_of_week)}
+                          onValueChange={(value) => updateSchedule(index, "day_of_week", Number(value))}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                          <SelectTrigger className="h-9 w-20">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {WEEKDAYS_KO.map((day, i) => (
+                              <SelectItem key={i} value={String(i)}>
+                                {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <div className="flex items-center gap-1 flex-1">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <Input
+                            type="time"
+                            value={schedule.start_time}
+                            onChange={(e) =>
+                              updateSchedule(index, "start_time", e.target.value)
+                            }
+                            className="h-9"
+                          />
+                          <span className="text-muted-foreground">~</span>
+                          <Input
+                            type="time"
+                            value={schedule.end_time}
+                            onChange={(e) =>
+                              updateSchedule(index, "end_time", e.target.value)
+                            }
+                            className="h-9"
+                          />
+                        </div>
+                        {lessonSchedule.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSchedule(index)}
+                            className="p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      {/* 클래스(교실) 선택 */}
+                      {availableClasses.length > 0 && (
+                        <div className="flex items-center gap-2 pl-1">
+                          <span className="text-xs text-muted-foreground w-16">클래스:</span>
+                          <Select
+                            value={schedule.room_id || "none"}
+                            onValueChange={(value) => updateSchedule(index, "room_id", value === "none" ? "" : value)}
+                          >
+                            <SelectTrigger className="h-8 flex-1 text-xs">
+                              <SelectValue placeholder="선택" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">미정</SelectItem>
+                              {availableClasses.map((cls) => (
+                                <SelectItem key={cls.id} value={cls.id}>
+                                  {cls.name} {cls.capacity && `(${cls.capacity}명)`}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -602,71 +632,102 @@ export function MemberApprovalModal({
                     {child.schedule.map((schedule, scheduleIndex) => (
                       <div
                         key={scheduleIndex}
-                        className="flex items-center gap-2"
+                        className="p-2 rounded bg-muted/30 space-y-1.5"
                       >
-                        <Select
-                          value={String(schedule.day_of_week)}
-                          onValueChange={(value) => {
-                            const updated = [...child.schedule];
-                            updated[scheduleIndex] = {
-                              ...updated[scheduleIndex],
-                              day_of_week: Number(value),
-                            };
-                            updateChild(childIndex, "schedule", updated);
-                          }}
-                        >
-                          <SelectTrigger className="h-8 w-16 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {WEEKDAYS_KO.map((day, i) => (
-                              <SelectItem key={i} value={String(i)}>
-                                {day}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="time"
-                          value={schedule.start_time}
-                          onChange={(e) => {
-                            const updated = [...child.schedule];
-                            updated[scheduleIndex] = {
-                              ...updated[scheduleIndex],
-                              start_time: e.target.value,
-                              end_time: addMinutesToTime(e.target.value, 60),
-                            };
-                            updateChild(childIndex, "schedule", updated);
-                          }}
-                          className="h-8 text-xs"
-                        />
-                        <span className="text-xs text-muted-foreground">~</span>
-                        <Input
-                          type="time"
-                          value={schedule.end_time}
-                          onChange={(e) => {
-                            const updated = [...child.schedule];
-                            updated[scheduleIndex] = {
-                              ...updated[scheduleIndex],
-                              end_time: e.target.value,
-                            };
-                            updateChild(childIndex, "schedule", updated);
-                          }}
-                          className="h-8 text-xs"
-                        />
-                        {child.schedule.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const updated = child.schedule.filter(
-                                (_, i) => i !== scheduleIndex
-                              );
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={String(schedule.day_of_week)}
+                            onValueChange={(value) => {
+                              const updated = [...child.schedule];
+                              updated[scheduleIndex] = {
+                                ...updated[scheduleIndex],
+                                day_of_week: Number(value),
+                              };
                               updateChild(childIndex, "schedule", updated);
                             }}
-                            className="p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded"
                           >
-                            <X className="h-3 w-3" />
-                          </button>
+                            <SelectTrigger className="h-8 w-16 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {WEEKDAYS_KO.map((day, i) => (
+                                <SelectItem key={i} value={String(i)}>
+                                  {day}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="time"
+                            value={schedule.start_time}
+                            onChange={(e) => {
+                              const updated = [...child.schedule];
+                              updated[scheduleIndex] = {
+                                ...updated[scheduleIndex],
+                                start_time: e.target.value,
+                                end_time: addMinutesToTime(e.target.value, 60),
+                              };
+                              updateChild(childIndex, "schedule", updated);
+                            }}
+                            className="h-8 text-xs"
+                          />
+                          <span className="text-xs text-muted-foreground">~</span>
+                          <Input
+                            type="time"
+                            value={schedule.end_time}
+                            onChange={(e) => {
+                              const updated = [...child.schedule];
+                              updated[scheduleIndex] = {
+                                ...updated[scheduleIndex],
+                                end_time: e.target.value,
+                              };
+                              updateChild(childIndex, "schedule", updated);
+                            }}
+                            className="h-8 text-xs"
+                          />
+                          {child.schedule.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = child.schedule.filter(
+                                  (_, i) => i !== scheduleIndex
+                                );
+                                updateChild(childIndex, "schedule", updated);
+                              }}
+                              className="p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                        {/* 클래스 선택 */}
+                        {availableClasses.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground w-12">클래스:</span>
+                            <Select
+                              value={schedule.room_id || "none"}
+                              onValueChange={(value) => {
+                                const updated = [...child.schedule];
+                                updated[scheduleIndex] = {
+                                  ...updated[scheduleIndex],
+                                  room_id: value === "none" ? undefined : value,
+                                };
+                                updateChild(childIndex, "schedule", updated);
+                              }}
+                            >
+                              <SelectTrigger className="h-7 flex-1 text-[10px]">
+                                <SelectValue placeholder="선택" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">미정</SelectItem>
+                                {availableClasses.map((cls) => (
+                                  <SelectItem key={cls.id} value={cls.id}>
+                                    {cls.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
                       </div>
                     ))}

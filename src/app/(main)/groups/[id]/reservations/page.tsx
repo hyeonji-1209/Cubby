@@ -27,8 +27,9 @@ import {
   Check,
   X,
   CalendarDays,
+  BookOpen,
 } from "lucide-react";
-import { RoomReservation, ClassRoom, CalendarEvent, Lesson } from "@/types";
+import { RoomReservation, ClassRoom, CalendarEvent, Lesson, LessonChangeRequest } from "@/types";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -64,6 +65,7 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
   const [reservations, setReservations] = useState<(RoomReservation & { user?: { name: string } })[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [pendingChangeRequests, setPendingChangeRequests] = useState<LessonChangeRequest[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,6 +126,16 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
       .lte("start_at", monthEnd.toISOString());
 
     setEvents((eventData || []) as CalendarEvent[]);
+
+    // 대기 중인 수업 변경 요청 로드 (해당 시간대 임시 사용 표기용)
+    const { data: changeRequestData } = await supabase
+      .from("lesson_change_requests")
+      .select("*")
+      .eq("status", "pending")
+      .gte("requested_date", monthStart.toISOString())
+      .lte("requested_date", monthEnd.toISOString());
+
+    setPendingChangeRequests((changeRequestData || []) as LessonChangeRequest[]);
 
     setIsLoading(false);
   };
@@ -201,8 +213,18 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
         return eStart < slotEnd && eEnd > slotStart;
       });
 
-      const isDisabled = hasLesson || hasEvent;
-      const disableReason = hasLesson ? "수업" : hasEvent ? "일정" : undefined;
+      // 대기 중인 수업 변경 요청으로 인한 비활성화 체크 (임시 사용 표기)
+      const hasPendingChange = pendingChangeRequests.some(req => {
+        const reqDate = new Date(req.requested_date);
+        // 요청된 시간이 이 슬롯과 겹치는지 확인
+        return isSameDay(reqDate, selectedDate) &&
+          reqDate.getHours() === hour &&
+          reqDate.getMinutes() >= minute &&
+          reqDate.getMinutes() < minute + slotUnit;
+      });
+
+      const isDisabled = hasLesson || hasEvent || hasPendingChange;
+      const disableReason = hasLesson ? "수업" : hasEvent ? "일정" : hasPendingChange ? "변경 대기" : undefined;
       const isFull = slotReservations.length >= capacity;
       const hasMyReservation = slotReservations.some(r => r.reserved_by === user?.id);
 
@@ -219,7 +241,7 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
     }
 
     return slots;
-  }, [selectedDate, selectedRoom, group, reservations, lessons, events, availableRooms, user?.id, slotUnit, practiceHours]);
+  }, [selectedDate, selectedRoom, group, reservations, lessons, events, pendingChangeRequests, availableRooms, user?.id, slotUnit, practiceHours]);
 
   // 날짜별 예약 수 계산 (모든 클래스 포함)
   const getReservationCountForDate = (date: Date) => {
@@ -414,7 +436,36 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
                 const dayReservations = reservations
                   .filter(r => isSameDay(new Date(r.start_at), date))
                   .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-                const reservationCount = dayReservations.length;
+                const dayLessons = lessons
+                  .filter(l => isSameDay(new Date(l.scheduled_at), date))
+                  .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+                // 통합 일정 아이템 (수업 + 예약)
+                const allItems: { type: "lesson" | "reservation"; time: string; title: string; id: string; roomId?: string; userName?: string }[] = [];
+
+                dayLessons.forEach(lesson => {
+                  allItems.push({
+                    type: "lesson",
+                    time: format(new Date(lesson.scheduled_at), "HH:mm"),
+                    title: "수업",
+                    id: `lesson-${lesson.id}`,
+                    roomId: lesson.room_id,
+                  });
+                });
+
+                dayReservations.forEach(res => {
+                  allItems.push({
+                    type: "reservation",
+                    time: format(new Date(res.start_at), "HH:mm"),
+                    title: "예약",
+                    id: `res-${res.id}`,
+                    roomId: res.room_id,
+                    userName: res.user?.name,
+                  });
+                });
+
+                // 시간순 정렬
+                allItems.sort((a, b) => a.time.localeCompare(b.time));
 
                 return (
                   <button
@@ -438,62 +489,78 @@ export default function ReservationsPage({ params }: ReservationsPageProps) {
                       >
                         {format(date, "d")}
                       </span>
-                      {isCurrentMonth && reservationCount > 0 && !canManage && (
+                      {isCurrentMonth && allItems.length > 0 && !canManage && (
                         <span className="text-[9px] text-muted-foreground">
-                          {reservationCount}건
+                          {allItems.length}건
                         </span>
                       )}
                     </div>
 
-                    {/* 관리자용: 모든 예약 라벨 표시 */}
-                    {isCurrentMonth && canManage && dayReservations.length > 0 && (
+                    {/* 관리자용: 모든 일정 라벨 표시 (수업 + 예약) */}
+                    {isCurrentMonth && canManage && allItems.length > 0 && (
                       <div className="flex-1 flex flex-col gap-0.5 mt-0.5 overflow-hidden">
-                        {dayReservations.slice(0, 3).map((res) => {
-                          const room = availableRooms.find(r => r.id === res.room_id);
-                          const startTime = format(new Date(res.start_at), "HH:mm");
+                        {allItems.slice(0, 3).map((item) => {
+                          const room = availableRooms.find(r => r.id === item.roomId);
                           return (
                             <div
-                              key={res.id}
-                              className="text-[9px] px-1 py-0.5 bg-primary/10 text-primary rounded truncate"
+                              key={item.id}
+                              className={cn(
+                                "text-[9px] px-1 py-0.5 rounded truncate flex items-center gap-1",
+                                item.type === "lesson"
+                                  ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                                  : "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                              )}
                             >
-                              {startTime} {res.user?.name || "?"} {room ? `[${room.name}]` : ""}
+                              {item.type === "lesson" && <BookOpen className="h-2.5 w-2.5 shrink-0" />}
+                              {item.time} {item.type === "reservation" && item.userName} {room ? `[${room.name}]` : ""}
                             </div>
                           );
                         })}
-                        {dayReservations.length > 3 && (
+                        {allItems.length > 3 && (
                           <span className="text-[9px] text-muted-foreground px-1">
-                            +{dayReservations.length - 3}건
+                            +{allItems.length - 3}건
                           </span>
                         )}
                       </div>
                     )}
 
-                    {/* 학생용: 본인 예약만 라벨로 표시 */}
-                    {isCurrentMonth && !canManage && dayReservations.length > 0 && (() => {
+                    {/* 학생용: 본인 수업 + 본인 예약 라벨 표시 */}
+                    {isCurrentMonth && !canManage && allItems.length > 0 && (() => {
                       const myDayReservations = dayReservations.filter(r => r.reserved_by === user?.id);
-                      const otherCount = dayReservations.length - myDayReservations.length;
+                      // 학생 본인의 수업과 본인 예약만
+                      const myItems = [
+                        ...dayLessons.map(l => ({ type: "lesson" as const, time: format(new Date(l.scheduled_at), "HH:mm"), id: `lesson-${l.id}`, roomId: l.room_id })),
+                        ...myDayReservations.map(r => ({ type: "reservation" as const, time: format(new Date(r.start_at), "HH:mm"), id: `res-${r.id}`, roomId: r.room_id })),
+                      ].sort((a, b) => a.time.localeCompare(b.time));
+                      const otherReservationCount = dayReservations.length - myDayReservations.length;
+
                       return (
                         <div className="flex-1 flex flex-col gap-0.5 mt-0.5 overflow-hidden">
-                          {myDayReservations.slice(0, 2).map((res) => {
-                            const room = availableRooms.find(r => r.id === res.room_id);
-                            const startTime = format(new Date(res.start_at), "HH:mm");
+                          {myItems.slice(0, 2).map((item) => {
+                            const room = availableRooms.find(r => r.id === item.roomId);
                             return (
                               <div
-                                key={res.id}
-                                className="text-[9px] px-1 py-0.5 bg-primary/20 text-primary rounded truncate font-medium"
+                                key={item.id}
+                                className={cn(
+                                  "text-[9px] px-1 py-0.5 rounded truncate font-medium flex items-center gap-1",
+                                  item.type === "lesson"
+                                    ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : "bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+                                )}
                               >
-                                {startTime} {room ? `[${room.name}]` : ""}
+                                {item.type === "lesson" && <BookOpen className="h-2.5 w-2.5 shrink-0" />}
+                                {item.time} {room ? `[${room.name}]` : ""}
                               </div>
                             );
                           })}
-                          {myDayReservations.length > 2 && (
+                          {myItems.length > 2 && (
                             <span className="text-[9px] text-primary px-1">
-                              +{myDayReservations.length - 2}건
+                              +{myItems.length - 2}건
                             </span>
                           )}
-                          {otherCount > 0 && (
+                          {otherReservationCount > 0 && (
                             <span className="text-[9px] text-muted-foreground px-1">
-                              외 {otherCount}건
+                              외 예약 {otherReservationCount}건
                             </span>
                           )}
                         </div>

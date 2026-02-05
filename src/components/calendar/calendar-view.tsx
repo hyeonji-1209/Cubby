@@ -22,7 +22,7 @@ import {
   ChevronRight,
   Clock,
 } from "lucide-react";
-import { CalendarEvent, Group } from "@/types";
+import { CalendarEvent, Group, Lesson, RoomReservation } from "@/types";
 import { cn } from "@/lib/utils";
 import { getHolidaysForMonth, Holiday } from "@/lib/holidays";
 import {
@@ -31,14 +31,53 @@ import {
   HOLIDAY_COLOR,
   CalendarColor,
 } from "@/lib/calendar-colors";
+import { BookOpen, Calendar as CalendarIcon, Repeat } from "lucide-react";
 
 export interface ColorMapping {
   id: string;
   color: CalendarColor;
 }
 
+// 통합 일정 아이템
+interface ScheduleItem {
+  id: string;
+  title: string;
+  start_at: string;
+  end_at: string;
+  type: "event" | "lesson" | "reservation";
+  all_day?: boolean;
+  color: CalendarColor;
+  original?: CalendarEvent | LessonWithDetails | RoomReservation;
+  instructor?: string;
+}
+
+// 수업에 학생/강사 정보가 포함된 타입
+export interface LessonWithDetails extends Lesson {
+  student?: { id: string; name: string };
+  instructor?: { id: string; name: string };
+  room?: { id: string; name: string };
+}
+
+// 정규수업 스케줄 타입 (멤버별 반복 수업)
+export interface RegularSchedule {
+  memberId: string;
+  studentName: string;
+  instructorId?: string;
+  instructorName?: string;
+  dayOfWeek: number; // 0-6 (일-토)
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
+  roomId?: string;
+  roomName?: string;
+  subject?: string;  // 과목/비고 (국어, 수학, 음악 등)
+}
+
 export interface CalendarViewProps {
   events: CalendarEvent[];
+  // 학생용 수업 (선택)
+  lessons?: LessonWithDetails[];
+  // 학생용 예약 (선택)
+  reservations?: RoomReservation[];
   // 색상 매핑 (location_id 또는 group_id로 색상 결정)
   colorMappings?: ColorMapping[];
   // 그룹 목록 (대시보드용 - 그룹명 표시)
@@ -59,10 +98,20 @@ export interface CalendarViewProps {
   headerExtra?: ReactNode;
   // 사이드 패널 숨김
   hideSidePanel?: boolean;
+  // 수업 상세 표시 (강사/오너용)
+  showLessonDetails?: boolean;
+  // 오너 여부 (강사명 표시용)
+  isOwner?: boolean;
+  // 예약 라벨 숨김
+  hideReservationLabels?: boolean;
+  // 정규수업 스케줄 (매주 반복)
+  regularSchedules?: RegularSchedule[];
 }
 
 export function CalendarView({
   events,
+  lessons = [],
+  reservations = [],
   colorMappings = [],
   groups = [],
   onEventClick,
@@ -73,7 +122,15 @@ export function CalendarView({
   showHolidayBadge = false,
   headerExtra,
   hideSidePanel = false,
+  showLessonDetails = false,
+  isOwner = false,
+  hideReservationLabels = false,
+  regularSchedules = [],
 }: CalendarViewProps) {
+  // 수업/예약 색상
+  const LESSON_COLOR: CalendarColor = { bg: "bg-blue-500", light: "bg-blue-50 dark:bg-blue-950/30", text: "text-blue-700 dark:text-blue-400" };
+  const RESERVATION_COLOR: CalendarColor = { bg: "bg-purple-500", light: "bg-purple-50 dark:bg-purple-950/30", text: "text-purple-700 dark:text-purple-400" };
+  const REGULAR_SCHEDULE_COLOR: CalendarColor = { bg: "bg-emerald-500", light: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-400" };
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [sidePanelView, setSidePanelView] = useState<"list" | "timeline">("timeline");
@@ -171,6 +228,97 @@ export function CalendarView({
     });
   };
 
+  // 해당 날짜의 수업 가져오기
+  const getLessonsForDate = (date: Date) => {
+    return lessons.filter((lesson) => {
+      return isSameDay(new Date(lesson.scheduled_at), date);
+    });
+  };
+
+  // 해당 날짜의 예약 가져오기
+  const getReservationsForDate = (date: Date) => {
+    return reservations.filter((res) => {
+      return isSameDay(new Date(res.start_at), date);
+    });
+  };
+
+  // 해당 날짜의 정규수업 스케줄 가져오기 (요일 기준)
+  const getRegularSchedulesForDate = (date: Date) => {
+    const dayOfWeek = date.getDay(); // 0-6 (일-토)
+    return regularSchedules.filter((schedule) => schedule.dayOfWeek === dayOfWeek);
+  };
+
+  // 해당 날짜의 모든 일정 아이템 (이벤트 + 수업 + 예약)
+  const getScheduleItemsForDate = (date: Date): ScheduleItem[] => {
+    const items: ScheduleItem[] = [];
+
+    // 이벤트 추가
+    getEventsForDate(date).forEach((event) => {
+      items.push({
+        id: event.id,
+        title: event.title,
+        start_at: event.start_at,
+        end_at: event.end_at,
+        type: "event",
+        all_day: event.all_day,
+        color: getEventColor(event),
+        original: event,
+      });
+    });
+
+    // 수업 추가
+    getLessonsForDate(date).forEach((lesson) => {
+      const startAt = new Date(lesson.scheduled_at);
+      const endAt = new Date(startAt.getTime() + (lesson.duration_minutes || 60) * 60 * 1000);
+      let title = `수업 (${lesson.duration_minutes || 60}분)`;
+      let instructor: string | undefined;
+      if (showLessonDetails) {
+        const studentName = lesson.student?.name || "";
+        const roomName = lesson.room?.name || "";
+        title = `${roomName ? `[${roomName}] ` : ""}${studentName} 수업`;
+        if (isOwner && lesson.instructor?.name) {
+          instructor = lesson.instructor.name;
+        }
+      }
+      items.push({
+        id: `lesson-${lesson.id}`,
+        title,
+        start_at: lesson.scheduled_at,
+        end_at: endAt.toISOString(),
+        type: "lesson",
+        all_day: false,
+        color: LESSON_COLOR,
+        original: lesson,
+        instructor,
+      });
+    });
+
+    // 예약 추가 (hideReservationLabels가 true면 추가하지 않음)
+    if (!hideReservationLabels) {
+      getReservationsForDate(date).forEach((res) => {
+        items.push({
+          id: `res-${res.id}`,
+          title: "연습실 예약",
+          start_at: res.start_at,
+          end_at: res.end_at,
+          type: "reservation",
+          all_day: false,
+          color: RESERVATION_COLOR,
+          original: res,
+        });
+      });
+    }
+
+    // 시간순 정렬
+    items.sort((a, b) => {
+      if (a.all_day && !b.all_day) return -1;
+      if (!a.all_day && b.all_day) return 1;
+      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+    });
+
+    return items;
+  };
+
   const getHolidayForDate = (date: Date): Holiday | null => {
     const dateStr = format(date, "yyyy-MM-dd");
     return holidayMap.get(dateStr) || null;
@@ -200,7 +348,7 @@ export function CalendarView({
 
   const weekDays = ["일", "월", "화", "수", "목", "금", "토"];
 
-  const selectedDateEvents = selectedDate ? getEventsForDate(selectedDate) : [];
+  const selectedDateScheduleItems = selectedDate ? getScheduleItemsForDate(selectedDate) : [];
   const selectedDateHoliday = selectedDate ? getHolidayForDate(selectedDate) : null;
 
   return (
@@ -336,10 +484,101 @@ export function CalendarView({
                     const daysDiff = Math.floor((eventEnd.getTime() - eventStart.getTime()) / (1000 * 60 * 60 * 24));
                     return daysDiff < 1;
                   });
-                  const sortedDayEvents = [...singleDayEvents].sort((a, b) => {
-                    if (a.all_day && !b.all_day) return -1;
-                    if (!a.all_day && b.all_day) return 1;
-                    return new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+
+                  // 수업과 예약 가져오기
+                  const dayLessons = getLessonsForDate(date);
+                  const dayReservations = getReservationsForDate(date);
+                  const dayRegularSchedules = getRegularSchedulesForDate(date);
+
+                  // 통합 일정 아이템
+                  const allDayItems: { type: "event" | "lesson" | "reservation" | "regular"; time: string; title: string; color: CalendarColor; id: string; event?: CalendarEvent; instructor?: string }[] = [];
+
+                  // 단일 이벤트 추가
+                  singleDayEvents.forEach((event) => {
+                    allDayItems.push({
+                      type: "event",
+                      time: event.all_day ? "" : format(new Date(event.start_at), "HH:mm"),
+                      title: event.title,
+                      color: getEventColor(event),
+                      id: event.id,
+                      event,
+                    });
+                  });
+
+                  // 수업 추가
+                  dayLessons.forEach((lesson) => {
+                    let title = "수업";
+                    let instructor: string | undefined;
+                    if (showLessonDetails) {
+                      // 시간[장소] 학생이름 수업 형식 (강사는 맨 오른쪽에 별도 표시)
+                      const time = format(new Date(lesson.scheduled_at), "HH:mm");
+                      const roomName = lesson.room?.name || "";
+                      const studentName = lesson.student?.name || "";
+
+                      title = `${time}${roomName ? `[${roomName}]` : ""} ${studentName} 수업`;
+
+                      if (isOwner && lesson.instructor?.name) {
+                        instructor = lesson.instructor.name;
+                      }
+                    }
+                    allDayItems.push({
+                      type: "lesson",
+                      time: showLessonDetails ? "" : format(new Date(lesson.scheduled_at), "HH:mm"),
+                      title,
+                      color: LESSON_COLOR,
+                      id: `lesson-${lesson.id}`,
+                      instructor,
+                    });
+                  });
+
+                  // 예약 추가 (hideReservationLabels가 true면 라벨 숨김)
+                  if (!hideReservationLabels) {
+                    dayReservations.forEach((res) => {
+                      allDayItems.push({
+                        type: "reservation",
+                        time: format(new Date(res.start_at), "HH:mm"),
+                        title: "예약",
+                        color: RESERVATION_COLOR,
+                        id: `res-${res.id}`,
+                      });
+                    });
+                  }
+
+                  // 정규수업 추가 (실제 수업이 없는 경우에만)
+                  dayRegularSchedules.forEach((schedule) => {
+                    // 해당 학생의 같은 시간대 수업이 이미 있는지 확인
+                    const hasActualLesson = dayLessons.some(
+                      (lesson) =>
+                        lesson.student?.id === schedule.memberId ||
+                        format(new Date(lesson.scheduled_at), "HH:mm") === schedule.startTime
+                    );
+                    if (hasActualLesson) return;
+
+                    let title = "정규수업";
+                    let instructor: string | undefined;
+                    if (showLessonDetails) {
+                      // 형식: 시간[장소] 학생이름과목수업 (강사는 맨 오른쪽 별도 표시)
+                      const subjectText = schedule.subject ? schedule.subject : "";
+                      title = `${schedule.startTime}${schedule.roomName ? `[${schedule.roomName}]` : ""} ${schedule.studentName}${subjectText}수업`;
+                      if (isOwner && schedule.instructorName) {
+                        instructor = schedule.instructorName;
+                      }
+                    }
+                    allDayItems.push({
+                      type: "regular",
+                      time: showLessonDetails ? "" : schedule.startTime,
+                      title,
+                      color: REGULAR_SCHEDULE_COLOR,
+                      id: `regular-${schedule.memberId}-${schedule.dayOfWeek}-${schedule.startTime}`,
+                      instructor,
+                    });
+                  });
+
+                  // 시간순 정렬
+                  allDayItems.sort((a, b) => {
+                    if (!a.time && b.time) return -1;
+                    if (a.time && !b.time) return 1;
+                    return a.time.localeCompare(b.time);
                   });
 
                   const availableLabels = Math.max(0, maxLabels - multiDayBarCount);
@@ -373,9 +612,9 @@ export function CalendarView({
                           {format(date, "d")}
                         </span>
                         {/* +N more 표시 */}
-                        {isCurrentMonth && (sortedDayEvents.length > availableLabels || dayEvents.length > maxLabels) && (
+                        {isCurrentMonth && allDayItems.length > availableLabels && (
                           <span className="text-[9px] text-muted-foreground">
-                            +{Math.max(0, sortedDayEvents.length - availableLabels)}
+                            +{Math.max(0, allDayItems.length - availableLabels)}
                           </span>
                         )}
                       </div>
@@ -385,41 +624,51 @@ export function CalendarView({
                         </div>
                       )}
 
-                      {/* 단일 이벤트 라벨 */}
-                      {isCurrentMonth && sortedDayEvents.length > 0 && (
+                      {/* 일정 라벨 (이벤트 + 수업 + 예약) */}
+                      {isCurrentMonth && allDayItems.length > 0 && (
                         <div
                           className="flex-1 flex flex-col gap-0.5 mt-0.5 overflow-hidden"
                           style={{ marginTop: `${multiDayBarCount * 21 + 2}px` }}
                         >
-                          {sortedDayEvents.slice(0, availableLabels).map((event) => {
-                            const eventColor = getEventColor(event);
-                            const groupName = event.group_id
-                              ? groups.find(g => g.id === event.group_id)?.name
+                          {allDayItems.slice(0, availableLabels).map((item) => {
+                            const groupName = item.event?.group_id
+                              ? groups.find(g => g.id === item.event?.group_id)?.name
                               : null;
                             return (
                               <div
-                                key={event.id}
+                                key={item.id}
                                 className={cn(
-                                  "flex items-center gap-1.5 text-xs leading-tight truncate px-1.5 py-0.5 cursor-pointer",
-                                  event.all_day ? eventColor.light : "bg-muted/50",
-                                  event.all_day ? eventColor.text : "text-foreground",
+                                  "flex items-center gap-1 text-xs leading-tight px-1 py-0.5",
+                                  item.type === "event" ? "bg-muted/50" : item.color.light,
                                   "hover:opacity-80"
                                 )}
                               >
-                                <span
-                                  className={cn(
-                                    "w-1.5 h-1.5 rounded-full shrink-0",
-                                    eventColor.bg
-                                  )}
-                                />
-                                {!event.all_day && (
+                                {/* 타입별 아이콘/닷 */}
+                                {item.type === "lesson" && (
+                                  <BookOpen className="h-2.5 w-2.5 shrink-0 text-blue-500" />
+                                )}
+                                {item.type === "regular" && (
+                                  <Repeat className="h-2.5 w-2.5 shrink-0 text-emerald-500" />
+                                )}
+                                {item.type === "reservation" && (
+                                  <CalendarIcon className="h-2.5 w-2.5 shrink-0 text-purple-500" />
+                                )}
+                                {item.type === "event" && (
+                                  <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", item.color.bg)} />
+                                )}
+                                {item.time && (
                                   <span className="text-[10px] text-muted-foreground shrink-0">
-                                    {format(new Date(event.start_at), "HH:mm")}
-                                    {event.location && ` [${event.location}]`}
+                                    {item.time}
                                   </span>
                                 )}
-                                <span className="truncate flex-1">{event.title}</span>
-                                {groups.length > 0 && (
+                                <span className="truncate flex-1">{item.title}</span>
+                                {/* 수업/정규수업 담당강사 (맨 오른쪽) */}
+                                {(item.type === "lesson" || item.type === "regular") && item.instructor && (
+                                  <span className="text-[9px] text-muted-foreground shrink-0 ml-auto">
+                                    {item.instructor}
+                                  </span>
+                                )}
+                                {groups.length > 0 && item.type === "event" && (
                                   <span className="text-[9px] text-muted-foreground shrink-0">
                                     {groupName || "개인"}
                                   </span>
@@ -549,17 +798,17 @@ export function CalendarView({
         <div className="flex-1 overflow-auto p-3">
           {sidePanelView === "list" ? (
             /* 리스트 뷰 */
-            selectedDateEvents.length > 0 ? (
+            selectedDateScheduleItems.length > 0 ? (
               <div className="space-y-1.5">
-                {selectedDateEvents.map((event) => {
-                  const eventColor = getEventColor(event);
-                  const clickable = isEventClickable(event);
-                  const groupName = event.group_id ? groups.find(g => g.id === event.group_id)?.name : null;
+                {selectedDateScheduleItems.map((item) => {
+                  const clickable = item.type === "event" && item.original && isEventClickable(item.original as CalendarEvent);
+                  const event = item.type === "event" ? item.original as CalendarEvent : null;
+                  const groupName = event?.group_id ? groups.find(g => g.id === event?.group_id)?.name : null;
 
                   return (
                     <button
-                      key={event.id}
-                      onClick={() => clickable && onEventClick?.(event)}
+                      key={item.id}
+                      onClick={() => clickable && event && onEventClick?.(event)}
                       disabled={!clickable}
                       className={cn(
                         "w-full p-2.5 rounded border border-border/40 transition-colors text-left",
@@ -572,15 +821,27 @@ export function CalendarView({
                         <div
                           className={cn(
                             "w-1 h-full min-h-[36px] rounded-full shrink-0 mt-0.5",
-                            eventColor.bg
+                            item.color.bg
                           )}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-sm truncate flex-1">
-                              {event.title}
+                              {item.title}
                             </p>
-                            {showHolidayBadge && event.is_academy_holiday && (
+                            {item.type === "lesson" && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 shrink-0 flex items-center gap-0.5">
+                                <BookOpen className="h-2.5 w-2.5" />
+                                수업
+                              </span>
+                            )}
+                            {item.type === "reservation" && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 shrink-0 flex items-center gap-0.5">
+                                <CalendarIcon className="h-2.5 w-2.5" />
+                                예약
+                              </span>
+                            )}
+                            {showHolidayBadge && event?.is_academy_holiday && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400 shrink-0">
                                 휴일
                               </span>
@@ -592,21 +853,27 @@ export function CalendarView({
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            {event.all_day ? (
+                            {item.all_day ? (
                               <span>하루 종일</span>
                             ) : (
                               <span>
-                                {format(new Date(event.start_at), "HH:mm")} - {format(new Date(event.end_at), "HH:mm")}
+                                {format(new Date(item.start_at), "HH:mm")} - {format(new Date(item.end_at), "HH:mm")}
                               </span>
                             )}
-                            {event.location && (
+                            {event?.location && (
                               <>
                                 <span className="text-muted-foreground/50">·</span>
                                 <span className="truncate">{event.location}</span>
                               </>
                             )}
+                            {/* 수업 담당강사 (맨 오른쪽) */}
+                            {item.type === "lesson" && item.instructor && (
+                              <>
+                                <span className="ml-auto shrink-0">{item.instructor}</span>
+                              </>
+                            )}
                           </div>
-                          {event.description && (
+                          {event?.description && (
                             <p className="text-xs text-muted-foreground mt-1.5 line-clamp-1">
                               {event.description}
                             </p>
@@ -637,26 +904,26 @@ export function CalendarView({
             /* 타임라인 뷰 */
             <div className="relative">
               {/* 하루종일 이벤트 */}
-              {selectedDateEvents.filter(e => e.all_day).length > 0 && (
+              {selectedDateScheduleItems.filter(e => e.all_day).length > 0 && (
                 <div className="mb-3 pb-3 border-b space-y-1">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1.5">하루 종일</p>
-                  {selectedDateEvents.filter(e => e.all_day).map((event) => {
-                    const eventColor = getEventColor(event);
-                    const clickable = isEventClickable(event);
-                    const groupName = event.group_id ? groups.find(g => g.id === event.group_id)?.name : null;
+                  {selectedDateScheduleItems.filter(e => e.all_day).map((item) => {
+                    const clickable = item.type === "event" && item.original && isEventClickable(item.original as CalendarEvent);
+                    const event = item.type === "event" ? item.original as CalendarEvent : null;
+                    const groupName = event?.group_id ? groups.find(g => g.id === event?.group_id)?.name : null;
 
                     return (
                       <button
-                        key={event.id}
-                        onClick={() => clickable && onEventClick?.(event)}
+                        key={item.id}
+                        onClick={() => clickable && event && onEventClick?.(event)}
                         disabled={!clickable}
                         className={cn(
                           "w-full text-left text-xs px-2 py-1.5 rounded-sm flex items-center gap-2 border border-border/30",
-                          eventColor.light,
+                          item.color.light,
                           clickable ? "hover:opacity-80 cursor-pointer" : "cursor-default"
                         )}
                       >
-                        <span className="font-medium truncate flex-1">{event.title}</span>
+                        <span className="font-medium truncate flex-1">{item.title}</span>
                         {groupName && (
                           <span className="text-[9px] px-1 py-0.5 rounded bg-background/50 text-muted-foreground shrink-0">
                             {groupName}
@@ -708,53 +975,52 @@ export function CalendarView({
                     return null;
                   })()}
 
-                  {/* 이벤트 바 */}
+                  {/* 이벤트 바 (이벤트 + 수업 + 예약) */}
                   {(() => {
-                    const timeEvents = selectedDateEvents.filter(e => !e.all_day);
-                    const eventColumns: { event: CalendarEvent; col: number; totalCols: number }[] = [];
+                    const timeItems = selectedDateScheduleItems.filter(e => !e.all_day);
+                    const itemColumns: { item: ScheduleItem; col: number; totalCols: number }[] = [];
 
-                    timeEvents.forEach((event) => {
-                      const startDate = new Date(event.start_at);
-                      const endDate = new Date(event.end_at);
+                    timeItems.forEach((item) => {
+                      const startDate = new Date(item.start_at);
+                      const endDate = new Date(item.end_at);
                       const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                       const endHour = endDate.getHours() + endDate.getMinutes() / 60;
 
                       let col = 0;
-                      const overlapping = eventColumns.filter(ec => {
-                        const ecStart = new Date(ec.event.start_at);
-                        const ecEnd = new Date(ec.event.end_at);
-                        const ecStartHour = ecStart.getHours() + ecStart.getMinutes() / 60;
-                        const ecEndHour = ecEnd.getHours() + ecEnd.getMinutes() / 60;
-                        return startHour < ecEndHour && endHour > ecStartHour;
+                      const overlapping = itemColumns.filter(ic => {
+                        const icStart = new Date(ic.item.start_at);
+                        const icEnd = new Date(ic.item.end_at);
+                        const icStartHour = icStart.getHours() + icStart.getMinutes() / 60;
+                        const icEndHour = icEnd.getHours() + icEnd.getMinutes() / 60;
+                        return startHour < icEndHour && endHour > icStartHour;
                       });
 
                       const usedCols = overlapping.map(o => o.col);
                       while (usedCols.includes(col)) col++;
 
-                      eventColumns.push({ event, col, totalCols: 1 });
+                      itemColumns.push({ item, col, totalCols: 1 });
                     });
 
-                    eventColumns.forEach(ec => {
-                      const startDate = new Date(ec.event.start_at);
-                      const endDate = new Date(ec.event.end_at);
+                    itemColumns.forEach(ic => {
+                      const startDate = new Date(ic.item.start_at);
+                      const endDate = new Date(ic.item.end_at);
                       const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                       const endHour = endDate.getHours() + endDate.getMinutes() / 60;
 
-                      const overlapping = eventColumns.filter(other => {
-                        const otherStart = new Date(other.event.start_at);
-                        const otherEnd = new Date(other.event.end_at);
+                      const overlapping = itemColumns.filter(other => {
+                        const otherStart = new Date(other.item.start_at);
+                        const otherEnd = new Date(other.item.end_at);
                         const otherStartHour = otherStart.getHours() + otherStart.getMinutes() / 60;
                         const otherEndHour = otherEnd.getHours() + otherEnd.getMinutes() / 60;
                         return startHour < otherEndHour && endHour > otherStartHour;
                       });
 
-                      ec.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
+                      ic.totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
                     });
 
-                    return eventColumns.map(({ event, col, totalCols }) => {
-                      const eventColor = getEventColor(event);
-                      const startDate = new Date(event.start_at);
-                      const endDate = new Date(event.end_at);
+                    return itemColumns.map(({ item, col, totalCols }) => {
+                      const startDate = new Date(item.start_at);
+                      const endDate = new Date(item.end_at);
                       const startHour = startDate.getHours() + startDate.getMinutes() / 60;
                       const endHour = endDate.getHours() + endDate.getMinutes() / 60;
                       const duration = endHour - startHour;
@@ -767,16 +1033,18 @@ export function CalendarView({
                       const width = `calc((100% - 8px) / ${totalCols})`;
                       const left = `calc(4px + (100% - 8px) / ${totalCols} * ${col})`;
 
-                      const clickable = isEventClickable(event);
+                      const clickable = item.type === "event" && item.original && isEventClickable(item.original as CalendarEvent);
 
                       return (
                         <button
-                          key={event.id}
-                          onClick={() => clickable && onEventClick?.(event)}
+                          key={item.id}
+                          onClick={() => clickable && item.original && onEventClick?.(item.original as CalendarEvent)}
                           disabled={!clickable}
                           className={cn(
                             "absolute text-left text-xs px-1.5 py-1 rounded overflow-hidden border border-border/30",
-                            eventColor.light,
+                            item.color.light,
+                            "border-l-2",
+                            item.color.bg.replace("bg-", "border-l-"),
                             clickable ? "hover:opacity-80 cursor-pointer" : "cursor-default"
                           )}
                           style={{
@@ -786,7 +1054,11 @@ export function CalendarView({
                             left,
                           }}
                         >
-                          <div className="font-medium truncate text-[11px]">{event.title}</div>
+                          <div className="font-medium truncate text-[11px] flex items-center gap-1">
+                            {item.type === "lesson" && <BookOpen className="h-2.5 w-2.5 shrink-0" />}
+                            {item.type === "reservation" && <CalendarIcon className="h-2.5 w-2.5 shrink-0" />}
+                            {item.title}
+                          </div>
                           <div className="text-[9px] opacity-70 truncate">
                             {format(startDate, "HH:mm")}-{format(endDate, "HH:mm")}
                           </div>
@@ -798,7 +1070,7 @@ export function CalendarView({
               </div>
 
               {/* 일정 없을 때 */}
-              {selectedDateEvents.length === 0 && (
+              {selectedDateScheduleItems.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
                   <div className="w-10 h-10 rounded-md bg-muted/50 flex items-center justify-center mb-2">
                     <Clock className="h-5 w-5 text-muted-foreground" />

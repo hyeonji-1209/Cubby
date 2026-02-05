@@ -706,7 +706,7 @@ export default function MembersPage({ params }: MembersPageProps) {
                                         (student.lesson_schedule as LessonSchedule[]).map((s, i) => (
                                           <span key={i}>
                                             {i > 0 && ", "}
-                                            {WEEKDAYS_KO[s.day_of_week]} {s.start_time}
+                                            {WEEKDAYS_KO[s.day_of_week]} {s.start_time}{s.subject ? ` (${s.subject})` : ""}
                                           </span>
                                         ))
                                       ) : "-"}
@@ -799,7 +799,8 @@ export default function MembersPage({ params }: MembersPageProps) {
                                   {(selectedMember.lesson_schedule as LessonSchedule[]).map((schedule, idx) => (
                                     <tr key={idx}>
                                       <td className="py-2.5 font-medium">{WEEKDAYS_KO[schedule.day_of_week]}요일</td>
-                                      <td className="py-2.5 text-right text-muted-foreground">{schedule.start_time} ~ {schedule.end_time}</td>
+                                      <td className="py-2.5 text-muted-foreground">{schedule.start_time} ~ {schedule.end_time}</td>
+                                      <td className="py-2.5 text-right text-muted-foreground">{schedule.subject || ""}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -856,42 +857,53 @@ export default function MembersPage({ params }: MembersPageProps) {
 
                             <div className="space-y-2">
                               {editingSchedule.map((schedule, idx) => (
-                                <div key={idx} className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-background border">
-                                  <Select
-                                    value={schedule.day_of_week.toString()}
-                                    onValueChange={(v) => updateScheduleItem(idx, "day_of_week", parseInt(v))}
-                                  >
-                                    <SelectTrigger className="w-[70px] h-9">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {WEEKDAYS_KO.map((day, i) => (
-                                        <SelectItem key={i} value={i.toString()}>{day}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <div className="flex items-center gap-1 flex-1 min-w-[180px]">
+                                <div key={idx} className="p-3 rounded-lg bg-background border space-y-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Select
+                                      value={schedule.day_of_week.toString()}
+                                      onValueChange={(v) => updateScheduleItem(idx, "day_of_week", parseInt(v))}
+                                    >
+                                      <SelectTrigger className="w-[70px] h-9">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {WEEKDAYS_KO.map((day, i) => (
+                                          <SelectItem key={i} value={i.toString()}>{day}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <div className="flex items-center gap-1 flex-1 min-w-[180px]">
+                                      <Input
+                                        type="time"
+                                        value={schedule.start_time}
+                                        onChange={(e) => updateScheduleItem(idx, "start_time", e.target.value)}
+                                        className="h-9 flex-1"
+                                      />
+                                      <span className="text-muted-foreground text-sm">~</span>
+                                      <Input
+                                        type="time"
+                                        value={schedule.end_time}
+                                        onChange={(e) => updateScheduleItem(idx, "end_time", e.target.value)}
+                                        className="h-9 flex-1"
+                                      />
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeScheduleItem(idx)}
+                                      className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                  <div>
                                     <Input
-                                      type="time"
-                                      value={schedule.start_time}
-                                      onChange={(e) => updateScheduleItem(idx, "start_time", e.target.value)}
-                                      className="h-9 flex-1"
-                                    />
-                                    <span className="text-muted-foreground text-sm">~</span>
-                                    <Input
-                                      type="time"
-                                      value={schedule.end_time}
-                                      onChange={(e) => updateScheduleItem(idx, "end_time", e.target.value)}
-                                      className="h-9 flex-1"
+                                      type="text"
+                                      placeholder="과목/비고 (예: 국어, 수학, 음악)"
+                                      value={schedule.subject || ""}
+                                      onChange={(e) => updateScheduleItem(idx, "subject", e.target.value)}
+                                      className="h-8 text-sm"
                                     />
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeScheduleItem(idx)}
-                                    className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
                                 </div>
                               ))}
                               {editingSchedule.length === 0 && (

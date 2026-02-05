@@ -36,7 +36,27 @@ export default async function DashboardPage() {
     .lte("start_at", endOfNextMonth.toISOString())
     .order("start_at");
 
-  // Get student's upcoming lessons across all groups
+  // Get student's lessons for calendar (month range)
+  const { data: calendarLessons } = await supabase
+    .from("lessons")
+    .select("*")
+    .eq("student_id", user?.id)
+    .gte("scheduled_at", startOfMonth.toISOString())
+    .lte("scheduled_at", endOfNextMonth.toISOString())
+    .in("status", ["scheduled", "in_progress", "completed"])
+    .order("scheduled_at");
+
+  // Get student's reservations for calendar (month range)
+  const { data: calendarReservations } = await supabase
+    .from("room_reservations")
+    .select("*")
+    .eq("reserved_by", user?.id)
+    .gte("start_at", startOfMonth.toISOString())
+    .lte("start_at", endOfNextMonth.toISOString())
+    .eq("status", "approved")
+    .order("start_at");
+
+  // Get student's upcoming lessons for sidebar (limited to 5)
   const { data: upcomingLessons } = await supabase
     .from("lessons")
     .select(`
@@ -49,7 +69,7 @@ export default async function DashboardPage() {
     .order("scheduled_at")
     .limit(5);
 
-  // Get student's upcoming reservations across all groups
+  // Get student's upcoming reservations for sidebar (limited to 5)
   const { data: upcomingReservations } = await supabase
     .from("room_reservations")
     .select(`
@@ -69,7 +89,12 @@ export default async function DashboardPage() {
     <div className="h-full flex flex-col lg:flex-row">
       {/* Calendar - 패딩 없이 꽉 참 */}
       <div className="flex-1 h-full">
-        <DashboardCalendar events={events || []} groups={groups} />
+        <DashboardCalendar
+          events={events || []}
+          groups={groups}
+          lessons={calendarLessons || []}
+          reservations={calendarReservations || []}
+        />
       </div>
 
       {/* Right Sidebar */}
